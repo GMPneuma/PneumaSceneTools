@@ -71,12 +71,9 @@ export async function prepareScene(map: string, selected: ImportFile | undefined
 export function buildScene(scene: PreparedScene, form: FormData, index: number): Data {
   const prefix = `scene${index}-`, data = structuredClone(scene.data);
   if (scene.useJson && scene.source) {
-    const original = structuredClone(scene.source);
-    if (typeof record(original.background).src === "string") original.background = {...record(original.background),src:scene.map};
-    else original.img = scene.map;
-    return original;
+    data.background = {...record(data.background),src:scene.map};
+    return data;
   }
-  if (scene.imported) data._stats = {...record(data._stats),coreVersion:game.version};
   const number = (field: string, shared = false) => {
     const raw = form.get(shared ? field : prefix + field);
     if (raw === null || String(raw).trim() === "" || !Number.isFinite(Number(raw))) throw new Error(`Enter a valid number for ${field}.`);
@@ -120,6 +117,33 @@ export function buildScene(scene: PreparedScene, form: FormData, index: number):
   }
   data.tiles = tiles;
   return data;
+}
+
+/** Apply only supported overrides after the complete native JSON import has finished. */
+export async function applySceneOverrides(scene: Scene, draft: PreparedScene, desired: Data) {
+  const imported = scene.toObject() as unknown as Data, changes: Data = {};
+  const fields = draft.useJson ? ["background.src"] : ["name","width","height","background.src","grid.type","grid.size","grid.distance","grid.units",
+    "environment.darknessLevel","environment.globalLight.enabled","tokenVision","fog.exploration","foreground"];
+  for (const path of fields) {
+    const value = foundry.utils.getProperty(desired,path);
+    if (value !== undefined && value !== foundry.utils.getProperty(imported,path)) changes[path] = value;
+  }
+  if (Object.keys(changes).length) await scene.update(changes);
+  if (draft.useJson) return;
+  // Asset rematches update their own embedded documents; imported geometry stays intact.
+  for (const [collection, type, path] of [["tiles","Tile","texture.src"],["tokens","Token","texture.src"],["sounds","AmbientSound","path"]] as const) {
+    const updates: Data[] = [];
+    for (const item of list(desired[collection])) {
+      const data = record(item);
+      if (!data._id) continue;
+      const current = list(imported[collection]).find(item=>record(item)._id === data._id);
+      const value = foundry.utils.getProperty(data,path);
+      if (current && value !== undefined && value !== foundry.utils.getProperty(current,path)) updates.push({_id:data._id,[path]:value});
+    }
+    if (updates.length) await scene.updateEmbeddedDocuments(type,updates);
+  }
+  const addedTiles = list(desired.tiles).slice(list(draft.data.tiles).length);
+  if (addedTiles.length) await scene.createEmbeddedDocuments("Tile",addedTiles as TileDocument.CreateData[]);
 }
 
 function imageDimensions(path: string): Promise<{width: number; height: number}> {

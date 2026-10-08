@@ -44,7 +44,11 @@ try {
   assert.deepEqual(markers,[[0,255,255,255],[255,187,68,255]]);
   await page.locator('button[type="submit"]').click();await page.waitForFunction(()=>game.scenes.size===4);
   const nativeImports=await page.evaluate(()=>globalThis.nativeImports);
-  for(let i=0;i<4;i++) assert.deepEqual(nativeImports[i],{...source(i%2+1),background:{...source(i%2+1).background,src:image(i+1)}});
+  for(let i=0;i<4;i++) assert.deepEqual(nativeImports[i],source(i%2+1));
+  assert.deepEqual((await state()).scenes.map(scene=>scene.background.src),[1,2,3,4].map(image));
+  const operations=await page.evaluate(()=>globalThis.sceneOperations);
+  for(const id of new Set(operations.map(operation=>operation.id))) assert.equal(operations.find(operation=>operation.id===id).kind,"import");
+  assert.deepEqual(operations.filter(operation=>operation.kind==="update").map(operation=>operation.data),[{"background.src":image(3)},{"background.src":image(4)}]);
   assert.equal((await state()).scenes[2].name,source(1).name);
   const migrationSources=await page.evaluate(()=>globalThis.importSources);
   assert.equal(migrationSources[0]._stats.coreVersion,"12.331");
@@ -61,18 +65,31 @@ try {
   assert.equal((await state()).scenes.length,5);assert.equal(await page.evaluate(()=>globalThis.creationAttempts),5);
   assert.deepEqual(errors,[]);await page.close();
   // Make changes starts with JSON values and retains fields outside the editable controls.
-  const modified=await fixture(browser,{selected:image(1),files,imports});
+  const overlay="maps/SOL-CorporateEateryInt-Map1-OVERLAY-128px-4k.webp";
+  const modified=await fixture(browser,{selected:image(1),files:[...files,overlay],imports});
   await modified.page.locator('[name="importMode"][value="edit"]').check();
   await modified.page.locator('button[type="submit"]').click();await modified.page.locator('[name="variant-0"]').waitFor();
   await modified.page.locator('button[type="submit"]').click();await modified.page.locator('[name="scene0-name"]').waitFor();
   await modified.page.locator('[name="scene0-name"]').fill("Adjusted Scene");
   await modified.page.locator('[name="scene0-darkness"]').fill("0.2");
   await modified.page.locator('[name="scene0-fogExploration"]').check();
-  await modified.page.locator('button[type="submit"]').click();await modified.page.waitForFunction(()=>game.scenes.size===1);
+  await modified.page.locator('[data-scene="0"] details summary').click();
+  await modified.page.locator('[name="scene0-overlay-0"]').check();
+  await modified.page.evaluate(()=>globalThis.failOverrides=true);
+  await modified.page.locator('button[type="submit"]').click();
+  await modified.page.locator('[data-error]').filter({hasText:"override rejection"}).waitFor();
+  assert.equal((await modified.state()).scenes.length,1);
+  await modified.page.locator('button[type="submit"]').click();await modified.page.waitForFunction(()=>!document.querySelector('form'));
   const edited=(await modified.state()).scenes[0];assert.equal(edited.name,"Adjusted Scene");assert.equal(edited.environment.darknessLevel,0.2);
   assert.deepEqual(edited.fog,{...source(1).fog,exploration:true});
-  for(const key of ["walls","lights","tiles","tokens","sounds","notes","drawings","flags","journal","playlist","weather","foreground"])
+  assert.deepEqual(edited.tiles.slice(0,1),source(1).tiles);assert.equal(edited.tiles.length,2);assert.equal(edited.tiles[1].texture.src,overlay);
+  for(const key of ["walls","lights","tokens","sounds","notes","drawings","flags","journal","playlist","weather","foreground"])
     assert.deepEqual(edited[key],source(1)[key]);
+  assert.deepEqual(await modified.page.evaluate(()=>globalThis.nativeImports),[source(1),source(1)]);
+  const overrideOperations=await modified.page.evaluate(()=>globalThis.sceneOperations);
+  assert.deepEqual(overrideOperations.map(operation=>operation.kind),["import","update","import","update","create:Tile"]);
+  assert.deepEqual(overrideOperations[1].data,{name:"Adjusted Scene","environment.darknessLevel":0.2,"fog.exploration":true});
+  assert.equal(await modified.page.evaluate(()=>globalThis.creationAttempts),1);
   assert.deepEqual(modified.errors,[]);
   console.log("JSON-first import, four variants/two reusable JSONs, full payload preservation, JSON preview, native-import retry, and edits passed.");
 } finally {await browser.close()}

@@ -1,5 +1,6 @@
 # Implemented features
 
+- Import then overrides (v0.2.4): untouched JSON is imported first, followed by changed field updates, embedded asset rematches, and selected overlay tiles. Pending Scenes are reused after either import or override failures. Browser tests verify ordering and preservation; live-world verification remains pending.
 - JSON-first creation (v0.2.3): choose import according to JSON or make changes; assign each layout a reusable Scene JSON; preload JSON values and preview imported walls/light sources. Native migration and JSON import receive complete Scene data. Core import policies handle identities/state; the module no longer strips journal/playlist or other fields. Pending native imports reuse their destination on retry. Browser regressions cover four variants/two JSONs; live persistence remains pending.
 - The creator renders selection and review through one native Handlebars template. Scene preparation returns plain data; one builder validates and applies form values. Saved batch entries are marked and locked during retry (v0.2.2).
 - Scene creation reads the registered form with final per-scene field names; missing numeric fields and invalid dimensions/grid values are rejected before saving (v0.2.1). Verified with the native v12 form serializer in an isolated browser; live-world persistence remains unverified.

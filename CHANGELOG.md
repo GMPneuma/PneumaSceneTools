@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.4 - 2026-10-08
+
+- Save in two phases: import untouched original JSON using Foundry's native import, then apply overrides through native updates.
+- Update only changed supported fields; preserve the imported settings, flags, and embedded data outside those overrides. Background assignments also happen after import.
+- Apply embedded asset rematches and create selected overlay tiles after the native import. Retrying an override failure reuses the same Scene.
+- Verify original import payloads, import/update ordering, minimal override updates, overlay creation, and failed-override retry in browser regressions. Live-world verification remains pending.
+
 ## 0.2.3 - 2026-10-08
 
 - Restore JSON-first choice: import according to JSON or make changes. Review uses imported values; unchanged imports keep the JSON Scene name and settings.

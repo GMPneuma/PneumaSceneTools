@@ -3,9 +3,9 @@
   {{#if chooseImportMode}}
   <p>Foundry Scene JSON found. Import according to JSON, or make changes?</p>
   <label><input type="radio" name="importMode" value="json" checked> Import according to JSON</label>
-  <p>Use the selected map file and Foundry's standard Scene import for all other Scene data.</p>
+  <p>Import the complete JSON through Foundry, then apply the selected map file.</p>
   <label><input type="radio" name="importMode" value="edit"> Make changes</label>
-  <p>Start with the JSON's Scene name, grid, walls, lighting, and other data, then adjust settings before importing.</p>
+  <p>Start with the JSON's values. Saving imports the complete JSON first, then applies your overrides.</p>
   {{else}}
   {{#if review}}
   {{#if edit}}
@@ -16,7 +16,7 @@
     <label><input name="sharedVision" type="checkbox" checked> Token vision</label>
     <label><input name="sharedFog" type="checkbox" checked> Fog exploration</label>
   </fieldset>
-  {{else}}<p>Review the JSON settings below. All Scene data is passed to Foundry's standard import, with the map file assigned above.</p><button type="button" data-make-changes>Make changes</button>{{/if}}
+  {{else}}<p>Review the JSON settings below. Saving imports the complete JSON, then applies the selected map file. Choose Make changes to add other overrides.</p><button type="button" data-make-changes>Make changes</button>{{/if}}
   {{#each scenes}}
   <details data-scene="{{index}}" {{#if open}}open{{/if}}>
     <summary>{{title}}{{#if created}} - saved{{/if}}</summary>

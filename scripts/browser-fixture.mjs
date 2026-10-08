@@ -48,6 +48,7 @@ export async function fixture(browser, {files, imports = {}, selected, video} = 
       static async fromImport(data){(globalThis.importSources??=[]).push(structuredClone(data));return new this(data)}
       async importFromJSON(json){
         const imported=JSON.parse(json);(globalThis.nativeImports??=[]).push(structuredClone(imported));
+        (globalThis.sceneOperations??=[]).push({id:this.id,kind:'import',data:structuredClone(imported)});
         if(globalThis.failNativeImport){globalThis.failNativeImport=false;throw Error('Simulated native import rejection')}
         this.data={...imported,_id:this.id,folder:this.data.folder,active:this.data.active,navigation:false};this.name=this.data.name;return this;
       }
@@ -63,7 +64,24 @@ export async function fixture(browser, {files, imports = {}, selected, video} = 
         return scene;
       }
       async createThumbnail(){return {thumb:'thumbnail'}}
-      async update(changes){Object.assign(this.data,changes)}
+      async update(changes){
+        (globalThis.sceneOperations??=[]).push({id:this.id,kind:'update',data:structuredClone(changes)});
+        if(globalThis.failOverrides){globalThis.failOverrides=false;throw Error('Simulated override rejection')}
+        for(const [path,value] of Object.entries(changes)){const keys=path.split('.');let object=this.data;for(const key of keys.slice(0,-1))object=object[key]??={};object[keys.at(-1)]=value;}
+        this.name=this.data.name;return this;
+      }
+      async createEmbeddedDocuments(type,documents){
+        (globalThis.sceneOperations??=[]).push({id:this.id,kind:'create:'+type,data:structuredClone(documents)});
+        const collection={Tile:'tiles',Token:'tokens',AmbientSound:'sounds'}[type];
+        const current=this.data[collection]??=[];
+        current.push(...documents.map((document,i)=>({...document,_id:'EmbeddedNew00000'+i})));return documents;
+      }
+      async updateEmbeddedDocuments(type,updates){
+        (globalThis.sceneOperations??=[]).push({id:this.id,kind:'embedded:'+type,data:structuredClone(updates)});
+        const collection={Tile:'tiles',Token:'tokens',AmbientSound:'sounds'}[type];
+        for(const update of updates){const item=this.data[collection].find(item=>item._id===update._id);for(const [path,value] of Object.entries(update)){if(path==='_id')continue;const keys=path.split('.');let object=item;for(const key of keys.slice(0,-1))object=object[key]??={};object[keys.at(-1)]=value;}}
+        return updates;
+      }
     }
     const Hooks={on(){}};
   `});

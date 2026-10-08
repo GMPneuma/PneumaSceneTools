@@ -2,7 +2,7 @@ import {MODULE_ID} from "./settings.js";
 import {basename, identifyImport, list, record, type ImportFile} from "./scene-data.js";
 import {isFoundryFolder, isVideo, scanRoot, nameScore, parentPath} from "./matching.js";
 import {planSelection, readSelection, setupSelection} from "./planning.js";
-import {prepareScene, buildScene, type PreparedScene} from "./scene-import.js";
+import {prepareScene, buildScene, applySceneOverrides, type PreparedScene} from "./scene-import.js";
 import {ensureSceneToolsFolder, WORLD_FOLDERS} from "./world-folders.js";
 
 const rootElement = (html: JQuery | HTMLElement) => html instanceof HTMLElement ? html : html[0]!;
@@ -90,8 +90,11 @@ export class SceneCreator extends FormApplication {
           scene = await Scene.create(initial as Scene.CreateData);
           if (scene?.id) draft.pending = scene.id;
         }
-        if (!scene?.id || !game.scenes?.has(scene.id)) throw new Error("Foundry did not confirm the Scene was saved.");
-        if (draft.imported) await scene.importFromJSON(JSON.stringify(payload));
+        if (!(scene instanceof Scene) || !scene.id || !game.scenes?.has(scene.id)) throw new Error("Foundry did not confirm the Scene was saved.");
+        if (draft.imported) {
+          await scene.importFromJSON(JSON.stringify(draft.source));
+          await applySceneOverrides(scene,draft,payload);
+        }
         this.scenes[i]!.created = scene.id;
         const section = this.form!.querySelector<HTMLElement>(`[data-scene="${i}"]`)!;
         section.querySelector<HTMLFieldSetElement>("fieldset")!.disabled = true;
