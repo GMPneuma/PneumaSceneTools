@@ -1,8 +1,11 @@
 import {readFile} from "node:fs/promises";
 import {resolve} from "node:path";
+import Handlebars from "handlebars";
 // This fixture tests UI contracts. It does not substitute for a live Foundry persistence check.
 export async function fixture(browser, {files, imports = {}, selected, video} = {}) {
   const page = await browser.newPage();
+  const renderTemplate = Handlebars.compile(await readFile("dist/templates/scene-creator.hbs","utf8"));
+  await page.exposeFunction("renderSceneTemplate",data=>renderTemplate(data));
   const errors = []; page.on("pageerror", error=>errors.push(error.message));
   await page.route("https://scene.test/**", async route=>{
     const path = decodeURIComponent(new URL(route.request().url()).pathname.slice(1));
@@ -20,9 +23,8 @@ export async function fixture(browser, {files, imports = {}, selected, video} = 
       constructor(object){this.object=object;this.options=this.constructor.defaultOptions;this.element=[];}
       render(){void this._render();return this;}
       async _render(){
-        const data=this.getData(),template=await (await fetch(this.options.template)).text();
         const root=document.createElement('section');
-        root.innerHTML=template.replace('{{{content}}}',data.content).replace('{{failure}}',data.failure).replace('{{label}}',data.label);
+        root.innerHTML=await renderSceneTemplate(this.getData());
         this.element[0]?.remove();this.element=[root];this.form=root.querySelector('form');document.body.append(root);
         this.form.addEventListener('submit',async event=>{
           event.preventDefault();if(this._submitting||!this.form.reportValidity())return;this._submitting=true;
@@ -47,7 +49,8 @@ export async function fixture(browser, {files, imports = {}, selected, video} = 
       getDimensions(){return {sceneX:100,sceneY:100}}
       static async create(data){
         if(!(Number.isFinite(data.width)&&data.width>0&&Number.isFinite(data.height)&&data.height>0&&Number.isInteger(data.grid?.size)&&data.grid.size>=50&&Number.isFinite(data.grid?.distance)&&data.grid.distance>0))throw Error('Invalid Scene dimensions or grid');
-        if(globalThis.failCreation){globalThis.failCreation=false;throw Error('Simulated database rejection')}
+        globalThis.creationAttempts=(globalThis.creationAttempts??0)+1;
+        if(globalThis.failCreation||globalThis.creationAttempts===globalThis.failCreationAt){globalThis.failCreation=false;throw Error('Simulated database rejection')}
         const scene=new this(data);scene.id='scene-'+game.scenes.size;scene.name=data.name;
         if(!globalThis.dropPersistence)game.scenes.set(scene.id,scene);
         return scene;

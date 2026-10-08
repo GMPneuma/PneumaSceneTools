@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2 - 2026-10-08
+
+- Move all selection/review controls into one native Handlebars template with final field names and automatic escaping. Remove generated form HTML, regex field rewriting, and per-scene builder closures.
+- Keep matching/ranking intact; use plain selection and prepared Scene data with one validated Scene builder.
+- Mark saved scenes and disable their controls after a partial batch save, preserving unsaved values for retry.
+- Render the real Handlebars template in browser tests and verify partial-save retry without duplicate Scenes. Live-world persistence remains unverified.
+
 ## 0.2.1 - 2026-10-08
 
 - Render final per-scene input names before Foundry attaches form listeners, and read creation values directly from the registered form.

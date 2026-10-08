@@ -11,6 +11,9 @@ importers:
       fvtt-types:
         specifier: npm:@league-of-foundry-developers/foundry-vtt-types@12.331.5
         version: '@league-of-foundry-developers/foundry-vtt-types@12.331.5(@pixi/assets@7.4.3(@pixi/core@7.4.3))(@pixi/compressed-textures@7.4.3(@pixi/assets@7.4.3(@pixi/core@7.4.3))(@pixi/core@7.4.3))(@pixi/constants@7.4.3)(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))(@pixi/graphics@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))(@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))))(@pixi/math@7.4.3)(@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))(@pixi/ticker@7.4.3)(typescript@5.9.3)'
+      handlebars:
+        specifier: 4.7.9
+        version: 4.7.9
       playwright:
         specifier: 1.62.1
         version: 1.62.1

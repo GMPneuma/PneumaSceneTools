@@ -1,5 +1,75 @@
 <form class="pneuma-scenetools" autocomplete="off">
   <p data-error role="alert">{{failure}}</p>
-  {{{content}}}
-  <footer class="sheet-footer"><button type="submit"><i class="fas fa-check"></i> {{label}}</button></footer>
+  {{#if review}}
+  <fieldset><legend>Shared lighting and vision</legend>
+    <label><input name="applyShared" type="checkbox"> Apply these settings to all scenes</label>
+    <div class="form-group"><label>Darkness</label><input name="sharedDarkness" type="number" value="{{defaults.darkness}}" min="0" max="1" step="any" required></div>
+    <label><input name="sharedGlobal" type="checkbox" {{#if defaults.globalLight}}checked{{/if}}> Global illumination</label>
+    <label><input name="sharedVision" type="checkbox" checked> Token vision</label>
+    <label><input name="sharedFog" type="checkbox" checked> Fog exploration</label>
+  </fieldset>
+  {{#each scenes}}
+  <details data-scene="{{index}}" {{#if open}}open{{/if}}>
+    <summary>{{title}}{{#if created}} - saved{{/if}}</summary>
+    <fieldset class="pneuma-scene-fields" {{#if created}}disabled{{/if}}>
+      <label><input type="checkbox" name="{{prefix}}override"> Use this scene's lighting and vision</label>
+      <div class="form-group"><label>Scene name</label><input name="{{prefix}}name" type="text" value="{{defaults.name}}" required></div>
+      <div class="form-group"><label>Scene width (px)</label><input name="{{prefix}}width" data-field="width" type="number" value="{{defaults.width}}" min="1" step="1" required></div>
+      <div class="form-group"><label>Scene height (px)</label><input name="{{prefix}}height" data-field="height" type="number" value="{{defaults.height}}" min="1" step="1" required></div>
+      <div class="form-group"><label>Grid</label><select name="{{prefix}}gridChoice" data-field="gridChoice">
+        {{#each gridOptions}}<option value="{{size}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+        <option value="custom">Custom</option><option value="gridless" {{#if gridless}}selected{{/if}}>Gridless</option>
+      </select></div>
+      <div class="form-group"><label>Custom grid size (px)</label><input name="{{prefix}}customGrid" data-field="customGrid" type="number" value="{{defaults.gridSize}}" min="50" step="1" required></div>
+      <div class="form-group"><label>Grid type</label><select name="{{prefix}}gridType" data-field="gridType">
+        {{#each gridTypes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+      </select></div>
+      <p>Suggestions use filename hints and whole-square fit. Check alignment in the preview. Hex grids require Foundry's native grid configuration.</p>
+      <canvas class="pneuma-grid-preview" width="540" height="300"></canvas><p class="pneuma-grid-count"></p>
+      <div class="form-group"><label>Distance per square</label><input name="{{prefix}}distance" type="number" value="{{defaults.distance}}" min="0.01" step="any" required></div>
+      <div class="form-group"><label>Distance units</label><input name="{{prefix}}units" type="text" value="{{defaults.units}}" required></div>
+      <div class="form-group"><label>Darkness (0-1)</label><input name="{{prefix}}darkness" type="number" value="{{defaults.darkness}}" min="0" max="1" step="any" required></div>
+      <label><input name="{{prefix}}globalLight" type="checkbox" {{#if defaults.globalLight}}checked{{/if}}> Global illumination</label>
+      <label><input name="{{prefix}}tokenVision" type="checkbox" {{#if defaults.tokenVision}}checked{{/if}}> Token vision</label>
+      <label><input name="{{prefix}}fogExploration" type="checkbox" {{#if defaults.fogExploration}}checked{{/if}}> Fog exploration</label>
+      <p>{{wallCount}} walls · {{lightCount}} lights · {{tileCount}} imported tiles. Scene dimensions resize the background; imported coordinates stay fixed.</p>
+      {{#if hasAssets}}
+      <details><summary>Optional overlays and asset paths</summary>
+        {{#if overlays.length}}
+        <p>Matching OVERLAY/Foreground files for <strong>{{title}}</strong>. Placement is relative to the top-left of the map. Nothing is added automatically.</p>
+        {{#each overlays}}
+        <fieldset data-overlay="{{index}}"><legend><label><input name="{{../prefix}}overlay-{{index}}" type="checkbox"> {{label}}</label></legend>
+          {{#if animated}}<video class="pneuma-overlay-preview" src="{{path}}" preload="metadata" muted controls></video>
+          {{else}}<img class="pneuma-overlay-preview" src="{{path}}" loading="lazy">{{/if}}
+          <div class="form-group"><label>Layer</label><select name="{{../prefix}}layer-{{index}}"><option value="tile">Tile</option><option value="foreground">Scene foreground (one image)</option></select></div>
+          <div class="form-group"><label>X</label><input name="{{../prefix}}x-{{index}}" type="number" value="0" step="any" required></div>
+          <div class="form-group"><label>Y</label><input name="{{../prefix}}y-{{index}}" type="number" value="0" step="any" required></div>
+          <div class="form-group"><label>Width</label><input name="{{../prefix}}width-{{index}}" type="number" value="{{../defaults.width}}" min="1" step="any" required></div>
+          <div class="form-group"><label>Height</label><input name="{{../prefix}}height-{{index}}" type="number" value="{{../defaults.height}}" min="1" step="any" required></div>
+        </fieldset>
+        {{/each}}
+        {{/if}}
+        {{#if unresolved.length}}<p>These imported asset paths could not be matched nearby. Confirm they exist on your server:</p><ul>{{#each unresolved}}<li>{{this}}</li>{{/each}}</ul>{{/if}}
+      </details>
+      {{/if}}
+      {{#if imported}}<p>Imported tokens and notes may refer to actors or journals from another world. Review them in the new Scene. Scene-level journal and playlist links are cleared.</p>{{/if}}
+    </fieldset>
+  </details>
+  {{/each}}
+  {{else}}
+  <p>Selected map: <strong>{{mapName}}</strong></p>
+  <p>Select the layouts and map formats to create.</p><button type="button" data-browse-json>Choose another Scene JSON or UVTT file</button>
+  {{#if selection.showAllVariants}}<label><input name="allVariants" type="checkbox"> Import all matching variants</label>{{/if}}
+  <label><input name="bothMedia" type="checkbox"> Use static and animated where both are available</label>
+  {{#each selection.plans}}
+  <fieldset data-plan="{{index}}"><legend><label><input name="variant-{{index}}" type="checkbox" {{#if checked}}checked{{/if}}> {{label}}{{#if recommended}} (best match){{/if}}</label></legend>
+    {{#if item}}<p>{{item.path}} - {{item.kind}}</p>{{/if}}
+    <div class="form-group"><label>Static image</label><select name="static-{{index}}"><option value="">Choose static map</option>{{#each staticMaps}}<option value="{{path}}" {{#if selected}}selected{{/if}}>{{label}} (match)</option>{{/each}}</select><button type="button" data-map-picker="static-{{index}}">Browse</button></div>
+    <div class="form-group"><label>Animated video</label><select name="animated-{{index}}"><option value="">Choose animated map</option>{{#each videos}}<option value="{{path}}" {{#if selected}}selected{{/if}}>{{label}} (match)</option>{{/each}}</select><button type="button" data-map-picker="animated-{{index}}">Browse</button></div>
+    <div class="form-group"><label>Create</label><select name="mode-{{index}}"><option value="static" {{#if staticMode}}selected{{/if}}>Static</option><option value="animated" {{#if animatedMode}}selected{{/if}}>Animated</option><option value="both">Both (two scenes)</option></select></div>
+  </fieldset>
+  {{/each}}
+  {{#if selection.warnings.length}}<details><summary>Scan warnings ({{selection.warnings.length}})</summary>{{#each selection.warnings}}<p>{{this}}</p>{{/each}}</details>{{/if}}
+  {{/if}}
+  <footer class="sheet-footer"><button type="submit"><i class="fas fa-check"></i> {{#if review}}Create selected scenes{{else}}Review selected scenes{{/if}}</button></footer>
 </form>

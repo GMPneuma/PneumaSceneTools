@@ -1,5 +1,6 @@
 # Implemented features
 
+- The creator renders selection and review through one native Handlebars template. Scene preparation returns plain data; one builder validates and applies form values. Saved batch entries are marked and locked during retry (v0.2.2).
 - Scene creation reads the registered form with final per-scene field names; missing numeric fields and invalid dimensions/grid values are rejected before saving (v0.2.1). Verified with the native v12 form serializer in an isolated browser; live-world persistence remains unverified.
 
 ## Module foundation

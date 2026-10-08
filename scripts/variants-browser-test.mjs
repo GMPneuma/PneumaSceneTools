@@ -18,11 +18,17 @@ try {
   await page.locator('[name="applyShared"]').check();await page.locator('[name="sharedDarkness"]').fill("0.4");
   await page.locator('[data-scene="3"] > summary').click();
   await page.locator('[name="scene3-override"]').check();await page.locator('[name="scene3-darkness"]').fill("0.8");
+  await page.evaluate(()=>globalThis.failCreationAt=2);
+  await page.locator('button[type="submit"]').click();
+  await page.locator('[data-error]').filter({hasText:"1 scenes saved"}).waitFor();
+  assert.equal((await state()).scenes.length,1);
+  assert.equal(await page.locator('[name="scene0-name"]').isDisabled(),true);
   await page.locator('button[type="submit"]').click();await page.waitForFunction(()=>game.scenes.size===4);
+  assert.equal(await page.evaluate(()=>globalThis.creationAttempts),5);
   const scenes=(await state()).scenes;
   assert.deepEqual(scenes.map(s=>s.walls[0].c[0]),[1,1,2,2]);
   assert.deepEqual(scenes.map(s=>s.environment.darknessLevel),[0.4,0.4,0.4,0.8]);
   assert.deepEqual(scenes.map(s=>s.background.src),[image(1),animated(1),image(2),animated(2)]);
   assert.deepEqual(errors,[]);
-  console.log("Batch form: two layouts, both media formats, shared settings, per-scene override, and bounded candidate lists passed.");
+  console.log("Batch form: layouts/media, shared settings, per-scene override, bounded candidates, and partial-save retry without duplicates passed.");
 } finally {await browser.close()}
