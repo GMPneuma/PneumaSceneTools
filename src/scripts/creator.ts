@@ -248,14 +248,24 @@ export function openSceneCreator() {
 }
 
 export function registerSceneCreator() {
-  Hooks.on("renderSceneDirectory", (_app: unknown, html: JQuery | HTMLElement) => {
+  const addButton = (html: JQuery | HTMLElement) => {
     if (!game.user?.isGM) return;
-    const root = rootElement(html), footer = root.querySelector(".directory-footer");
-    if (!footer || footer.querySelector(".pneuma-scene-create")) return;
+    const root = rootElement(html);
+    if (!root || root.querySelector(".pneuma-scene-create")) return;
+    const container = root.querySelector(".directory-header .header-actions, .directory-header .action-buttons")
+      ?? root.querySelector(".directory-header") ?? root.querySelector(".directory-footer") ?? root;
     const button = document.createElement("button");
     button.type = "button"; button.className = "pneuma-scene-create";
     button.innerHTML = '<i class="fas fa-map"></i> Quick Scene Creator';
-    button.addEventListener("click", openSceneCreator); footer.append(button);
+    button.addEventListener("click", openSceneCreator); container.append(button);
+  };
+  Hooks.on("renderSceneDirectory", (_app: unknown, html: JQuery | HTMLElement) => addButton(html));
+  Hooks.on("renderSidebarTab", (app: SidebarTab, html: JQuery | HTMLElement) => {
+    if (app.tabName === "scenes") addButton(html);
+  });
+  Hooks.on("ready", () => {
+    const existing = ui.scenes?.element;
+    if (existing?.length) addButton(existing);
   });
 }
 

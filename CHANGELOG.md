@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 - 2026-10-08
+
+- Fix the missing Quick Scene Creator button by supporting native sidebar header actions, the generic sidebar render hook, and already-rendered Scenes sidebars. Prevent duplicate buttons and retain GM-only visibility.
+
 ## 0.1.0 - 2026-10-08
 
 - Initialize the TypeScript Foundry v12 module scaffold using Combat Tools tooling conventions.

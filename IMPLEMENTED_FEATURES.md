@@ -26,6 +26,7 @@ Imported the existing v0.9.0 functionality and ported runtime source to TypeScri
 ## Quick Scene Creator
 
 - GM-only button in the native Scenes sidebar and native image file picker.
+- Scene button uses native header actions, supports specific and generic sidebar render hooks, and attaches to an already-rendered sidebar at ready; duplicate controls are prevented.
 - Recursive import discovery, explicit import choice, and filename-match suggestion.
 - Native Scene JSON migration and import, plus Universal VTT walls, portals, and lights conversion.
 - Editable scene dimensions, grid types/distance/units, lighting, token vision, and fog exploration.

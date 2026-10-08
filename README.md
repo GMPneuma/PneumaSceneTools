@@ -26,7 +26,7 @@ The API is `game.modules.get("pneuma-scenetools").api`. It exposes `openSceneCre
 
 ## Quick Scene Creator
 
-As GM, open the Scenes sidebar and click **Quick Scene Creator**. Choose an image or video using Foundry's native picker, select variants and their static/animated maps, then review details and overlays for each Scene. Created Scenes are inactive and their native configuration opens for review.
+As GM, open the Scenes sidebar and click **Quick Scene Creator** in its header beside the native creation controls. Choose an image or video using Foundry's native picker, select variants and their static/animated maps, then review details and overlays for each Scene. Created Scenes are inactive and their native configuration opens for review.
 
 - Scans the map's folder and subfolders for native Foundry Scene JSON and Universal VTT JSON (`.dd2vtt`, `.uvtt`, `.df2vtt`, `.json`). Prioritizes `Foundry`, `Foundry Walls`, `FoundryWalls`, and `FoundryScenes` folders, ignoring case and separator differences. Starting in an `Image`/`Video` folder also scans its parent pack folder.
 - Regex mappings ignore `fvtt-Scene`, `Cybermaps_`, and `SOL-` prefixes, Foundry export IDs, grid/resolution suffixes, and image/video format labels. `Map1` matches `floor-1`; `CorporateEateryInt` matches `corporate-eatery-interior`. Floor numbers, zoomed-out layouts, and descriptive variant names remain distinct. Candidates are scored from JSON filenames, Scene names, and background filenames; convention folders break name-score ties. Only a unique best match is preselected.

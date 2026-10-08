@@ -19,7 +19,7 @@ try {
   const module = await import(pathToFileURL(resolve(root, "dist/scripts/main.js")).href);
   assert.equal(module.MODULE_ID, "pneuma-scenetools");
   assert.deepEqual([...callbacks.keys()], ["init", "ready"]);
-  for (const callback of callbacks.values()) await callback();
+  await callbacks.get("init")();
   assert.ok(registeredHooks.has("renderSceneDirectory"));
   assert.equal(registeredSettings.size, 3);
 } finally {

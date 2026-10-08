@@ -17,10 +17,10 @@ try {
   });
   await page.goto("https://scene.test/");
   await page.evaluate(async()=> {
-    const once = new Map();
+    const once = new Map(), hooks = new Map();
     window.Application = class {};
     window.FormApplication = class {};
-    window.Hooks = {once:(name,fn)=>once.set(name,fn),on:()=>{}};
+    window.Hooks = {once:(name,fn)=>once.set(name,fn),on:(name,fn)=>hooks.set(name,fn)};
     const defaults = new Map();
     window.game = {user:{isGM:true},folders:[],system:{grid:{distance:2,units:"m"}},settings:{register:(_id,key,config)=>defaults.set(key,config.default),get:(_id,key)=>defaults.get(key)}};
     window.Folder = {create:async data=>{const folder={...data,id:`folder-${game.folders.length}`};window.game.folders.push(folder);return folder;}};
@@ -42,7 +42,20 @@ try {
       static async create(data){window.created=data;return {name:data.name,sheet:{render:()=>{}},createThumbnail:async()=>({thumb:"thumb"}),update:async()=>{}};}
     };
     await import("/scripts/main.js");once.get("init")();
-    const {openSceneCreator}=await import("/scripts/creator.js");openSceneCreator();
+    const root=document.createElement("section");
+    root.innerHTML='<header class="directory-header"><div class="header-actions"><button class="create-document">Create Scene</button></div></header><ol class="directory-list"></ol>';
+    document.body.append(root);
+    hooks.get("renderSidebarTab")({tabName:"scenes"},[root]);
+    hooks.get("renderSceneDirectory")({},root);
+    if(root.querySelectorAll(".pneuma-scene-create").length!==1) throw new Error("Scene header must receive exactly one creator button without a footer");
+    if(!root.querySelector(".header-actions .pneuma-scene-create")) throw new Error("Creator must join native header actions");
+    const actors=document.createElement("section");hooks.get("renderSidebarTab")({tabName:"actors"},actors);
+    if(actors.querySelector(".pneuma-scene-create")) throw new Error("Creator must not appear in Actors sidebar");
+    game.user.isGM=false;
+    const playerRoot=document.createElement("section");hooks.get("renderSceneDirectory")({},playerRoot);
+    if(playerRoot.querySelector(".pneuma-scene-create")) throw new Error("Creator is GM-only");
+    game.user.isGM=true;
+    root.querySelector(".pneuma-scene-create").click();
   });
   await page.locator('[name="variant-0"]').waitFor();
   await page.locator('[data-button="next"]').click();
