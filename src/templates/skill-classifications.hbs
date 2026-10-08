@@ -1,0 +1,37 @@
+<form class="pneuma-mook-maker-skill-config-form">
+  <p>{{localize "PNEUMA_MOOK_MAKER.Settings.SkillClassifications.Description"}}</p>
+  <input type="search" data-action="filter-skills"
+    placeholder="{{localize 'PNEUMA_MOOK_MAKER.Settings.SkillClassifications.Filter'}}"
+    aria-label="{{localize 'PNEUMA_MOOK_MAKER.Settings.SkillClassifications.Filter'}}">
+
+  <div class="pneuma-mook-maker-skill-list">
+    <table>
+      <thead>
+        <tr>
+          <th>{{localize "PNEUMA_MOOK_MAKER.Settings.SkillClassifications.Skill"}}</th>
+          <th>{{localize "PNEUMA_MOOK_MAKER.Settings.SkillClassifications.Category"}}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each skills}}
+          <tr data-skill-row data-skill-name="{{name}}">
+            <td>{{name}}</td>
+            <td>
+              <select name="{{key}}">
+                <option value="1"{{#if isCombat}} selected{{/if}}>{{localize "PNEUMA_MOOK_MAKER.Settings.SkillClassifications.Combat"}}</option>
+                <option value="2"{{#if isSecondary}} selected{{/if}}>{{localize "PNEUMA_MOOK_MAKER.Settings.SkillClassifications.Secondary"}}</option>
+                <option value="3"{{#if isTertiary}} selected{{/if}}>{{localize "PNEUMA_MOOK_MAKER.Settings.SkillClassifications.Tertiary"}}</option>
+              </select>
+            </td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+
+  <footer class="sheet-footer flexrow">
+    <button type="submit"><i class="fas fa-save"></i> {{localize "PNEUMA_MOOK_MAKER.Settings.SkillClassifications.Save"}}</button>
+    <button type="button" data-action="reset-skill-classifications"><i class="fas fa-rotate-left"></i> {{localize "PNEUMA_MOOK_MAKER.Settings.SkillClassifications.Reset"}}</button>
+  </footer>
+</form>
+
