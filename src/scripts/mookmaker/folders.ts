@@ -4,6 +4,7 @@ import {
   DEFAULT_MOOK_TEMPLATE_VERSION_FLAG,
   FOLDER_NAMES,
   MODULE_ID,
+  PROMOTED_FROM_MOOK_MAKER_FLAG,
 } from "./constants.js";
 import {ensureSceneToolsFolder, findSceneToolsFolder} from "../world-folders.js";
 
@@ -39,6 +40,8 @@ async function ensureDefaultMookTemplate(templatesFolder: Folder): Promise<void>
   const existing = game.actors?.find(
     (actor) =>
       actor.type === actorType &&
+      actor.folder?.id !== findSceneToolsFolder("Actor", FOLDER_NAMES.promoted)?.id &&
+      foundry.utils.getProperty(actor, `flags.${MODULE_ID}.${PROMOTED_FROM_MOOK_MAKER_FLAG}`) !== true &&
       foundry.utils.getProperty(
         actor,
         `flags.${MODULE_ID}.${DEFAULT_MOOK_TEMPLATE_FLAG}`,
@@ -76,8 +79,11 @@ async function ensureDefaultMookTemplate(templatesFolder: Folder): Promise<void>
       const updatableActor = existing as unknown as {
         update(data: object): Promise<unknown>;
       };
-      await updatableActor.update(actorData);
-      await existing.createEmbeddedDocuments("Item", items);
+      // Stamp the new version only after all required Item writes succeed.
+      await updatableActor.update({...actorData, flags: {
+        ...actorData.flags,
+        [MODULE_ID]: {...actorData.flags[MODULE_ID], [DEFAULT_MOOK_TEMPLATE_VERSION_FLAG]: currentVersion},
+      }});
     }
     if (currentVersion < DEFAULT_MOOK_TEMPLATE_VERSION) {
       const existingItemKeys = new Set(
@@ -92,7 +98,8 @@ async function ensureDefaultMookTemplate(templatesFolder: Folder): Promise<void>
         return !existingItemKeys.has(key);
       });
       if (missingItems.length > 0) {
-        await existing.createEmbeddedDocuments("Item", missingItems);
+        const created = await existing.createEmbeddedDocuments("Item", missingItems);
+        if (created?.length !== missingItems.length) throw new Error("Foundry did not create all default Mook Items. The update will retry on next startup.");
       }
       await (existing as unknown as { update(data: object): Promise<unknown> }).update({
         img: template.img,

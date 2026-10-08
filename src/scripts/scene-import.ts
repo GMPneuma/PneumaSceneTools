@@ -22,6 +22,30 @@ export interface PreparedScene {
   unresolved: string[];
 }
 
+/** Resolve exported asset paths when editing; leave native JSON imports intact. */
+function rematchAssets(data: Data, files: string[], edit: boolean): string[] {
+  const unresolved: string[] = [];
+  const fix = (path: unknown): unknown => {
+    if (typeof path !== "string" || !path) return path;
+    const nearby = resolveAsset(path, files);
+    if (nearby) return edit ? nearby : path;
+    unresolved.push(path); return path;
+  };
+  if (data.foreground) data.foreground = fix(data.foreground);
+  for (const collection of ["tiles", "tokens"]) for (const item of list(data[collection])) {
+    const texture = record(record(item).texture);
+    if (texture.src) texture.src = fix(texture.src);
+  }
+  for (const item of list(data.sounds)) { const sound = record(item); sound.path = fix(sound.path); }
+  return [...new Set(unresolved)];
+}
+
+export function enableSceneOverrides(scene: PreparedScene, files: string[]): void {
+  if (scene.created) return;
+  scene.useJson = false;
+  scene.unresolved = rematchAssets(scene.data, files, true);
+}
+
 export async function prepareScene(map: string, selected: ImportFile | undefined, files: string[], paired: boolean, mode: "json" | "edit", signal = new AbortController().signal): Promise<PreparedScene> {
   const dimensions = await imageDimensions(map,signal);
   if (selected?.kind === "Foundry Scene" && Number(String(record(selected.data._stats).coreVersion ?? "12").split(".")[0]) > 12) {
@@ -36,19 +60,7 @@ export async function prepareScene(map: string, selected: ImportFile | undefined
   const grid = record(data.grid), environment = record(data.environment);
   const suggestions = gridSuggestions(width, height, map, game.settings!.get(MODULE_ID, "defaultGrid"));
   const size = positive(grid.size, suggestions[0]?.size ?? 100), type = typeof grid.type === "number" ? grid.type : 1;
-  const unresolved: string[] = [];
-  const fix = (path: unknown): unknown => {
-    if (typeof path !== "string" || !path) return path;
-    const nearby = resolveAsset(path, files);
-    if (nearby) return mode === "edit" ? nearby : path;
-    unresolved.push(path); return path;
-  };
-  if (data.foreground) data.foreground = fix(data.foreground);
-  for (const collection of ["tiles", "tokens"]) for (const item of list(data[collection])) {
-    const texture = record(record(item).texture);
-    if (texture.src) texture.src = fix(texture.src);
-  }
-  for (const item of list(data.sounds)) { const sound = record(item); sound.path = fix(sound.path); }
+  const unresolved = rematchAssets(data, files, mode === "edit");
   const types: [number,string][] = [[1,"Square"],[2,"Hex odd rows"],[3,"Hex even rows"],[4,"Hex odd columns"],[5,"Hex even columns"]];
   return {map, data, source: selected?.kind === "Foundry Scene" ? structuredClone(selected.data) : undefined,
     imported: selected?.kind === "Foundry Scene", sourcePath: selected?.path, useJson: mode === "json" && selected?.kind === "Foundry Scene", gridless: type === 0,

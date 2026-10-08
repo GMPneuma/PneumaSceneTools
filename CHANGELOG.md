@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.6 - 2026-10-08
+
+- Remove default-template identity from promoted Actors and exclude promoted Actors from template lookup.
+- Keep failed or cancelled default-template Item upgrades retryable.
+- Wait for confirmed Purge to finish before refreshing the MookMaker form.
+- Rematch foreground, tile, token and sound assets when switching JSON preview to editing.
+- Verify token linking before reporting promotion success; remove an unused Actor when linking is cancelled.
+- Add regressions for all five defects. Live Foundry verification remains pending.
+
 ## 0.2.5 - 2026-10-08
 
 - Guard Apply, Purge and Promote against overlapping operations on the same token within a client.

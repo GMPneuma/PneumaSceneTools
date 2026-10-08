@@ -1,6 +1,8 @@
 import {withMookOperation} from "./operations.js";
 import {
   CREATED_BY_MOOK_MAKER_FLAG,
+  DEFAULT_MOOK_TEMPLATE_FLAG,
+  DEFAULT_MOOK_TEMPLATE_VERSION_FLAG,
   FOLDER_NAMES,
   MODULE_ID,
   PROMOTED_FROM_MOOK_MAKER_FLAG,
@@ -35,6 +37,11 @@ async function promoteTokenUnlocked(token: Token): Promise<boolean> {
     const prototypeTexture = (prototypeToken.texture ?? {}) as Record<string, unknown>;
     const tokenImage = token.document.texture.src;
     delete actorData._id;
+    const flags = (actorData.flags ??= {}) as Record<string, Record<string, unknown>>;
+    const moduleFlags = (flags[MODULE_ID] ??= {});
+    delete moduleFlags[DEFAULT_MOOK_TEMPLATE_FLAG];
+    delete moduleFlags[DEFAULT_MOOK_TEMPLATE_VERSION_FLAG];
+    moduleFlags[PROMOTED_FROM_MOOK_MAKER_FLAG] = true;
     Object.assign(actorData, {
       name: actor.name,
       img: tokenImage,
@@ -60,6 +67,9 @@ async function promoteTokenUnlocked(token: Token): Promise<boolean> {
       [`flags.${MODULE_ID}.-=${CREATED_BY_MOOK_MAKER_FLAG}`]: null,
       [`flags.${MODULE_ID}.${PROMOTED_FROM_MOOK_MAKER_FLAG}`]: true,
     });
+    if (token.document.actorId !== promotedActor.id || !token.document.actorLink) {
+      throw new Error("Foundry did not confirm the token was linked to the promoted Actor.");
+    }
     ui.notifications?.info(
       game.i18n!.format("PNEUMA_MOOK_MAKER.Form.Promoted", { name: actor.name }),
     );

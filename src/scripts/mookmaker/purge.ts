@@ -234,6 +234,7 @@ export async function confirmPurgeGear(token: Token): Promise<boolean> {
   }
   if (isPurgeConfirmationEnabled()) {
     return new Promise<boolean>((resolve) => {
+      let confirmed = false;
       new Dialog({
         title: game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PurgeConfirmTitle"),
         content: `<p>${game.i18n!.format("PNEUMA_MOOK_MAKER.Form.PurgeWarning", { count })}</p>`,
@@ -241,7 +242,11 @@ export async function confirmPurgeGear(token: Token): Promise<boolean> {
           confirm: {
             icon: '<i class="fas fa-trash"></i>',
             label: game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PurgeGear"),
-            callback: async () => { try { resolve(await purgeGear(token)); } catch (error) { ui.notifications?.error(String(error)); resolve(false); } },
+            callback: async () => {
+              confirmed = true;
+              try { resolve(await purgeGear(token)); }
+              catch (error) { ui.notifications?.error(String(error)); resolve(false); }
+            },
           },
           cancel: {
             icon: '<i class="fas fa-times"></i>',
@@ -250,7 +255,7 @@ export async function confirmPurgeGear(token: Token): Promise<boolean> {
           },
         },
         default: "cancel",
-        close: () => resolve(false),
+        close: () => { if (!confirmed) resolve(false); },
       }).render(true);
     });
   }

@@ -50,3 +50,40 @@ test("purge restores magazine state on deletion failure and preserves equipped g
  actor.deleteEmbeddedDocuments=async(_type,ids)=>ids.forEach(id=>actor.items.delete(id));
  assert.equal(await purgeGear(token),true);assert.deepEqual([...actor.items.keys()],["ammo","keep"]);
 });
+
+test("confirmed Purge waits for deletion despite Foundry closing the confirmation immediately",async()=>{
+ const {token,actor,values}=setup();values.set("confirmPurgeGear",true);
+ actor.items=new Collection([{id:"gear",type:"gear",name:"Gear",system:{equipped:"owned"}}]);
+ let release,dialog,callback;
+ actor.deleteEmbeddedDocuments=async()=>{await new Promise(resolve=>release=resolve);actor.items.clear();};
+ const original=globalThis.Dialog;
+ globalThis.Dialog=class {constructor(data){this.data=data;dialog=this;}render(){return this;}};
+ try {
+  const {confirmPurgeGear}=await import("../../dist/scripts/mookmaker/purge.js");
+  let settled=false;const result=confirmPurgeGear(token).then(value=>{settled=true;return value;});
+  callback=dialog.data.buttons.confirm.callback();dialog.data.close();
+  await Promise.resolve();assert.equal(settled,false);assert.equal(actor.items.size,1);
+  release();await callback;assert.equal(await result,true);assert.equal(actor.items.size,0);
+  actor.items=new Collection([{id:"gear",type:"gear",system:{}}]);
+  const dismissed=confirmPurgeGear(token);dialog.data.close();assert.equal(await dismissed,false);
+ } finally {globalThis.Dialog=original;}
+});
+
+test("promotion removes template identity but preserves other flags",async()=>{
+ const {token,actor}=setup();await ensureSceneToolsFolder("Actor",WORLD_FOLDERS.mookPromoted);
+ const flags={"pneuma-scenetools":{IsDefaultMookTemplate:true,DefaultMookTemplateVersion:5,custom:"keep"},other:{value:1}};
+ actor.toObject=()=>({name:"Mook",flags:structuredClone(flags)});
+ let created;Actor.create=async data=>created={...data,id:"promoted"};
+ assert.equal(await promoteToken(token),true);
+ assert.deepEqual(created.flags,{"pneuma-scenetools":{custom:"keep",PromotedFromMookMaker:true},other:{value:1}});
+ assert.equal(flags["pneuma-scenetools"].IsDefaultMookTemplate,true);
+});
+
+test("cancelled promotion linking reports failure and removes the unused Actor",async()=>{
+ const {token}=setup();await ensureSceneToolsFolder("Actor",WORLD_FOLDERS.mookPromoted);
+ let deleted=0;Actor.create=async()=>({id:"promoted",async delete(){deleted++;}});
+ token.document.update=async()=>undefined;
+ const old=console.error;console.error=()=>{};
+ try {assert.equal(await promoteToken(token),false);}finally{console.error=old;}
+ assert.equal(deleted,1);assert.equal(token.document.actorId,"original");assert.equal(token.document.actorLink,false);
+});

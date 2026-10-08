@@ -3,7 +3,7 @@ import {MODULE_ID} from "./settings.js";
 import {basename, identifyImport, list, record, type ImportFile} from "./scene-data.js";
 import {isFoundryFolder, isVideo, scanRoot, nameScore, parentPath} from "./matching.js";
 import {planSelection, readSelection, setupSelection} from "./planning.js";
-import {prepareScene, buildScene, applySceneOverrides, type PreparedScene} from "./scene-import.js";
+import {prepareScene, buildScene, applySceneOverrides, enableSceneOverrides, type PreparedScene} from "./scene-import.js";
 import {ensureSceneToolsFolder, WORLD_FOLDERS} from "./world-folders.js";
 
 const rootElement = (html: JQuery | HTMLElement) => html instanceof HTMLElement ? html : html[0]!;
@@ -37,7 +37,8 @@ export class SceneCreator extends FormApplication {
     const root = html[0]!;
     if (!this.importMode) return;
     root.querySelector("[data-make-changes]")?.addEventListener("click",()=>{
-      this.importMode = "edit"; this.scenes.forEach(scene=>{scene.useJson=false;}); this.render(false);
+      if (this.busy) return;
+      this.importMode = "edit"; this.scenes.forEach(scene=>enableSceneOverrides(scene,this.files)); this.render(false);
     });
     if (!this.scenes.length) {
       setupSelection(root,this.selection,this.map);

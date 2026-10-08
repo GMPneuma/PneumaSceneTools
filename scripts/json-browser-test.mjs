@@ -91,6 +91,23 @@ try {
   assert.deepEqual(overrideOperations[1].data,{name:"Adjusted Scene","environment.darknessLevel":0.2,"fog.exploration":true});
   assert.equal(await modified.page.evaluate(()=>globalThis.creationAttempts),2);
   assert.deepEqual(modified.errors,[]);
+  // Switching native JSON preview to edits also repairs exported asset paths.
+  const rematched=await fixture(browser,{selected:image(1),files:[...files,"maps/canopy.webp","maps/tile.webp","maps/token.webp","maps/rain.ogg"],imports});
+  await rematched.page.locator('button[type="submit"]').click();
+  await rematched.page.locator('[name="variant-0"]').waitFor();
+  await rematched.page.locator('button[type="submit"]').click();
+  await rematched.page.locator('[data-make-changes]').click();
+  await rematched.page.locator('[name="scene0-name"]:enabled').waitFor();
+  await rematched.page.locator('button[type="submit"]').click();
+  await rematched.page.waitForFunction(()=>!document.querySelector('form'));
+  const repaired=(await rematched.state()).scenes[0];
+  assert.equal(repaired.foreground,"maps/canopy.webp");
+  assert.equal(repaired.tiles[0].texture.src,"maps/tile.webp");
+  assert.equal(repaired.tokens[0].texture.src,"maps/token.webp");
+  assert.equal(repaired.sounds[0].path,"maps/rain.ogg");
+  assert.deepEqual(repaired.walls,source(1).walls);assert.deepEqual(repaired.lights,source(1).lights);
+  assert.deepEqual(await rematched.page.evaluate(()=>globalThis.nativeImports),[source(1)]);
+  assert.deepEqual(rematched.errors,[]);await rematched.page.close();
   // Closing after a failed import cannot strand a partial Scene or duplicate it on reopen.
   const recovery=await fixture(browser,{selected:image(1),files,imports});
   await recovery.page.locator('button[type="submit"]').click();
