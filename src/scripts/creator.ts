@@ -25,7 +25,7 @@ export class SceneCreator extends FormApplication {
       ${field("Darkness", "sharedDarkness", game.settings!.get(MODULE_ID,"defaultDarkness"),"number",'min="0" max="1" step="any" required')}
       <label><input name="sharedGlobal" type="checkbox" ${game.settings!.get(MODULE_ID,"defaultGlobalLight") ? "checked" : ""}> Global illumination</label>
       <label><input name="sharedVision" type="checkbox" checked> Token vision</label><label><input name="sharedFog" type="checkbox" checked> Fog exploration</label></fieldset>`;
-    return {failure: this.failure, content: this.scenes.length ? shared + this.scenes.map((scene,i)=>`<details data-scene="${i}" ${this.scenes.length === 1 ? "open" : ""}><summary>${escape(basename(scene.map))}${scene.created ? " — saved" : ""}</summary><label><input type="checkbox" name="override">Use this scene's lighting and vision</label>${scene.content}</details>`).join("") : this.selection.content,
+    return {failure: this.failure, content: this.scenes.length ? shared + this.scenes.map((scene,i)=>`<details data-scene="${i}" ${this.scenes.length === 1 ? "open" : ""}><summary>${escape(basename(scene.map))}${scene.created ? " - saved" : ""}</summary><label><input type="checkbox" name="scene${i}-override">Use this scene's lighting and vision</label>${scene.content.replace(/name="([^"]+)"/g, (_match, name: string) => `name="scene${i}-${name}" data-field="${name}"`)}</details>`).join("") : this.selection.content,
       label: this.scenes.length ? "Create selected scenes" : "Review selected scenes"};
   }
   override activateListeners(html: JQuery) {
@@ -48,13 +48,12 @@ export class SceneCreator extends FormApplication {
     for (const section of root.querySelectorAll<HTMLElement>("[data-scene]")) {
       const index = Number(section.dataset.scene), scene = this.scenes[index]!;
       for (const input of section.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[name]")) {
-        input.dataset.field = input.name; input.name = `scene${index}-${input.name}`;
         if (scene.created) input.disabled = true;
       }
       if (!scene.created) setupPreview(section, scene.map);
     }
   }
-  protected override async _updateObject(_event: Event, submitted: Record<string, unknown>) {
+  protected override async _updateObject(_event: Event, _submitted: Record<string, unknown>) {
     if (this.busy) return;
     this.busy = true;
     try {
@@ -66,8 +65,8 @@ export class SceneCreator extends FormApplication {
         for (const plan of plans) for (const map of plan.maps) prepared.push(await prepareVariant(map, plan.selected, this.files, plan.maps.length > 1));
         this.scenes = prepared; this.failure = ""; this.render(false); return;
       }
-      const values = new FormData();
-      for (const [key,value] of Object.entries(submitted)) if (value !== false && value != null) values.set(key,String(value));
+      if (!this.form) throw new Error("The Scene Creator form is unavailable.");
+      const values = new FormData(this.form as HTMLFormElement);
       const data = this.scenes.map((scene,i) => {
         if (scene.created) return undefined;
         const result = scene.build(values, `scene${i}-`);
@@ -235,13 +234,21 @@ async function prepareVariant(map: string, selected: ImportFile | undefined, fil
   const original = structuredClone(data);
   return {map, content: content + (overlayFiles.length || unresolved.length ? '<details><summary>Optional overlays and asset paths</summary>' + overlayContent + '</details>' : ''), build(valuesAll, prefix) {
     data = structuredClone(original);
-  const values = {get: (name: string) => valuesAll.get(prefix + name), has: (name: string) => valuesAll.has(prefix + name)}, getNumber = (name: string) => Number(values.get(name));
+  const values = {get: (name: string) => valuesAll.get(prefix + name), has: (name: string) => valuesAll.has(prefix + name)};
+  const getNumber = (name: string) => {
+    const raw = values.get(name);
+    if (raw === null || String(raw).trim() === "" || !Number.isFinite(Number(raw))) throw new Error(`Enter a valid number for ${name}.`);
+    return Number(raw);
+  };
   const choice = String(values.get("gridChoice"));
   data = {...data, name: String(values.get("name")).trim(), width: getNumber("width"), height: getNumber("height"), active: false, navigation: false,
     background: {...record(data.background), src: map}, grid: {...grid, type: choice === "gridless" ? 0 : getNumber("gridType"), size: choice === "custom" ? getNumber("customGrid") : choice === "gridless" ? initial : Number(choice), distance: getNumber("distance"), units: String(values.get("units"))},
     environment: {...environment, darknessLevel: getNumber("darkness"), globalLight: {...record(environment.globalLight), enabled: values.has("globalLight")}},
     tokenVision: values.has("tokenVision"), fogExploration: values.has("fogExploration")};
   delete data.img;
+  if (!(Number(data.width) > 0) || !(Number(data.height) > 0)) throw new Error("Scene width and height must be positive.");
+  if (!Number.isInteger(record(data.grid).size) || Number(record(data.grid).size) < 50) throw new Error("Grid size must be a whole number of at least 50 pixels.");
+  if (!(Number(record(data.grid).distance) > 0)) throw new Error("Grid distance must be positive.");
   const overlayValues = values, tiles = list(data.tiles);
 
   let foregroundCount = 0;

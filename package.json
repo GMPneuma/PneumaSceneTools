@@ -1,6 +1,6 @@
 {
   "name": "pneuma-scenetools",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "Scene creation, MookMaker, and NetArch Scanner utilities for Cyberpunk RED in Foundry VTT.",

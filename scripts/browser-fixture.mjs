@@ -28,9 +28,9 @@ export async function fixture(browser, {files, imports = {}, selected, video} = 
           event.preventDefault();if(this._submitting||!this.form.reportValidity())return;this._submitting=true;
           const submitted=Object.fromEntries(new FormData(this.form));
           for(const input of this.form.querySelectorAll('input[type=checkbox]'))submitted[input.name]=input.checked;
-          try{await this._updateObject(event,submitted);}finally{this._submitting=false;}
+          try{await this._updateObject(event,globalThis.emptySerializedSubmission?{}:submitted);}finally{this._submitting=false;}
         });
-        this.activateListeners(this.element);
+        this.activateListeners([this.form]);
       }
       activateListeners(){}
       async close(){this.element[0]?.remove();}
@@ -46,6 +46,7 @@ export async function fixture(browser, {files, imports = {}, selected, video} = 
       toObject(){return structuredClone(this.data)}
       getDimensions(){return {sceneX:100,sceneY:100}}
       static async create(data){
+        if(!(Number.isFinite(data.width)&&data.width>0&&Number.isFinite(data.height)&&data.height>0&&Number.isInteger(data.grid?.size)&&data.grid.size>=50&&Number.isFinite(data.grid?.distance)&&data.grid.distance>0))throw Error('Invalid Scene dimensions or grid');
         if(globalThis.failCreation){globalThis.failCreation=false;throw Error('Simulated database rejection')}
         const scene=new this(data);scene.id='scene-'+game.scenes.size;scene.name=data.name;
         if(!globalThis.dropPersistence)game.scenes.set(scene.id,scene);

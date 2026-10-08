@@ -29,7 +29,7 @@ export function planSelection(map: string, imports: ImportFile[], files: string[
     }).join("")}
     ${warnings.length ? `<details><summary>Scan warnings (${warnings.length})</summary>${warnings.map(w => `<p>${escape(w)}</p>`).join("")}</details>` : ""}`;
   const setup = (root: HTMLElement) => {
-      const form = root.querySelector<HTMLFormElement>("form")!;
+      const form = root instanceof HTMLFormElement ? root : root.querySelector<HTMLFormElement>("form")!;
       const validate = () => {
         const checked = rows.some((_item, i) => form.querySelector<HTMLInputElement>(`[name="variant-${i}"]`)!.checked);
         form.querySelector<HTMLInputElement>('[name="variant-0"]')!.setCustomValidity(checked ? "" : "Select at least one variant.");

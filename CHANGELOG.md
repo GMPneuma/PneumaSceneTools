@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 - 2026-10-08
+
+- Render final per-scene input names before Foundry attaches form listeners, and read creation values directly from the registered form.
+- Support Foundry's root form element during selection setup. Validate required numeric values before Scene creation instead of converting missing fields to zero.
+- Match the browser fixture to Foundry's form root and reject invalid Scene dimensions/grid values. Verify the cached native v12 serializer in an isolated browser; live-world persistence remains unverified.
+
 ## 0.2.0 - 2026-10-08
 
 - Consolidate folder discovery and creation, including renamed folders identified by legacy MookMaker flags.

@@ -14,12 +14,13 @@ try {
   await page.locator('button[type="submit"]').click();await page.locator('[data-error]').filter({hasText:"foreground"}).waitFor();
   assert.equal((await state()).scenes.length,0);
   await field("layer-0").selectOption("tile");
-  await page.evaluate(()=>globalThis.failCreation=true);
+  await page.evaluate(()=>{globalThis.failCreation=true;globalThis.emptySerializedSubmission=true});
   await field("name").press("Enter");await page.locator('[data-error]').filter({hasText:"database rejection"}).waitFor();
   assert.equal((await state()).scenes.length,0);assert.equal(await field("name").inputValue(),"Import regression");
   await page.locator('button[type="submit"]').click();await page.waitForFunction(()=>game.scenes.size===1);
   const saved=(await state()).scenes[0];
   assert.equal(saved.name,"Import regression");assert.equal(saved.grid.size,150);assert.equal(saved.tiles[0].x,125);
+  assert.equal(saved.width,4000);assert.equal(saved.height,3000);assert.equal(saved.grid.distance,2);
   assert.deepEqual((await state()).folders,[{name:"SceneTools",parent:null},{name:"Imported Scenes",parent:"SceneTools"}]);
   await page.waitForFunction(()=>!document.querySelector('form'));
   // A returned document without a persisted collection entry is a failure, never success.
