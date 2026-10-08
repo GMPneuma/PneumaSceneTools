@@ -68,6 +68,7 @@ export function environment() {
   globalThis.CONST = { DOCUMENT_OWNERSHIP_LEVELS: { OWNER: 3 }, TOKEN_DISPLAY_MODES: { OWNER_HOVER: 20, NONE: 0 } };
   const docs = new Map();
   globalThis.fromUuid = async (uuid) => docs.get(uuid) ?? null;
+  globalThis.fromUuidSync = (uuid) => docs.get(uuid) ?? null;
   globalThis.canvas = { ready: true, scene: null, tokens: { controlled: [], placeables: [], get: (id) => canvas.tokens.placeables.find((token) => token.id === id) }, grid: { size: 100 } };
   globalThis.Actor = {
     updateDocuments: async (updates) => updates.map((changes) => {

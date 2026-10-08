@@ -1,3 +1,4 @@
+import {bounded} from "./io.js";
 import {MODULE_ID} from "./settings.js";
 import {basename, identifyImport, list, record, type ImportFile} from "./scene-data.js";
 import {isFoundryFolder, isVideo, scanRoot, nameScore, parentPath} from "./matching.js";
@@ -13,6 +14,7 @@ export class SceneCreator extends FormApplication {
   private selection: ReturnType<typeof planSelection>;
   private scenes: PreparedScene[] = [];
   private busy = false;
+  private preparation?: AbortController;
   private failure = "";
   private importMode: "json" | "edit" | undefined;
   constructor(private map: string, private imports: ImportFile[], private files: string[], private warnings: string[]) {
@@ -71,7 +73,9 @@ export class SceneCreator extends FormApplication {
         const plans = readSelection(this.form as HTMLFormElement,this.selection);
         if (!plans.length) throw new Error("Select at least one scene.");
         const prepared: PreparedScene[] = [];
-        for (const plan of plans) for (const map of plan.maps) prepared.push(await prepareScene(map, plan.selected, this.files, plan.maps.length > 1, this.importMode));
+        const preparation = this.preparation = new AbortController();
+        for (const plan of plans) for (const map of plan.maps) prepared.push(await prepareScene(map, plan.selected, this.files, plan.maps.length > 1, this.importMode, preparation.signal));
+        preparation.signal.throwIfAborted();
         this.scenes = prepared; this.failure = ""; this.render(false); return;
       }
       if (!this.form) throw new Error("The Scene Creator form is unavailable.");
@@ -105,13 +109,28 @@ export class SceneCreator extends FormApplication {
       ui.notifications?.info(`Created ${this.scenes.length} scenes in SceneTools/Imported Scenes.`);
       this.busy = false; await this.close();
     } catch (error) {
+      if (this.preparation?.signal.aborted) return;
+      try { await this.cleanupIncomplete(); }
+      catch (cleanupError) { error = new Error(`${error instanceof Error ? error.message : error} Cleanup failed: ${String(cleanupError)}. Keep this window open and retry.`); }
       this.failure = `${error instanceof Error ? error.message : String(error)} (${this.scenes.filter(scene=>scene.created).length} scenes saved.)`;
       console.error(`${MODULE_ID} | Import`,error); ui.notifications?.error(this.failure);
       const message = this.form?.querySelector<HTMLElement>("[data-error]"); if (message) message.textContent = this.failure;
-    } finally { this.busy = false; }
+    } finally { this.busy = false; this.preparation = undefined; }
+  }
+  private async cleanupIncomplete() {
+    for (const draft of this.scenes) {
+      if (!draft.pending || draft.created) continue;
+      const scene = game.scenes?.get(draft.pending);
+      if (scene) { await scene.delete(); if (game.scenes?.has(draft.pending)) throw new Error("Incomplete Scene could not be deleted"); }
+      draft.pending = undefined;
+    }
   }
   override async close(options?: Application.CloseOptions) {
-    if (this.busy) return;
+    if (this.busy) {
+      if (!this.preparation) return;
+      this.preparation.abort();
+    }
+    try { await this.cleanupIncomplete(); } catch (error) { ui.notifications?.error(String(error)); return; }
     creator = undefined; return super.close(options);
   }
 }
@@ -121,49 +140,60 @@ export function openSceneCreator() {
   if (creator) { creator.render(true); return; }
   const picker = new FilePicker({type: "imagevideo", callback: path => {
     if (scanning) return; scanning = true;
+    const cancellation = new AbortController();
+    let scanFinished = false;
+    const progress = new Dialog({render:()=>{if (scanFinished) void progress.close();},title:"Finding Scene files",content:"<p>Searching nearby folders.</p>",buttons:{cancel:{label:"Cancel",callback:()=>cancellation.abort()}},close:()=>cancellation.abort()}).render(true);
     const source = picker.activeSource, folder = picker.sources[source]?.target ?? parentPath(path);
     const bucket = source === "s3" ? picker.sources.s3?.bucket : undefined;
     void (async()=>{
       ui.notifications?.info("Finding nearby Scene files…");
-      const scan = await scanFolders(scanRoot(folder), target=>FilePicker.browse(source,target,{bucket}));
+      const scan = await scanFolders(scanRoot(folder), target=>FilePicker.browse(source,target,{bucket}),undefined,cancellation.signal);
       if (!scan.files.includes(path)) scan.files.push(path);
-      const found = await readImports(scan.files,path);
+      const found = await readImports(scan.files,path,cancellation.signal);
+      cancellation.signal.throwIfAborted();
       creator = new SceneCreator(path,found.imports,scan.files,[...scan.warnings,...found.warnings]);
       creator.render(true);
-    })().catch(error=>{console.error(`${MODULE_ID} | Scan`,error);ui.notifications?.error(error instanceof Error ? error.message : String(error));}).finally(()=>{scanning=false;});
+    })().catch(error=>{if (cancellation.signal.aborted) return; console.error(`${MODULE_ID} | Scan`,error);ui.notifications?.error(error instanceof Error ? error.message : String(error));}).finally(()=>{scanning=false;scanFinished=true;void progress.close();});
   }});
   picker.render(true);
 }
-export async function scanFolders(start: string, browse: (path: string) => Promise<{files: string[]; dirs: string[]}>, progress?: (count: number) => void) {
+export async function scanFolders(start: string, browse: (path: string) => Promise<{files: string[]; dirs: string[]}>, progress?: (count: number) => void, signal = new AbortController().signal) {
   const queue = [start], visited = new Set<string>(), files = new Set<string>(), warnings: string[] = [];
   while (queue.length) {
+    signal.throwIfAborted();
     const folder = queue.shift()!;
     if (visited.has(folder)) continue;
     if (visited.size >= 500) { warnings.push("Folder scan stopped at 500 folders. Narrow the selected folder to scan remaining files."); break; }
     visited.add(folder); progress?.(visited.size);
     try {
-      const result = await browse(folder);
+      const result = await bounded(browse(folder),signal);
       for (const file of result.files) files.add(file);
       queue.push(...result.dirs.sort((a, b) => Number(isFoundryFolder(b)) - Number(isFoundryFolder(a)) || a.localeCompare(b)));
-    } catch { warnings.push(`Could not browse ${folder}`); }
+    } catch { signal.throwIfAborted(); warnings.push(`Could not browse ${folder}`); }
   }
   return {files: [...files], warnings};
 }
 
-async function readImports(files: string[], map: string) {
+async function readImports(files: string[], map: string, signal: AbortSignal) {
   const imports: ImportFile[] = [], warnings: string[] = [];
   const jsonFiles = files.filter(path => /\.(json|dd2vtt|uvtt|df2vtt)(?:[?#].*)?$/i.test(path));
   const named = jsonFiles.filter(path => nameScore(path, map, true) >= 50);
   const conventional = jsonFiles.filter(path => isFoundryFolder(parentPath(path)));
   const candidates = [...new Set([...named,...conventional])];
-  for (const path of candidates) {
+  let next = 0;
+  await Promise.all(Array.from({length:Math.min(4,candidates.length)},async()=>{
+  while (next < candidates.length) {
+    signal.throwIfAborted();
+    const path = candidates[next++]!;
     try {
-      const response = await fetch(path, {signal: AbortSignal.timeout(15000)});
+      const response = await fetch(path, {signal: AbortSignal.any([signal,AbortSignal.timeout(15000)])});
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const item = identifyImport(await response.json(), path);
       if (item) imports.push(item);
-    } catch { warnings.push(`Could not read ${basename(path)}`); }
+    } catch { signal.throwIfAborted(); warnings.push(`Could not read ${basename(path)}`); }
   }
+  }));
+  imports.sort((a,b)=>a.path.localeCompare(b.path));
   return {imports, warnings};
 }
 

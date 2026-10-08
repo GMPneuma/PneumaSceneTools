@@ -53,16 +53,16 @@ try {
   const migrationSources=await page.evaluate(()=>globalThis.importSources);
   assert.equal(migrationSources[0]._stats.coreVersion,"12.331");
   assert.equal(migrationSources[0].journal,"JournalOriginal1");
-  // A failed native import retries the same destination document.
+  // Failed native imports remove their incomplete destination before retry.
   await page.waitForFunction(()=>!document.querySelector('form'));
   await page.evaluate(()=>openCreator());await page.locator('[name="importMode"]').first().waitFor();
   await page.locator('button[type="submit"]').click();await page.locator('[name="variant-0"]').waitFor();
   await page.locator('button[type="submit"]').click();await field("name").waitFor();
   await page.evaluate(()=>globalThis.failNativeImport=true);
   await page.locator('button[type="submit"]').click();await page.locator('[data-error]').filter({hasText:"native import rejection"}).waitFor();
-  assert.equal((await state()).scenes.length,5);
+  assert.equal((await state()).scenes.length,4);
   await page.locator('button[type="submit"]').click();await page.waitForFunction(()=>!document.querySelector('form'));
-  assert.equal((await state()).scenes.length,5);assert.equal(await page.evaluate(()=>globalThis.creationAttempts),5);
+  assert.equal((await state()).scenes.length,5);assert.equal(await page.evaluate(()=>globalThis.creationAttempts),6);
   assert.deepEqual(errors,[]);await page.close();
   // Make changes starts with JSON values and retains fields outside the editable controls.
   const overlay="maps/SOL-CorporateEateryInt-Map1-OVERLAY-128px-4k.webp";
@@ -78,7 +78,7 @@ try {
   await modified.page.evaluate(()=>globalThis.failOverrides=true);
   await modified.page.locator('button[type="submit"]').click();
   await modified.page.locator('[data-error]').filter({hasText:"override rejection"}).waitFor();
-  assert.equal((await modified.state()).scenes.length,1);
+  assert.equal((await modified.state()).scenes.length,0);
   await modified.page.locator('button[type="submit"]').click();await modified.page.waitForFunction(()=>!document.querySelector('form'));
   const edited=(await modified.state()).scenes[0];assert.equal(edited.name,"Adjusted Scene");assert.equal(edited.environment.darknessLevel,0.2);
   assert.deepEqual(edited.fog,{...source(1).fog,exploration:true});
@@ -89,7 +89,22 @@ try {
   const overrideOperations=await modified.page.evaluate(()=>globalThis.sceneOperations);
   assert.deepEqual(overrideOperations.map(operation=>operation.kind),["import","update","import","update","create:Tile"]);
   assert.deepEqual(overrideOperations[1].data,{name:"Adjusted Scene","environment.darknessLevel":0.2,"fog.exploration":true});
-  assert.equal(await modified.page.evaluate(()=>globalThis.creationAttempts),1);
+  assert.equal(await modified.page.evaluate(()=>globalThis.creationAttempts),2);
   assert.deepEqual(modified.errors,[]);
+  // Closing after a failed import cannot strand a partial Scene or duplicate it on reopen.
+  const recovery=await fixture(browser,{selected:image(1),files,imports});
+  await recovery.page.locator('button[type="submit"]').click();
+  await recovery.page.locator('[name="variant-0"]').waitFor();await recovery.page.locator('button[type="submit"]').click();
+  await recovery.page.locator('[name="scene0-name"]').waitFor();
+  await recovery.page.evaluate(()=>{globalThis.failNativeImport=true;globalThis.failCleanup=true});
+  await recovery.page.locator('button[type="submit"]').click();
+  await recovery.page.locator('[data-error]').filter({hasText:"Cleanup failed"}).waitFor();
+  assert.equal((await recovery.state()).scenes.length,1);
+  await recovery.page.evaluate(()=>globalThis.failCleanup=false);
+  // A retry imports into the retained destination when deletion failed, without duplication.
+  await recovery.page.locator('button[type="submit"]').click();await recovery.page.waitForFunction(()=>!document.querySelector('form'));
+  assert.equal((await recovery.state()).scenes.length,1);
+  assert.equal(await recovery.page.evaluate(()=>globalThis.creationAttempts),1);
+  assert.deepEqual(recovery.errors,[]);await recovery.page.close();
   console.log("JSON-first import, four variants/two reusable JSONs, full payload preservation, JSON preview, native-import retry, and edits passed.");
 } finally {await browser.close()}

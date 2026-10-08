@@ -156,6 +156,14 @@ try {
 game.packs = [];
 await assert.rejects(prepareCoprocessor(fixture().actor), /Could not find/);
 
+const {default: Handlebars}=await import("handlebars");
+Handlebars.registerHelper("localize",key=>game.i18n.localize(key));
+globalThis.renderTemplate=async (_path,data)=>Handlebars.compile(await readFile(new URL("../../src/templates/mook-maker.hbs",import.meta.url),"utf8"))(data);
+const {readMookForm}=await import("../../dist/scripts/mookmaker/form-input.js");
+const selected={name:"Updated",move:"4",hitpoints:"30",role:"none",level:"0",bodyArmor:"None",headArmor:"None",displayName:"30",tokenDisposition:"-1",combatNumber:"custom",customCombatNumber:"12",secondarySkills:"unchanged",tertiarySkills:"unchanged",bulletDodging:"unchanged"};
+const form={find(selector){const name=selector.match(/name="([^"]+)"/)[1];return {val:()=>selected[name]}}};
+const parsed=readMookForm(form,fixture().token,[],"Mook");assert.equal(parsed.newName,"Updated");assert.equal(parsed.move,4);assert.equal(parsed.hitPoints,30);
+selected.move="invalid";assert.throws(()=>readMookForm(form,fixture().token,[],"Mook"));selected.move="4";
 let dialog;
 globalThis.Dialog = class { constructor(data) { dialog = data; } render() {} };
 const { showMookMakerMenu } = await import("../../dist/scripts/mookmaker/mook-form.js");
@@ -164,19 +172,20 @@ assert(!dialog.content.includes("setNonCombatSkills"));
 assert(dialog.content.includes('name="bulletDodging"'));
 if (process.env.PNEUMA_PLAYWRIGHT_MODULE) {
   const { chromium } = await import(process.env.PNEUMA_PLAYWRIGHT_MODULE);
-  const browser = await chromium.launch({ channel: "msedge", headless: true });
+  const browser = await chromium.launch({ headless: true, ...(process.env.PNEUMA_BROWSER_CHANNEL?{channel:process.env.PNEUMA_BROWSER_CHANNEL}:{}) });
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
     const css = await readFile(new URL("../../src/styles/mookmaker.css", import.meta.url), "utf8");
     await page.setContent(`<style>body{font:14px Arial} .window-content{width:626px;padding:12px;background:#eee} input,select{box-sizing:border-box;max-width:100%} fieldset{min-width:0}</style><style>${css}</style><div class="window-content">${dialog.content}</div>`);
     assert.equal(await page.locator('.pneuma-mook-maker-section-stats select[name="bulletDodging"]').count(), 1);
-    assert.deepEqual(await page.locator('select[name="bulletDodging"] option').allTextContents(), ["Unchanged", "REF 8", "Reflex Co-Processor"]);
+    assert.deepEqual((await page.locator('select[name="bulletDodging"] option').allTextContents()).map(text=>text.trim()), ["Unchanged", "REF 8", "Reflex Co-Processor"]);
     assert.equal(await page.locator('.pneuma-mook-maker-section-mook [data-action="purge-gear"]').count(), 1);
     assert.equal(await page.locator('.pneuma-mook-maker-section-mook [data-action="promote"]').count(), 1);
     assert.equal(await page.locator('.pneuma-mook-maker-form > .pneuma-mook-maker-secondary-actions').count(), 0);
     const fields = await page.locator('.pneuma-mook-maker-mook-fields').boundingBox();
     const actions = await page.locator('.pneuma-mook-maker-secondary-actions').boundingBox();
     assert(actions.x >= fields.x + fields.width, "action box sits beside the compact fields");
+    assert((await page.locator(".pneuma-mook-maker-form").boundingBox()).height < 900, "MookMaker keeps its compact layout");
     console.log(`Rendered form height: ${Math.round((await page.locator('.pneuma-mook-maker-form').boundingBox()).height)}px`);
     for (const name of ["secondarySkills", "tertiarySkills"]) {
       assert(await page.locator(`input[name="${name}"][value="unchanged"]`).isChecked());

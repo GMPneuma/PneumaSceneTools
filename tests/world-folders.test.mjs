@@ -41,7 +41,7 @@ test("MookMaker and Scanner startup use one module namespace without duplicate s
   game.settings.registerMenu=(scope,key)=>{assert.equal(scope,"pneuma-scenetools");assert.ok(!menus.has(key));menus.add(key);};
   const callbacks=new Map();Hooks.once=(key,callback)=>callbacks.set(key,callback);
   Hooks.on=(key,callback)=>hooks.push({key,callback});
-  await import("../dist/scripts/main.js");callbacks.get("init")();
+  await import("../dist/scripts/main.js");await import("../dist/scripts/mookmaker/entry.js");await import("../dist/scripts/netarch/entry.js");callbacks.get("init")();
   const api=game.modules.get("pneuma-scenetools").api;
   assert.equal(typeof api.openSceneCreator,"function");assert.equal(typeof api.netArchScanner.openScanner,"function");
   assert.deepEqual(Object.keys(api).sort(),["netArchScanner","openSceneCreator"]);
@@ -79,4 +79,14 @@ test("MookMaker default template and AP templates provision together into their 
     assert.equal(game.actors.get("default-mook").img,"modules/pneuma-scenetools/assets/actor/default-mook.png");
     await ensureMookMakerFolders();await ensureTemplates();assert.equal(game.actors.size,7);assert.equal(game.folders.size,4);
   } finally {globalThis.fetch=originalFetch;}
+});
+
+test("moved current Mook templates including intentionally empty Actors are preserved without fetching defaults",async()=>{
+ environment();game.users.activeGM=game.user;
+ const actor={id:"custom",type:"character",name:"Custom",folder:{id:"elsewhere"},items:new Collection(),flags:{"pneuma-scenetools":{IsDefaultMookTemplate:true,DefaultMookTemplateVersion:5}}};
+ game.actors.set(actor.id,actor);
+ const fetch=globalThis.fetch;globalThis.fetch=()=>{throw Error("Must not fetch or overwrite current template")};
+ try {const {ensureMookMakerFolders}=await import("../dist/scripts/mookmaker/folders.js");await ensureMookMakerFolders();}
+ finally {globalThis.fetch=fetch;}
+ assert.equal(game.actors.size,1);assert.equal(actor.folder.id,"elsewhere");assert.equal(actor.name,"Custom");assert.equal(actor.items.size,0);
 });

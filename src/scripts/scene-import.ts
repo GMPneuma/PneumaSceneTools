@@ -22,8 +22,8 @@ export interface PreparedScene {
   unresolved: string[];
 }
 
-export async function prepareScene(map: string, selected: ImportFile | undefined, files: string[], paired: boolean, mode: "json" | "edit"): Promise<PreparedScene> {
-  const dimensions = await imageDimensions(map);
+export async function prepareScene(map: string, selected: ImportFile | undefined, files: string[], paired: boolean, mode: "json" | "edit", signal = new AbortController().signal): Promise<PreparedScene> {
+  const dimensions = await imageDimensions(map,signal);
   if (selected?.kind === "Foundry Scene" && Number(String(record(selected.data._stats).coreVersion ?? "12").split(".")[0]) > 12) {
     throw new Error("This Scene export targets a newer Foundry version. Choose a Foundry v12 export or image-only creation.");
   }
@@ -146,19 +146,27 @@ export async function applySceneOverrides(scene: Scene, draft: PreparedScene, de
   if (addedTiles.length) await scene.createEmbeddedDocuments("Tile",addedTiles as TileDocument.CreateData[]);
 }
 
-function imageDimensions(path: string): Promise<{width: number; height: number}> {
-  return new Promise((resolve, reject) => {
-    if (isVideo(path)) {
-      const video = document.createElement("video");
-      video.preload = "metadata"; video.muted = true;
-      const cleanup = () => { video.onloadedmetadata = null; video.onerror = null; video.removeAttribute("src"); video.load(); };
-      video.onloadedmetadata = () => { const dimensions = {width: video.videoWidth, height: video.videoHeight}; cleanup(); resolve(dimensions); };
-      video.onerror = () => { cleanup(); reject(new Error(`Cannot load video: ${basename(path)}`)); };
-      video.src = path; return;
-    }
-    const image = new Image();
-    image.onload = () => resolve({width: image.naturalWidth, height: image.naturalHeight});
-    image.onerror = () => reject(new Error(`Cannot load image: ${basename(path)}`));
-    image.src = path;
+export function imageDimensions(path: string, signal = new AbortController().signal): Promise<{width: number; height: number}> {
+  return new Promise((resolve,reject)=>{
+    const media = isVideo(path) ? document.createElement("video") : new Image();
+    const cleanup = () => {
+      clearTimeout(timer); signal.removeEventListener("abort",abort); media.onload=null; media.onerror=null;
+      if (media instanceof HTMLVideoElement) { media.onloadedmetadata=null; media.removeAttribute("src"); media.load(); }
+      else media.removeAttribute("src");
+    };
+    const abort = () => { cleanup(); reject(signal.reason ?? new Error("Cancelled")); };
+    const fail = () => { cleanup(); reject(new Error(`Cannot load media: ${basename(path)}. Retry or choose another file.`)); };
+    const timer = setTimeout(fail,15000);
+    const done = () => {
+      const dimensions = media instanceof HTMLVideoElement ? {width:media.videoWidth,height:media.videoHeight} : {width:media.naturalWidth,height:media.naturalHeight};
+      if (!dimensions.width || !dimensions.height) return fail();
+      cleanup(); resolve(dimensions);
+    };
+    media.onerror=fail;
+    if (media instanceof HTMLVideoElement) { media.preload="metadata";media.muted=true;media.onloadedmetadata=done; }
+    else media.onload=done;
+    signal.addEventListener("abort",abort,{once:true});
+    if (signal.aborted) { abort(); return; }
+    media.src=path;
   });
 }

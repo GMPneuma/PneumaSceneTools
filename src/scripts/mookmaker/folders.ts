@@ -19,7 +19,7 @@ type DefaultMookData = Record<string, unknown> & {
 
 async function loadDefaultMookData(): Promise<DefaultMookData> {
   const response = await fetch(
-    `modules/${MODULE_ID}/templates/default-mook.json`,
+    `modules/${MODULE_ID}/templates/default-mook.json`, {signal: AbortSignal.timeout(15000)},
   );
   if (!response.ok) {
     throw new Error(`Could not load the default mook (${response.status}).`);
@@ -38,7 +38,6 @@ async function ensureDefaultMookTemplate(templatesFolder: Folder): Promise<void>
 
   const existing = game.actors?.find(
     (actor) =>
-      actor.folder?.id === templatesFolder.id &&
       actor.type === actorType &&
       foundry.utils.getProperty(
         actor,
@@ -46,6 +45,8 @@ async function ensureDefaultMookTemplate(templatesFolder: Folder): Promise<void>
       ) === true,
   ) as Actor | undefined;
 
+  const currentVersion = Number(existing ? foundry.utils.getProperty(existing, `flags.${MODULE_ID}.${DEFAULT_MOOK_TEMPLATE_VERSION_FLAG}`) ?? 0 : 0);
+  if (existing && currentVersion >= DEFAULT_MOOK_TEMPLATE_VERSION) return;
   const template = await loadDefaultMookData();
   const items = template.items ?? [];
   const actorData = {
@@ -71,19 +72,13 @@ async function ensureDefaultMookTemplate(templatesFolder: Folder): Promise<void>
   if (existing) {
     // Upgrade the blank template produced by early module builds without
     // overwriting a template the GM has already started customizing.
-    if (existing.items.size === 0) {
+    if (existing.items.size === 0 && currentVersion === 0) {
       const updatableActor = existing as unknown as {
         update(data: object): Promise<unknown>;
       };
       await updatableActor.update(actorData);
       await existing.createEmbeddedDocuments("Item", items);
     }
-    const currentVersion = Number(
-      foundry.utils.getProperty(
-        existing,
-        `flags.${MODULE_ID}.${DEFAULT_MOOK_TEMPLATE_VERSION_FLAG}`,
-      ) ?? 0,
-    );
     if (currentVersion < DEFAULT_MOOK_TEMPLATE_VERSION) {
       const existingItemKeys = new Set(
         Array.from(

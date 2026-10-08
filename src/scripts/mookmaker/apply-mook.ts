@@ -1,3 +1,4 @@
+import {withMookOperation} from "./operations.js";
 import { MODULE_ID } from "./constants.js";
 import type { HitPointStats } from "./stats.js";
 import { getBulletDodgingChoices, installCoprocessor, prepareCoprocessor, type BulletDodging } from "./bullet-dodging.js";
@@ -50,6 +51,10 @@ async function rollbackApply(actions: RollbackAction[]): Promise<boolean> {
 }
 
 export async function applyMookChanges(changes: ApplyMookChanges): Promise<boolean> {
+  return withMookOperation(changes.token, () => applyMookChangesUnlocked(changes));
+}
+
+async function applyMookChangesUnlocked(changes: ApplyMookChanges): Promise<boolean> {
   const {
     token, actor, initialName, newName, displayName, tokenDisposition,
     move, hitPoints, hitPointStats,

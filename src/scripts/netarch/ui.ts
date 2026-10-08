@@ -13,9 +13,20 @@ const panels = new Map<string, ScannerPanel>();
 const rootElement = (html: JQuery | HTMLElement) => html instanceof HTMLElement ? html : html[0]!;
 const report = (error: unknown) => { console.error(`${MODULE_ID} |`, error); ui.notifications?.error((error instanceof Error ? error.message : String(error))); };
 
-export function refreshPanels() {
-  for (const panel of panels.values()) if (panel.rendered && !panel.busy) panel.render(false);
+const refreshQueue = new Set<ScannerPanel>();
+let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+function queuePanel(panel: ScannerPanel | undefined) {
+  if (!panel?.rendered) return;
+  refreshQueue.add(panel);
+  if (refreshTimer) return;
+  refreshTimer=setTimeout(()=>{
+    refreshTimer=undefined;
+    for (const pending of refreshQueue) if (panels.get(pending.scene.id!)===pending && pending.rendered && !pending.busy) pending.render(false);
+    refreshQueue.clear();
+  },50);
 }
+export function refreshPanels() { for (const panel of panels.values()) queuePanel(panel); }
+const changed = (data: object, keys: string[]) => keys.some(key=>foundry.utils.hasProperty(data,key) || Object.keys(data).some(path=>path===key || path.startsWith(key+".")));
 
 export class APEditor extends FormApplication<FormApplicationOptions, TokenDocument> {
   static override get defaultOptions(): FormApplicationOptions {
@@ -105,8 +116,22 @@ export class ScannerPanel extends Application {
 
   override getData() {
     if (setting("showRevealAll") === false && this.bulkChanges.reveal === "all") delete this.bulkChanges.reveal;
-    const tokenNames = new Map<string, string>([...game.scenes!].flatMap((scene) => [...scene.tokens].map((token) => [token.uuid, token.name])));
-    const netNames = new Map<string, string>(architectures().map((item) => [item.uuid, item.name]));
+    const tokenNames = new Map<string,string>();
+    const netNames = new Map<string,string>();
+    for (const doc of this.documents) {
+      const data=apData(doc);
+      for (const uuid of data.discovery?.runners ?? []) {
+        const [,sceneId,,tokenId]=uuid.split(".");
+        const token=game.scenes!.get(sceneId ?? "")?.tokens.get(tokenId ?? "");
+        if (token) tokenNames.set(uuid,token.name);
+      }
+      if (data.netarch && !netNames.has(data.netarch)) {
+        try {
+          const item=fromUuidSync(data.netarch as Parameters<typeof fromUuidSync>[0]);
+          if (item?.documentName==="Item") netNames.set(data.netarch,String(item.name ?? ""));
+        } catch { /* Missing or invalid imported reference uses the row fallback. */ }
+      }
+    }
     this.pruneSelection();
     const runner = this.runner;
     if (!runner) this.runnerId = "";
@@ -304,6 +329,7 @@ export class ScannerPanel extends Application {
 
   override async close(options?: Application.CloseOptions) {
     clearTimeout(this.pulseTimer);
+    refreshQueue.delete(this);
     panels.delete(this.scene.id!);
     return super.close(options);
   }
@@ -387,7 +413,10 @@ export function registerUI() {
     });
   });
   for (const hook of ["createToken", "updateToken", "deleteToken"]) {
-    Hooks.on(hook, (doc: TokenDocument) => { const panel = panels.get(doc.parent?.id ?? ""); if (panel?.rendered && !panel.busy) panel.render(false); });
+    Hooks.on(hook, (doc: TokenDocument, changes: object) => {
+      if (hook==="updateToken" && !changed(changes,["name","x","y","width","height","actorId","actorLink","delta",`flags.${MODULE_ID}`])) return;
+      if (isAP(doc) || isNetrunner(doc) || hook === "deleteToken" || hook === "updateToken" && changed(changes,["actorId","actorLink","delta",`flags.${MODULE_ID}`])) queuePanel(panels.get(doc.parent?.id ?? ""));
+    });
   }
   for (const hook of ["updateChatMessage", "deleteChatMessage"]) {
     Hooks.on(hook, (message: ChatMessage) => {
@@ -396,8 +425,11 @@ export function registerUI() {
       }
     });
   }
-  Hooks.on("updateScene", (scene: Scene) => { const panel = panels.get(scene.id!); if (panel?.rendered && !panel.busy) panel.render(false); });
-  Hooks.on("updateActor", () => refreshPanels());
+  Hooks.on("updateScene", (scene: Scene, changes: object) => { if (changed(changes,["name","grid",`flags.${MODULE_ID}`])) queuePanel(panels.get(scene.id!)); });
+  Hooks.on("updateActor", (actor: Actor, changes: object) => {
+    if (!changed(changes,["name","ownership","items","system.roleInfo"])) return;
+    for (const panel of panels.values()) if (panel.scene.tokens.some(token=>token.actorId===actor.id)) queuePanel(panel);
+  });
   Hooks.on("updateUser", () => refreshPanels());
   for (const hook of ["createItem", "updateItem", "deleteItem"]) {
     Hooks.on(hook, (item: Item) => {

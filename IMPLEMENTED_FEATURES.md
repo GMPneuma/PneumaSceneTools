@@ -1,7 +1,19 @@
 # Implemented features
 
-- Import then overrides (v0.2.4): untouched JSON is imported first, followed by changed field updates, embedded asset rematches, and selected overlay tiles. Pending Scenes are reused after either import or override failures. Browser tests verify ordering and preservation; live-world verification remains pending.
-- JSON-first creation (v0.2.3): choose import according to JSON or make changes; assign each layout a reusable Scene JSON; preload JSON values and preview imported walls/light sources. Native migration and JSON import receive complete Scene data. Core import policies handle identities/state; the module no longer strips journal/playlist or other fields. Pending native imports reuse their destination on retry. Browser regressions cover four variants/two JSONs; live persistence remains pending.
+## Sustainability fixes (0.2.5)
+
+- Guard Apply, Purge and Promote against overlapping operations on the same token within a client.
+- Delete unfinished Scene imports after failure; retain completed Scenes and preserve retry state when cleanup itself fails. Import original JSON before applying overrides.
+- Preserve moved and current-version Mook templates, including intentionally empty templates; bound default-template fetches.
+- Isolate feature loading/registration and run ready tasks independently.
+- Filter and batch Scanner refreshes; resolve referenced documents without scanning the entire world on every panel render.
+- Add cancellable folder scanning and media preparation, bounded reads, and four concurrent JSON reads.
+- Move MookMaker markup into Handlebars and split view data, typed input validation, and event wiring.
+- Expand failure, rollback, cancellation, startup-isolation and rendered-form regressions. Live Foundry and multiplayer verification remains pending.
+
+
+- Import then overrides (v0.2.4): untouched JSON is imported first, followed by changed field updates, embedded asset rematches, and selected overlay tiles. As of v0.2.5, failed imports are cleaned up; pending Scenes are reused only if cleanup fails. Browser tests verify ordering and preservation; live-world verification remains pending.
+- JSON-first creation (v0.2.3): choose import according to JSON or make changes; assign each layout a reusable Scene JSON; preload JSON values and preview imported walls/light sources. Native migration and JSON import receive complete Scene data. Core import policies handle identities/state; the module no longer strips journal/playlist or other fields. The v0.2.5 cleanup policy supersedes unconditional pending-destination reuse. Browser regressions cover four variants/two JSONs; live persistence remains pending.
 - The creator renders selection and review through one native Handlebars template. Scene preparation returns plain data; one builder validates and applies form values. Saved batch entries are marked and locked during retry (v0.2.2).
 - Scene creation reads the registered form with final per-scene field names; missing numeric fields and invalid dimensions/grid values are rejected before saving (v0.2.1). Verified with the native v12 form serializer in an isolated browser; live-world persistence remains unverified.
 

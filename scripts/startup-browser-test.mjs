@@ -32,7 +32,8 @@ try {
         static async fire(name){for(const callback of this.events.get(name)??[])await callback()}
       }
       const foundry={utils:{mergeObject:(a,b)=>({...a,...b}),getProperty:(object,path)=>path.split('.').reduce((value,key)=>value?.[key],object),getRoute:path=>'/'+path}};
-      const ui={scenes:{element:[document.querySelector('#scenes')]},notifications:{info(){},warn(){},error(message){throw Error(message)}}};
+      const notices=[];
+      const ui={scenes:{element:[document.querySelector('#scenes')]},notifications:{info(){},warn(){},error(message){notices.push(message)}}};
       const canvas={ready:false};
       const CONST={TOKEN_DISPLAY_MODES:{OWNER_HOVER:20,NONE:0}};
       const values=new Map();
@@ -57,7 +58,7 @@ try {
   await page.goto("https://scene.test/");
   const state=await page.evaluate(async()=>{
     if(globalThis.FormApplication!==undefined||globalThis.Hooks!==undefined)throw Error('Fixture must use lexical Foundry globals');
-    await import('/modules/pneuma-scenetools/scripts/main.js');
+    await Promise.all(["main.js","mookmaker/entry.js","netarch/entry.js"].map(path=>import('/modules/pneuma-scenetools/scripts/'+path).catch(error=>notices.push(error.message))));
     await Hooks.fire('init');await Hooks.fire('ready');
     return {folders:[...game.folders].map(folder=>folder.name),sceneFolders:[...game.folders].filter(folder=>folder.type==='Scene').map(folder=>({id:folder.id,name:folder.name,parent:folder.folder?.id??null})),actors:game.actors.size,button:document.querySelectorAll('.pneuma-scene-create').length,api:Boolean(game.modules.get('pneuma-scenetools').api)};
   });
@@ -66,5 +67,18 @@ try {
   assert.equal(state.sceneFolders.length,2);
   assert.equal(state.sceneFolders[1].name,"Imported Scenes");
   assert.equal(state.sceneFolders[1].parent,state.sceneFolders[0].id);
+  for (const failed of ["mookmaker/main.js","creator.js"]) {
+    await page.route("**/scripts/"+failed,route=>route.fulfill({contentType:"text/javascript",body:"throw Error('Simulated feature load failure')"}));
+    await page.reload();
+    const isolated=await page.evaluate(async()=>{
+      await Promise.all(["main.js","mookmaker/entry.js","netarch/entry.js"].map(path=>import('/modules/pneuma-scenetools/scripts/'+path).catch(error=>notices.push(error.message))));await Hooks.fire('init');await Hooks.fire('ready');
+      return {actors:game.actors.size,notices,api:Object.keys(game.modules.get('pneuma-scenetools').api),button:document.querySelectorAll('.pneuma-scene-create').length};
+    });
+    assert.equal(isolated.actors,failed.startsWith("mookmaker")?6:7);
+    assert.equal(isolated.button,failed.startsWith("mookmaker")?1:0);
+    assert.ok(isolated.api.includes("netArchScanner"));assert.equal(isolated.notices.length,1);
+    await page.unroute("**/scripts/"+failed);
+  }
+  assert.deepEqual(errors,[]);
   console.log("Foundry-style lexical globals: module loads, settings/API register, scene button appears, and seven template Actors provision.");
 } finally {await browser.close();}

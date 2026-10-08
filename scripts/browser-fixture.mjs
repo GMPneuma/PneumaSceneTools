@@ -37,6 +37,7 @@ export async function fixture(browser, {files, imports = {}, selected, video} = 
       activateListeners(){}
       async close(){this.element[0]?.remove();}
     }
+    class Dialog {constructor(options){this.options=options} render(){return this} async close(){this.options.close?.()}}
     const values=new Map([['defaultGrid',100],['defaultDarkness',0],['defaultGlobalLight',true]]);
     const game={version:"12.343",user:{isGM:true},system:{grid:{distance:2,units:'m'}},folders:[],scenes:new Map(),settings:{get:(_id,key)=>values.get(key)}};
     const foundry={utils:{getProperty:(object,path)=>path.split('.').reduce((value,key)=>value?.[key],object)}};
@@ -63,6 +64,7 @@ export async function fixture(browser, {files, imports = {}, selected, video} = 
         if(!globalThis.dropPersistence)game.scenes.set(scene.id,scene);
         return scene;
       }
+      async delete(){if(globalThis.failCleanup)throw Error('Simulated cleanup rejection');game.scenes.delete(this.id);}
       async createThumbnail(){return {thumb:'thumbnail'}}
       async update(changes){
         (globalThis.sceneOperations??=[]).push({id:this.id,kind:'update',data:structuredClone(changes)});

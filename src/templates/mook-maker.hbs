@@ -1,0 +1,235 @@
+{{#*inline "radioChoices"}}
+<div class="{{className}}">
+{{#each choices}}
+<label class="pneuma-mook-maker-radio">
+<input type="radio" name="{{../name}}" value="{{value}}" {{#if selected}}checked{{/if}}>
+<span>
+{{label}}
+</span>
+</label>
+{{/each}}{{#if customChoice}}{{> customCombat}}{{/if}}
+</div>
+{{/inline}}
+{{#*inline "customCombat"}}
+<label class="pneuma-mook-maker-radio pneuma-mook-maker-custom-choice">
+<input type="radio" name="combatNumber" value="custom" {{#if customCombat}}checked{{/if}}>
+<span>
+{{localize "PNEUMA_MOOK_MAKER.Form.Custom"}}
+</span>
+<input class="pneuma-mook-maker-custom-number" name="customCombatNumber" type="text" inputmode="numeric" maxlength="2" value="{{customCombatValue}}" {{#unless customCombat}}disabled{{/unless}}>
+</label>
+{{/inline}}
+{{#*inline "skillAdjustment"}}
+<div class="pneuma-mook-maker-skill-adjustment" data-skill-adjustment="{{name}}">
+<div class="pneuma-mook-maker-radio-column">
+<label class="pneuma-mook-maker-radio">
+<input type="radio" name="{{name}}" value="unchanged" checked>
+<span>
+{{localize "PNEUMA_MOOK_MAKER.Form.Unchanged"}}
+</span>
+</label>
+<label class="pneuma-mook-maker-radio pneuma-mook-maker-set-custom">
+<input type="radio" name="{{name}}" value="set-custom">
+<span>
+{{localize "PNEUMA_MOOK_MAKER.Form.SetSkillTarget"}}
+</span>
+<input type="text" name="{{name}}Target" inputmode="numeric" maxlength="2">
+</label>
+</div>
+</div>
+{{/inline}}
+{{#*inline "weapon"}}
+<div class="pneuma-mook-maker-weapon-slot">
+<h4>
+{{label}}
+</h4>
+<select name="weapon{{number}}">
+<option value="">
+{{localize "PNEUMA_MOOK_MAKER.Form.None"}}
+</option>
+{{#each choices}}
+<option value="{{id}}">
+{{name}}
+</option>
+{{/each}}
+</select>
+</div>
+<input type="hidden" name="initialWeapon{{number}}" value="{{selected}}">
+{{/inline}}
+{{#*inline "tokenControls"}}
+<div class="pneuma-mook-maker-token-row">
+{{#each tokenFields}}
+<label>
+<span>
+{{localize label}}
+</span>
+<select name="{{name}}">
+{{#each choices}}
+<option value="{{value}}" {{#if selected}}selected{{/if}}>
+{{localize label}}
+</option>
+{{/each}}
+</select>
+</label>
+{{/each}}
+</div>
+{{/inline}}
+
+    <form class="pneuma-mook-maker-form">
+      <header class="pneuma-mook-maker-form-header">
+        <h2>
+{{localize "PNEUMA_MOOK_MAKER.Form.Header"}}
+</h2>
+      </header>
+      <fieldset class="pneuma-mook-maker-section pneuma-mook-maker-section-mook">
+        <legend>
+{{localize "PNEUMA_MOOK_MAKER.Form.SectionMook"}}
+</legend>
+        <div class="pneuma-mook-maker-mook-layout">
+        <div class="pneuma-mook-maker-mook-fields">
+        <div class="pneuma-mook-maker-identity-row">
+          <label class="pneuma-mook-maker-identity-name" for="pneuma-mook-maker-name">
+            <span>
+{{localize "PNEUMA_MOOK_MAKER.Form.Name"}}
+</span>
+            <input id="pneuma-mook-maker-name" name="name" type="text" value="{{name}}" size="25" autocomplete="off">
+          </label>
+          <label for="pneuma-mook-maker-role">
+            <span>
+{{localize "PNEUMA_MOOK_MAKER.Form.Role"}}
+</span>
+            <select id="pneuma-mook-maker-role" name="role">
+              <option value="none"{{#if noRole}} selected{{/if}}>
+{{localize "PNEUMA_MOOK_MAKER.Form.None"}}
+</option>
+              {{#each roles}}
+<option value="{{key}}" {{#if selected}}selected{{/if}}>
+{{name}}
+</option>
+{{/each}}
+            </select>
+          </label>
+          <label class="pneuma-mook-maker-level" for="pneuma-mook-maker-level">
+            <span>
+{{localize "PNEUMA_MOOK_MAKER.Form.Level"}}
+</span>
+            <input id="pneuma-mook-maker-level" name="level" type="text" inputmode="numeric"
+              pattern="[0-9]" maxlength="1" value="{{activeRoleLevel}}" autocomplete="off">
+          </label>
+        </div>
+        {{#if tokenControls}}{{> tokenControls}}{{/if}}
+        </div>
+        <div class="pneuma-mook-maker-secondary-actions">
+          <button class="pneuma-mook-maker-purge" type="button" data-action="purge-gear">
+            <i class="fas fa-trash">
+</i>
+            {{localize "PNEUMA_MOOK_MAKER.Form.PurgeGear"}}
+          </button>
+          <button class="pneuma-mook-maker-promote" type="button" data-action="promote">
+            <i class="fas fa-user-graduate">
+</i>
+            {{localize "PNEUMA_MOOK_MAKER.Form.Promote"}}
+          </button>
+        </div>
+        </div>
+      </fieldset>
+      <fieldset class="pneuma-mook-maker-section pneuma-mook-maker-section-stats">
+        <legend>
+{{localize "PNEUMA_MOOK_MAKER.Form.SectionStats"}}
+</legend>
+        <div class="pneuma-mook-maker-stat-grid">
+        <fieldset>
+          <legend>
+{{localize "PNEUMA_MOOK_MAKER.Form.CombatNumber"}}
+</legend>
+          <div class="pneuma-mook-maker-combat-layout">
+            <div class="pneuma-mook-maker-primary-combat-options">
+              {{> radioChoices combat}}
+            </div>
+            <div class="pneuma-mook-maker-non-combat-pane">
+              <label class="pneuma-mook-maker-bullet-dodging">
+                <span>
+{{localize "PNEUMA_MOOK_MAKER.Form.CanDodgeBullets"}}
+</span>
+                <select name="bulletDodging">
+                  {{#each bulletChoices}}
+<option value="{{value}}">
+{{localize label}}
+</option>
+{{/each}}
+                </select>
+              </label>
+              <div class="pneuma-mook-maker-non-combat-options">
+                <fieldset>
+                  <legend>
+{{localize "PNEUMA_MOOK_MAKER.Form.SecondarySkills"}}
+</legend>
+                  {{> skillAdjustment name="secondarySkills"}}
+                </fieldset>
+                <fieldset>
+                  <legend>
+{{localize "PNEUMA_MOOK_MAKER.Form.TertiarySkills"}}
+</legend>
+                  {{> skillAdjustment name="tertiarySkills"}}
+                </fieldset>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>
+{{localize "PNEUMA_MOOK_MAKER.Form.Hitpoints"}}
+</legend>
+          {{> radioChoices hp}}
+        </fieldset>
+        <fieldset>
+          <legend>
+{{localize "PNEUMA_MOOK_MAKER.Form.Move"}}
+</legend>
+          {{> radioChoices move}}
+        </fieldset>
+        </div>
+      </fieldset>
+      <fieldset class="pneuma-mook-maker-section pneuma-mook-maker-section-gear">
+        <legend>
+{{localize "PNEUMA_MOOK_MAKER.Form.SectionGear"}}
+</legend>
+        <div class="pneuma-mook-maker-armor-grid">
+        <fieldset>
+          <legend>
+{{localize "PNEUMA_MOOK_MAKER.Form.BodyArmor"}}
+</legend>
+          {{> radioChoices bodyArmor}}
+        </fieldset>
+        <fieldset>
+          <legend>
+{{localize "PNEUMA_MOOK_MAKER.Form.HeadArmor"}}
+</legend>
+          {{> radioChoices headArmor}}
+        </fieldset>
+        <fieldset class="pneuma-mook-maker-weapons">
+          <legend>
+{{localize "PNEUMA_MOOK_MAKER.Form.Weapons"}}
+</legend>
+          {{#each weapons}}{{> weapon}}{{/each}}
+        </fieldset>
+        <p class="pneuma-mook-maker-armor-note">
+          <i class="fas fa-circle-info">
+</i>
+          {{localize "PNEUMA_MOOK_MAKER.Form.ArmorInventoryNote"}}
+        </p>
+        </div>
+      </fieldset>
+      <div class="pneuma-mook-maker-form-actions">
+        <button type="button" data-action="apply">
+          <i class="fas fa-check">
+</i>
+          {{localize "PNEUMA_MOOK_MAKER.Form.Apply"}}
+        </button>
+        <button type="button" data-action="cancel">
+          <i class="fas fa-times">
+</i>
+          {{localize "PNEUMA_MOOK_MAKER.Form.Cancel"}}
+        </button>
+      </div>
+    </form>

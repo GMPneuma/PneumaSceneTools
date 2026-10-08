@@ -1,5 +1,17 @@
 # Master roadmap
 
+## Sustainability review - implemented; live verification pending
+
+- Guard Apply, Purge and Promote against overlapping operations on the same token within a client.
+- Delete unfinished Scene imports after failure; retain completed Scenes and preserve retry state when cleanup itself fails. Import original JSON before applying overrides.
+- Preserve moved and current-version Mook templates, including intentionally empty templates; bound default-template fetches.
+- Isolate feature loading/registration and run ready tasks independently.
+- Filter and batch Scanner refreshes; resolve referenced documents without scanning the entire world on every panel render.
+- Add cancellable folder scanning and media preparation, bounded reads, and four concurrent JSON reads.
+- Move MookMaker markup into Handlebars and split view data, typed input validation, and event wiring.
+- Expand failure, rollback, cancellation, startup-isolation and rendered-form regressions. Live Foundry and multiplayer verification remains pending.
+
+
 ## SceneTools consolidation — implemented locally; live verification pending
 
 - All module-created in-world folders use document-type-specific `SceneTools` roots.

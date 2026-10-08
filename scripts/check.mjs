@@ -14,7 +14,7 @@ export async function check(base = root) {
   assert.equal(manifest.compatibility.maximum, "12");
   assert.ok(manifest.relationships.systems.some(system => system.id === "cyberpunk-red-core"));
   assert.ok(manifest.relationships.requires.some(module => module.id === "lib-wrapper"));
-  const featureAssets = ["templates/scene-creator.hbs", "templates/default-mook.json", "templates/skill-classifications.hbs", "templates/scanner.hbs", "templates/ap-editor.hbs", "templates/type-manager.hbs", "assets/actor/default-mook.png",
+  const featureAssets = ["templates/mook-maker.hbs","templates/scene-creator.hbs", "templates/default-mook.json", "templates/skill-classifications.hbs", "templates/scanner.hbs", "templates/ap-editor.hbs", "templates/type-manager.hbs", "assets/actor/default-mook.png",
     ...[1,2,3,4,5,6].map(n => `assets/tokens/mook-0${n}.png`), ...["computer","camera","turret","door","alarm","generic"].map(name => `assets/${name}.svg`)];
   for (const asset of [...manifest.esmodules, ...manifest.styles, ...manifest.languages.map(lang => lang.path), ...featureAssets]) {
     const sourceAsset = asset.endsWith(".js") ? asset.replace(/\.js$/, ".ts") : asset;

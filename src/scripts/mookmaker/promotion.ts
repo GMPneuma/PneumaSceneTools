@@ -1,3 +1,4 @@
+import {withMookOperation} from "./operations.js";
 import {
   CREATED_BY_MOOK_MAKER_FLAG,
   FOLDER_NAMES,
@@ -7,7 +8,11 @@ import {
 
 import {findSceneToolsFolder} from "../world-folders.js";
 
-async function promoteToken(token: Token): Promise<boolean> {
+export async function promoteToken(token: Token): Promise<boolean> {
+  return withMookOperation(token, () => promoteTokenUnlocked(token));
+}
+
+async function promoteTokenUnlocked(token: Token): Promise<boolean> {
   const actor = token.actor;
   if (!actor || token.document.actorLink) {
     ui.notifications?.warn(
@@ -84,7 +89,8 @@ export function confirmPromotion(token: Token, sourceDialog: Dialog): void {
         icon: '<i class="fas fa-user-graduate"></i>',
         label: game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.Ok"),
         callback: async () => {
-          if (await promoteToken(token)) sourceDialog.close();
+          try { if (await promoteToken(token)) await sourceDialog.close(); }
+          catch (error) { ui.notifications?.error(String(error)); }
         },
       },
       cancel: {

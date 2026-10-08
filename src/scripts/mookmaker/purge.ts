@@ -1,3 +1,4 @@
+import {withMookOperation} from "./operations.js";
 import { MODULE_ID } from "./constants.js";
 import {
   isPurgeAmmunitionEnabled,
@@ -143,7 +144,11 @@ function getPurgeableGear(actor: Actor): Item[] {
   }) as Item[];
 }
 
-async function purgeGear(token: Token): Promise<boolean> {
+export async function purgeGear(token: Token): Promise<boolean> {
+  return withMookOperation(token, () => purgeGearUnlocked(token));
+}
+
+async function purgeGearUnlocked(token: Token): Promise<boolean> {
   const actor = token.actor;
   if (!actor || token.document.actorLink) {
     ui.notifications?.warn(
@@ -236,7 +241,7 @@ export async function confirmPurgeGear(token: Token): Promise<boolean> {
           confirm: {
             icon: '<i class="fas fa-trash"></i>',
             label: game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PurgeGear"),
-            callback: async () => { resolve(await purgeGear(token)); },
+            callback: async () => { try { resolve(await purgeGear(token)); } catch (error) { ui.notifications?.error(String(error)); resolve(false); } },
           },
           cancel: {
             icon: '<i class="fas fa-times"></i>',

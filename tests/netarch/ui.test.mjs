@@ -312,3 +312,17 @@ test("missing libWrapper never installs a direct token override", () => {
   assert.throws(() => installAPDoubleClick(), /Enable libWrapper/);
   assert.equal(Token.prototype._onClickLeft2, original);
 });
+
+test("Scanner ignores unrelated updates and renders once for a batch of relevant token updates",async()=>{
+ environment();registerUI();const scene=makeScene("refresh");const ap=makeToken(scene,"ap");
+ const panel=openScanner({scene});let renders=0;panel.render=()=>{renders++;return panel};
+ await Hooks.call("updateActor",{id:"unrelated"},{system:{derivedStats:{hp:{value:1}}}});
+ await Hooks.call("updateToken",ap,{rotation:90});
+ await new Promise(resolve=>setTimeout(resolve,70));assert.equal(renders,0);
+ await Promise.all(Array.from({length:20},()=>Hooks.call("updateToken",ap,{x:100})));
+ await new Promise(resolve=>setTimeout(resolve,70));assert.equal(renders,1);
+ // Rendering must not enumerate the rest of the world's Actors or Scenes.
+ game.actors[Symbol.iterator]=()=>{throw Error("Full Actor scan")};
+ game.scenes[Symbol.iterator]=()=>{throw Error("Full Scene scan")};
+ assert.equal(panel.getData().rows.length,1);await panel.close();
+});
