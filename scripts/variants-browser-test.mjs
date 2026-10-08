@@ -10,7 +10,9 @@ try {
   const imports=Object.fromEntries([1,2].map(n=>[json(n),{name:`Corporate Eatery Interior Floor ${n}`,width:4000,height:3000,background:{src:image(n)},grid:{type:1,size:128,distance:2,units:"m"},walls:[{c:[n,0,n+10,10]}],lights:[]} ]));
   const files=[image(1),animated(1),image(2),animated(2),...Object.keys(imports),...Array.from({length:100},(_,i)=>`maps/unrelated-${i}.json`)];
   const {page,state,errors}=await fixture(browser,{selected:image(1),files,imports,video});
-  assert.equal(await page.locator('[data-plan]').count(),3);
+  await page.locator('[name="importMode"][value="edit"]').check();
+  await page.locator('button[type="submit"]').click();await page.locator('[name="variant-0"]').waitFor();
+  assert.equal(await page.locator('[data-plan]').count(),2);
   assert.ok(await page.locator('option').count()<30);
   await page.locator('[name="allVariants"]').check();await page.locator('[name="bothMedia"]').check();
   await page.locator('button[type="submit"]').click();await page.locator('[data-scene="3"]').waitFor();
@@ -29,6 +31,7 @@ try {
   assert.deepEqual(scenes.map(s=>s.walls[0].c[0]),[1,1,2,2]);
   assert.deepEqual(scenes.map(s=>s.environment.darknessLevel),[0.4,0.4,0.4,0.8]);
   assert.deepEqual(scenes.map(s=>s.background.src),[image(1),animated(1),image(2),animated(2)]);
+  assert.equal(await page.evaluate(()=>nativeImports.length),4);
   assert.deepEqual(errors,[]);
   console.log("Batch form: layouts/media, shared settings, per-scene override, bounded candidates, and partial-save retry without duplicates passed.");
 } finally {await browser.close()}

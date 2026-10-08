@@ -73,14 +73,6 @@ export function universalScene(data: Data, width: number, height: number, distan
   return {width, height, padding: 0, walls, lights, grid: {type: 1, size: Math.round(sx), distance}};
 }
 
-export function nativeScene(data: Data): Data {
-  const result = structuredClone(data);
-  for (const key of ["_id", "_stats", "folder", "sort", "thumb", "ownership", "active", "navigation"]) delete result[key];
-  // World links cannot be assumed to refer to the same documents in another world.
-  for (const key of ["journal", "journalEntryPage", "playlist", "playlistSound"]) delete result[key];
-  return result;
-}
-
 export function resolveAsset(path: string, files: string[]): string | null {
   if (files.includes(path)) return path;
   const matches = files.filter(file => basename(file) === basename(path));

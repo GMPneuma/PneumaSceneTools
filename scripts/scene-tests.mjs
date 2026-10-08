@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {gridSuggestions, identifyImport, universalScene, nativeScene, resolveAsset, basename} from "../dist/scripts/scene-data.js";
+import {gridSuggestions, identifyImport, universalScene, resolveAsset, basename} from "../dist/scripts/scene-data.js";
 import {scanFolders} from "../dist/scripts/creator.js";
 assert.equal(gridSuggestions(4000,3000,"map.webp",200)[0].size,200);
 assert.equal(gridSuggestions(4000,3000,"map-70px.webp")[0].size,70);
@@ -9,9 +9,6 @@ assert.equal(basename("maps/map%20one.webp?token=a"),"map one.webp");
 assert.equal(identifyImport({name:"Settings",width:1,height:1},"a.json"),null);
 const native = {name:"Map",width:4000,height:3000,background:{src:"old/map.webp"},grid:{size:100},walls:[{c:[1,2,3,4]}],lights:[{x:40}],_id:"old",folder:"old",journal:"old"};
 assert.equal(identifyImport(native,"map.json").kind,"Foundry Scene");
-const copy = nativeScene(native);
-assert.equal(copy._id,undefined); assert.equal(copy.journal,undefined); assert.deepEqual(copy.walls,native.walls);
-copy.walls[0].c[0] = 999; assert.equal(native.walls[0].c[0],1);
 const uvtt = {resolution:{pixels_per_grid:100,map_size:{x:40,y:30},map_origin:{x:2,y:3}},line_of_sight:[[{x:2,y:3},{x:4,y:5}]],portals:[{bounds:[{x:3,y:3},{x:4,y:3}],closed:true}],lights:[{position:{x:3,y:4},range:5,color:"ff123456",intensity:1}]};
 assert.equal(identifyImport(uvtt,"a.dd2vtt").kind,"Universal VTT");
 const converted = universalScene(uvtt,8000,6000,2);

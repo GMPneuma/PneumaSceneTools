@@ -38,13 +38,20 @@ export async function fixture(browser, {files, imports = {}, selected, video} = 
       async close(){this.element[0]?.remove();}
     }
     const values=new Map([['defaultGrid',100],['defaultDarkness',0],['defaultGlobalLight',true]]);
-    const game={user:{isGM:true},system:{grid:{distance:2,units:'m'}},folders:[],scenes:new Map(),settings:{get:(_id,key)=>values.get(key)}};
+    const game={version:"12.343",user:{isGM:true},system:{grid:{distance:2,units:'m'}},folders:[],scenes:new Map(),settings:{get:(_id,key)=>values.get(key)}};
     const foundry={utils:{getProperty:(object,path)=>path.split('.').reduce((value,key)=>value?.[key],object)}};
     const notices=[];const ui={notifications:{info:message=>notices.push(message),warn:message=>notices.push(message),error:message=>notices.push(message)}};
     class Folder {static async create(data){const folder={...data,id:'folder-'+game.folders.length,folder:game.folders.find(f=>f.id===data.folder)??null};game.folders.push(folder);return folder}}
     class Scene {
       constructor(data){this.data=structuredClone(data)}
       static fromJSON(json){return new this(JSON.parse(json))}
+      static async fromImport(data){(globalThis.importSources??=[]).push(structuredClone(data));return new this(data)}
+      async importFromJSON(json){
+        const imported=JSON.parse(json);(globalThis.nativeImports??=[]).push(structuredClone(imported));
+        if(globalThis.failNativeImport){globalThis.failNativeImport=false;throw Error('Simulated native import rejection')}
+        this.data={...imported,_id:this.id,folder:this.data.folder,active:this.data.active,navigation:false};this.name=this.data.name;return this;
+      }
+      get thumb(){return this.data.thumb}
       toObject(){return structuredClone(this.data)}
       getDimensions(){return {sceneX:100,sceneY:100}}
       static async create(data){
@@ -69,6 +76,6 @@ export async function fixture(browser, {files, imports = {}, selected, video} = 
     };
   },{files,selected});
   await page.evaluate(async()=>{const module=await import("/scripts/creator.js");globalThis.openCreator=module.openSceneCreator;module.openSceneCreator();});
-  await page.locator('[name="variant-0"]').waitFor();
+  await page.locator('[name="importMode"], [name="variant-0"]').first().waitFor();
   return {page,errors,state:()=>page.evaluate(()=>({scenes:[...game.scenes.values()].map(scene=>scene.data),folders:game.folders.map(folder=>({name:folder.name,parent:folder.folder?.name??null})),notices}))};
 }

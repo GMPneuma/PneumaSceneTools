@@ -34,6 +34,7 @@
 
 ## Limits and deferred work
 
+- JSON-first workflow (0.2.3): native import/migration, reusable per-map JSON assignment, complete payload preservation, and preview of imported settings/geometry implemented. Supersedes custom field stripping and JSON-centered selection rows. Live-world verification remains pending.
 - Form refinement (0.2.2): generated HTML, field-name rewriting, and stored builder closures removed. Native template rendering and partial-batch retry regressions pass; matching behavior retained.
 - Submission correction (0.2.1): final field names, direct form reads, root-form selection setup, and pre-save numeric validation implemented. Native serializer and browser regressions pass; live-world confirmation remains pending.
 - Live Foundry v12 verification and representative real map-pack imports remain pending.

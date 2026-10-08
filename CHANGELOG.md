@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3 - 2026-10-08
+
+- Restore JSON-first choice: import according to JSON or make changes. Review uses imported values; unchanged imports keep the JSON Scene name and settings.
+- Give each map layout an explicit Scene JSON assignment, allowing several variants to reuse one JSON. Discover all exports in conventional Foundry folders, including generically named files.
+- Use Foundry's asynchronous `Scene.fromImport()` for migration and `scene.importFromJSON()` for saving complete Scene data. Remove custom field stripping; Foundry owns import identity/state policies.
+- Show source files, embedded-content counts, imported walls, and light-source markers in the preview. Explicit map assignments replace the background source; other JSON data remains intact in unchanged mode.
+- Reuse pending destination documents when native import fails, avoiding duplicates on retry. Add four-variant/two-JSON, full-payload, preview, and import-retry browser regressions. Live-world persistence remains unverified.
+
 ## 0.2.2 - 2026-10-08
 
 - Move all selection/review controls into one native Handlebars template with final field names and automatic escaping. Remove generated form HTML, regex field rewriting, and per-scene builder closures.

@@ -1,12 +1,16 @@
 import {MODULE_ID} from "./settings.js";
-import {basename, gridSuggestions, list, nativeScene, positive, record, resolveAsset, universalScene, type Data, type ImportFile} from "./scene-data.js";
+import {basename, gridSuggestions, list, positive, record, resolveAsset, universalScene, type Data, type ImportFile} from "./scene-data.js";
 import {isVideo, matchingOverlays} from "./matching.js";
 
 export interface PreparedScene {
   map: string;
   data: Data;
+  source?: Data;
   created?: string;
+  pending?: string;
   imported: boolean;
+  sourcePath?: string;
+  useJson: boolean;
   defaults: {
     name: string; width: number; height: number; gridSize: number; distance: number; units: string;
     darkness: number; globalLight: boolean; tokenVision: boolean; fogExploration: boolean;
@@ -18,14 +22,14 @@ export interface PreparedScene {
   unresolved: string[];
 }
 
-export async function prepareScene(map: string, selected: ImportFile | undefined, files: string[], paired: boolean): Promise<PreparedScene> {
+export async function prepareScene(map: string, selected: ImportFile | undefined, files: string[], paired: boolean, mode: "json" | "edit"): Promise<PreparedScene> {
   const dimensions = await imageDimensions(map);
   if (selected?.kind === "Foundry Scene" && Number(String(record(selected.data._stats).coreVersion ?? "12").split(".")[0]) > 12) {
     throw new Error("This Scene export targets a newer Foundry version. Choose a Foundry v12 export or image-only creation.");
   }
   const systemGrid = record(game.system?.grid);
   let data: Data = {};
-  if (selected?.kind === "Foundry Scene") data = nativeScene(Scene.fromJSON(JSON.stringify(nativeScene(selected.data))).toObject() as unknown as Data);
+  if (selected?.kind === "Foundry Scene") data = (await Scene.fromImport(structuredClone(selected.data) as Scene.Source)).toObject() as unknown as Data;
   if (selected?.kind === "Universal VTT") data = universalScene(selected.data, dimensions.width, dimensions.height, positive(systemGrid.distance, 2));
   const width = positive(data.width, dimensions.width), height = positive(data.height, dimensions.height);
   data = {...data, width, height};
@@ -36,7 +40,7 @@ export async function prepareScene(map: string, selected: ImportFile | undefined
   const fix = (path: unknown): unknown => {
     if (typeof path !== "string" || !path) return path;
     const nearby = resolveAsset(path, files);
-    if (nearby) return nearby;
+    if (nearby) return mode === "edit" ? nearby : path;
     unresolved.push(path); return path;
   };
   if (data.foreground) data.foreground = fix(data.foreground);
@@ -46,13 +50,14 @@ export async function prepareScene(map: string, selected: ImportFile | undefined
   }
   for (const item of list(data.sounds)) { const sound = record(item); sound.path = fix(sound.path); }
   const types: [number,string][] = [[1,"Square"],[2,"Hex odd rows"],[3,"Hex even rows"],[4,"Hex odd columns"],[5,"Hex even columns"]];
-  return {map, data, imported: selected?.kind === "Foundry Scene", gridless: type === 0,
+  return {map, data, source: selected?.kind === "Foundry Scene" ? structuredClone(selected.data) : undefined,
+    imported: selected?.kind === "Foundry Scene", sourcePath: selected?.path, useJson: mode === "json" && selected?.kind === "Foundry Scene", gridless: type === 0,
     defaults: {
-      name: `${data.name ?? basename(map).replace(/\.[^.]+$/, "")}${paired ? isVideo(map) ? " (Animated)" : " (Static)" : ""}`,
+      name: `${data.name ?? basename(map).replace(/\.[^.]+$/, "")}${paired && mode === "edit" ? isVideo(map) ? " (Animated)" : " (Static)" : ""}`,
       width, height, gridSize: size, distance: positive(grid.distance, positive(systemGrid.distance, 2)), units: String(grid.units ?? systemGrid.units ?? "m"),
       darkness: Number(environment.darknessLevel ?? game.settings!.get(MODULE_ID, "defaultDarkness")),
       globalLight: Boolean(record(environment.globalLight).enabled ?? game.settings!.get(MODULE_ID, "defaultGlobalLight")),
-      tokenVision: Boolean(data.tokenVision ?? true), fogExploration: Boolean(data.fogExploration ?? true)
+      tokenVision: Boolean(data.tokenVision ?? true), fogExploration: Boolean(record(data.fog).exploration ?? data.fogExploration ?? true)
     },
     gridOptions: [...new Set([size, ...suggestions.map(s=>s.size)])].map(value=>({size: value, selected: value === size && type !== 0,
       label: `${value} px - ${(width/value).toFixed(2)} x ${(height/value).toFixed(2)} squares${value === size ? selected ? " (imported)" : " (suggested)" : ""}`})),
@@ -65,6 +70,13 @@ export async function prepareScene(map: string, selected: ImportFile | undefined
 /** Read one Scene's controls and validate before any documents are saved. */
 export function buildScene(scene: PreparedScene, form: FormData, index: number): Data {
   const prefix = `scene${index}-`, data = structuredClone(scene.data);
+  if (scene.useJson && scene.source) {
+    const original = structuredClone(scene.source);
+    if (typeof record(original.background).src === "string") original.background = {...record(original.background),src:scene.map};
+    else original.img = scene.map;
+    return original;
+  }
+  if (scene.imported) data._stats = {...record(data._stats),coreVersion:game.version};
   const number = (field: string, shared = false) => {
     const raw = form.get(shared ? field : prefix + field);
     if (raw === null || String(raw).trim() === "" || !Number.isFinite(Number(raw))) throw new Error(`Enter a valid number for ${field}.`);
@@ -86,7 +98,8 @@ export function buildScene(scene: PreparedScene, form: FormData, index: number):
   if (!Number.isFinite(darkness) || darkness < 0 || darkness > 1) throw new Error("Darkness must be between 0 and 1.");
   data.environment = {...environment, darknessLevel: darkness, globalLight: {...record(environment.globalLight), enabled: shared ? form.has("sharedGlobal") : checked("globalLight")}};
   data.tokenVision = shared ? form.has("sharedVision") : checked("tokenVision");
-  data.fogExploration = shared ? form.has("sharedFog") : checked("fogExploration");
+  data.fog = {...record(data.fog), exploration: shared ? form.has("sharedFog") : checked("fogExploration")};
+  delete data.fogExploration;
   data.active = false; data.navigation = false;
   data.background = {...record(data.background), src: scene.map}; delete data.img;
   const tiles = list(data.tiles);

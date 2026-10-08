@@ -1,6 +1,14 @@
 <form class="pneuma-scenetools" autocomplete="off">
   <p data-error role="alert">{{failure}}</p>
+  {{#if chooseImportMode}}
+  <p>Foundry Scene JSON found. Import according to JSON, or make changes?</p>
+  <label><input type="radio" name="importMode" value="json" checked> Import according to JSON</label>
+  <p>Use the selected map file and Foundry's standard Scene import for all other Scene data.</p>
+  <label><input type="radio" name="importMode" value="edit"> Make changes</label>
+  <p>Start with the JSON's Scene name, grid, walls, lighting, and other data, then adjust settings before importing.</p>
+  {{else}}
   {{#if review}}
+  {{#if edit}}
   <fieldset><legend>Shared lighting and vision</legend>
     <label><input name="applyShared" type="checkbox"> Apply these settings to all scenes</label>
     <div class="form-group"><label>Darkness</label><input name="sharedDarkness" type="number" value="{{defaults.darkness}}" min="0" max="1" step="any" required></div>
@@ -8,10 +16,12 @@
     <label><input name="sharedVision" type="checkbox" checked> Token vision</label>
     <label><input name="sharedFog" type="checkbox" checked> Fog exploration</label>
   </fieldset>
+  {{else}}<p>Review the JSON settings below. All Scene data is passed to Foundry's standard import, with the map file assigned above.</p><button type="button" data-make-changes>Make changes</button>{{/if}}
   {{#each scenes}}
   <details data-scene="{{index}}" {{#if open}}open{{/if}}>
     <summary>{{title}}{{#if created}} - saved{{/if}}</summary>
-    <fieldset class="pneuma-scene-fields" {{#if created}}disabled{{/if}}>
+    {{#if sourcePath}}<p>Scene source: {{sourcePath}}</p>{{/if}}
+    <fieldset class="pneuma-scene-fields" {{#if locked}}disabled{{/if}}>
       <label><input type="checkbox" name="{{prefix}}override"> Use this scene's lighting and vision</label>
       <div class="form-group"><label>Scene name</label><input name="{{prefix}}name" type="text" value="{{defaults.name}}" required></div>
       <div class="form-group"><label>Scene width (px)</label><input name="{{prefix}}width" data-field="width" type="number" value="{{defaults.width}}" min="1" step="1" required></div>
@@ -32,7 +42,8 @@
       <label><input name="{{prefix}}globalLight" type="checkbox" {{#if defaults.globalLight}}checked{{/if}}> Global illumination</label>
       <label><input name="{{prefix}}tokenVision" type="checkbox" {{#if defaults.tokenVision}}checked{{/if}}> Token vision</label>
       <label><input name="{{prefix}}fogExploration" type="checkbox" {{#if defaults.fogExploration}}checked{{/if}}> Fog exploration</label>
-      <p>{{wallCount}} walls · {{lightCount}} lights · {{tileCount}} imported tiles. Scene dimensions resize the background; imported coordinates stay fixed.</p>
+      <p>{{wallCount}} walls · {{lightCount}} lights · {{tileCount}} imported tiles. Cyan lines show imported walls; amber markers show light sources. Scene dimensions resize the background; imported coordinates stay fixed.</p>
+      {{#if imported}}<p>{{tokenCount}} tokens · {{soundCount}} sounds · {{noteCount}} notes · {{drawingCount}} drawings. Settings and flags outside this form are retained for the native import.</p>{{/if}}
       {{#if hasAssets}}
       <details><summary>Optional overlays and asset paths</summary>
         {{#if overlays.length}}
@@ -52,18 +63,18 @@
         {{#if unresolved.length}}<p>These imported asset paths could not be matched nearby. Confirm they exist on your server:</p><ul>{{#each unresolved}}<li>{{this}}</li>{{/each}}</ul>{{/if}}
       </details>
       {{/if}}
-      {{#if imported}}<p>Imported tokens and notes may refer to actors or journals from another world. Review them in the new Scene. Scene-level journal and playlist links are cleared.</p>{{/if}}
+      {{#if imported}}<p>All Scene fields and embedded documents use Foundry's standard JSON import. Review references to documents from another world afterward.</p>{{/if}}
     </fieldset>
   </details>
   {{/each}}
   {{else}}
   <p>Selected map: <strong>{{mapName}}</strong></p>
-  <p>Select the layouts and map formats to create.</p><button type="button" data-browse-json>Choose another Scene JSON or UVTT file</button>
+  <p>Select map variants and assign their Scene JSON. The same JSON may be used for several variants.</p><button type="button" data-browse-json>Choose another Scene JSON or UVTT file</button>
   {{#if selection.showAllVariants}}<label><input name="allVariants" type="checkbox"> Import all matching variants</label>{{/if}}
   <label><input name="bothMedia" type="checkbox"> Use static and animated where both are available</label>
   {{#each selection.plans}}
   <fieldset data-plan="{{index}}"><legend><label><input name="variant-{{index}}" type="checkbox" {{#if checked}}checked{{/if}}> {{label}}{{#if recommended}} (best match){{/if}}</label></legend>
-    {{#if item}}<p>{{item.path}} - {{item.kind}}</p>{{/if}}
+    {{#if ../selection.imports.length}}<div class="form-group"><label>Scene JSON</label><select name="json-{{index}}"><option value="">No JSON - map only</option>{{#each jsonOptions}}<option value="{{path}}" {{#if selected}}selected{{/if}}>{{label}}{{#if recommended}} (match){{/if}}</option>{{/each}}</select></div>{{/if}}
     <div class="form-group"><label>Static image</label><select name="static-{{index}}"><option value="">Choose static map</option>{{#each staticMaps}}<option value="{{path}}" {{#if selected}}selected{{/if}}>{{label}} (match)</option>{{/each}}</select><button type="button" data-map-picker="static-{{index}}">Browse</button></div>
     <div class="form-group"><label>Animated video</label><select name="animated-{{index}}"><option value="">Choose animated map</option>{{#each videos}}<option value="{{path}}" {{#if selected}}selected{{/if}}>{{label}} (match)</option>{{/each}}</select><button type="button" data-map-picker="animated-{{index}}">Browse</button></div>
     <div class="form-group"><label>Create</label><select name="mode-{{index}}"><option value="static" {{#if staticMode}}selected{{/if}}>Static</option><option value="animated" {{#if animatedMode}}selected{{/if}}>Animated</option><option value="both">Both (two scenes)</option></select></div>
@@ -71,5 +82,6 @@
   {{/each}}
   {{#if selection.warnings.length}}<details><summary>Scan warnings ({{selection.warnings.length}})</summary>{{#each selection.warnings}}<p>{{this}}</p>{{/each}}</details>{{/if}}
   {{/if}}
-  <footer class="sheet-footer"><button type="submit"><i class="fas fa-check"></i> {{#if review}}Create selected scenes{{else}}Review selected scenes{{/if}}</button></footer>
+  {{/if}}
+  <footer class="sheet-footer"><button type="submit"><i class="fas fa-check"></i> {{#if chooseImportMode}}Continue{{else}}{{#if review}}Create selected scenes{{else}}Review selected scenes{{/if}}{{/if}}</button></footer>
 </form>
