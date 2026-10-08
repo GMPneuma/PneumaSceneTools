@@ -22,6 +22,16 @@
 - Offer all variants and static/animated/both imports: implemented with explicit choices and per-variant map assignments, including layouts without JSON.
 - Offer closely matching OVERLAY/Foreground assets: implemented for static images and videos across the scanned pack. Supersedes showing every other image in the selected folder.
 
+## Fundamentals cleanup - 0.2.0
+
+- Consolidate folder lookup/creation and preserve renamed legacy folders.
+- Centralize compatibility checks and reduce the public API to the actual tools.
+- Restore native Foundry typing and explicitly type Scanner data.
+- Replace repeated dialogs with one native batch-review form, shared settings and per-scene overrides.
+- Filter unrelated JSON candidates before fetching and keep manual file-picker overrides.
+- Require saved-document confirmation; retain form values and skip saved entries on retry.
+- Run the shared browser contract suites in CI. Live persistence verification remains pending.
+
 ## Limits and deferred work
 
 - Live Foundry v12 verification and representative real map-pack imports remain pending.

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import {resolve} from "node:path";
-const {chromium}=await import(process.env.PNEUMA_PLAYWRIGHT_MODULE);
-const browser=await chromium.launch({headless:true,channel:process.env.PNEUMA_BROWSER_CHANNEL??"msedge"});
+const {chromium}=await import(process.env.PNEUMA_PLAYWRIGHT_MODULE ?? "playwright");
+const browser=await chromium.launch({headless:true,...(process.env.PNEUMA_BROWSER_CHANNEL?{channel:process.env.PNEUMA_BROWSER_CHANNEL}:{})});
 try {
   const page=await browser.newPage(),errors=[];
   page.on("pageerror",error=>errors.push(error.message));

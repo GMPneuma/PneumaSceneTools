@@ -1,24 +1,23 @@
-declare const canvas: any;
-declare const PIXI: any;
-declare const game: any;
-declare const loadTexture: any;
-declare const Hooks: any;
 import { MODULE_ID, iconPath } from "./constants.js";
 import { apData, canSeeAP, canSeePulse, isAP, pulseProgress, tokenCenter } from "./model.js";
 import { colorFor, serverNow } from "./actions.js";
 import { setting } from "./settings.js";
 
+interface APDisplay {
+  group: PIXI.Container; pulse: PIXI.Graphics; sprite: PIXI.Sprite; label: PIXI.Text;
+  token: Token; texturePath: string | null | undefined; size: number; color: number;
+}
 /** Client-only presentation. No shared lights, player-owned APs, or global fog changes. */
 export class APPresentation {
-  container: any;
-  entries: any;
-  lights: any;
-  pending: any;
+  container: PIXI.Container | null;
+  entries: Map<string, APDisplay>;
+  lights: Map<string, InstanceType<typeof CONFIG.Canvas.lightSourceClass>>;
+  pending: boolean;
 
   constructor() {
     this.container = null;
-    this.entries = new Map<any, any>();
-    this.lights = new Map<any, any>();
+    this.entries = new Map();
+    this.lights = new Map();
     this.pending = false;
     this.tick = this.tick.bind(this);
   }
@@ -29,7 +28,7 @@ export class APPresentation {
     queueMicrotask(() => {
       this.pending = false;
       if (!canvas.ready) return;
-      this.refresh().catch((error: any) => console.error(`${MODULE_ID} | AP display`, error));
+      this.refresh().catch((error) => console.error(`${MODULE_ID} | AP display`, error));
       canvas.perception.update({ initializeLightSources: true });
     });
   }
@@ -42,14 +41,14 @@ export class APPresentation {
       this.container.eventMode = "none";
       this.container.interactiveChildren = false;
       this.container.zIndex = 1000;
-      canvas.app.ticker.add(this.tick);
+      canvas.app!.ticker.add(this.tick);
     }
-    const wanted = new Set<any>();
-    for (const token of canvas.tokens.placeables) {
+    const wanted = new Set<string>();
+    for (const token of canvas.tokens!.placeables) {
       const doc = token.document;
-      if (!canvas.scene.tokens.has(doc.id) || !canSeeAP(doc, game.user)) continue;
-      wanted.add(doc.id);
-      let entry = this.entries.get(doc.id);
+      if (!canvas.scene!.tokens.has(doc.id!) || !canSeeAP(doc, game.user)) continue;
+      wanted.add(doc.id!);
+      let entry = this.entries.get(doc.id!);
       if (!entry) {
         const group = this.container.addChild(new PIXI.Container());
         const pulse = group.addChild(new PIXI.Graphics());
@@ -57,20 +56,20 @@ export class APPresentation {
         const label = group.addChild(new PIXI.Text("", { fontFamily: "Signika, sans-serif", fontSize: 14, fill: "#ffffff", stroke: "#111820", strokeThickness: 4, align: "center" }));
         sprite.anchor.set(0.5);
         label.anchor.set(0.5, 0);
-        entry = { group, pulse, sprite, label, token, texturePath: null };
-        this.entries.set(doc.id, entry);
+        entry = { group, pulse, sprite, label, token, texturePath: null, size: 0, color: 0 };
+        this.entries.set(doc.id!, entry);
       }
       entry.token = token;
       const path = Boolean(apData(doc).showName ?? setting("showLabels")) ? doc.texture.src : iconPath("generic");
-      if (!game.user.isGM && entry.texturePath !== path) {
+      if (!game.user!.isGM && entry.texturePath !== path) {
         entry.texturePath = path;
         entry.sprite.texture = PIXI.Texture.EMPTY;
         // Resolve textures without blocking concealment/removal of other APs.
-        loadTexture(path).then((texture: any) => {
-          if (this.entries.get(doc.id) !== entry || entry.sprite.destroyed || entry.texturePath !== path) return;
-          entry.sprite.texture = texture;
+        loadTexture(path ?? iconPath("generic")).then((texture) => {
+          if (this.entries.get(doc.id!) !== entry || entry.sprite.destroyed || entry.texturePath !== path) return;
+          entry.sprite.texture = (texture as PIXI.Texture | null) ?? PIXI.Texture.EMPTY;
           this.layout(entry);
-        }).catch((error: any) => {
+        }).catch((error) => {
           if (entry.texturePath !== path) return;
           entry.texturePath = null;
           console.warn(`${MODULE_ID} | Could not load AP artwork`, error);
@@ -86,38 +85,38 @@ export class APPresentation {
     this.tick();
   }
 
-  layout(entry: any) {
+  layout(entry: APDisplay) {
     const { token, sprite, label } = entry;
     const doc = token.document;
     const color = Number.parseInt(colorFor(apData(doc).netarch, doc.parent).slice(1), 16);
-    const width = token.w || doc.width * canvas.grid.size;
-    const height = token.h || doc.height * canvas.grid.size;
+    const width = token.w || (doc.width ?? 1) * canvas.grid!.size;
+    const height = token.h || (doc.height ?? 1) * canvas.grid!.size;
     entry.size = Math.max(width, height);
     entry.group.position.set(token.center.x, token.center.y);
     entry.color = color;
-    sprite.visible = !game.user.isGM;
+    sprite.visible = !game.user!.isGM;
     // Native token art remains the editable representation for the GM.
     sprite.width = width * Math.abs(doc.texture.scaleX ?? 1);
     sprite.height = height * Math.abs(doc.texture.scaleY ?? 1);
     sprite.rotation = (doc.rotation ?? 0) * Math.PI / 180;
     sprite.tint = color;
-    if (game.user.isGM && token.mesh) {
+    if (game.user!.isGM && token.mesh) {
       token.mesh.tint = color;
       // Hidden tokens are normally faded for the GM. Keep AP strokes opaque;
       // only the SVG background carries its own 25% opacity.
       token.mesh.alpha = 1;
     }
     label.text = doc.name;
-    label.style.fontSize = Math.max(10, Math.min(20, canvas.grid.size * 0.13));
+    label.style.fontSize = Math.max(10, Math.min(20, canvas.grid!.size * 0.13));
     label.position.set(0, height / 2 + 6);
-    label.visible = game.user.isGM || Boolean(apData(doc).showName ?? setting("showLabels"));
+    label.visible = game.user!.isGM || Boolean(apData(doc).showName ?? setting("showLabels"));
   }
 
   tick() {
     const now = serverNow();
     for (const entry of this.entries.values()) {
       const doc = entry.token.document;
-      if (!canvas.scene?.tokens.has(doc.id) || !canSeeAP(doc, game.user)) { entry.group.visible = false; continue; }
+      if (!canvas.scene?.tokens.has(doc.id!) || !canSeeAP(doc, game.user)) { entry.group.visible = false; continue; }
       entry.group.visible = true;
       entry.group.position.set(entry.token.center.x, entry.token.center.y);
       entry.pulse.clear();
@@ -131,14 +130,14 @@ export class APPresentation {
 
   initializeLights() {
     if (!canvas.scene || !canvas.effects) return;
-    const wanted = new Set<any>();
+    const wanted = new Set<string>();
     if (setting("revealStyle") === "vision") {
       const radiusUnits = Number(setting("visionRadius"));
       if (Number.isFinite(radiusUnits) && radiusUnits > 0 && canvas.scene.grid.distance > 0) {
-        const radius = radiusUnits * canvas.grid.size / canvas.scene.grid.distance;
-        for (const token of canvas.tokens.placeables) {
+        const radius = radiusUnits * canvas.grid!.size / canvas.scene.grid.distance;
+        for (const token of canvas.tokens!.placeables) {
           const doc = token.document;
-          if (!canvas.scene.tokens.has(doc.id) || !apData(doc).discovery?.revealed || !canSeeAP(doc, game.user)) continue;
+          if (!canvas.scene.tokens.has(doc.id!) || !apData(doc).discovery?.revealed || !canSeeAP(doc, game.user)) continue;
           const id = `${MODULE_ID}.${doc.id}`;
           wanted.add(id);
           let source = this.lights.get(id);
@@ -147,7 +146,7 @@ export class APPresentation {
             this.lights.set(id, source);
           }
           source.initialize({
-            ...tokenCenter(doc, canvas.grid.size), elevation: doc.elevation ?? 0,
+            ...tokenCenter(doc, canvas.grid!.size), elevation: doc.elevation ?? 0,
             bright: radius, dim: radius, radius,
             vision: true, walls: true, angle: 360,
             attenuation: 0, alpha: 0, luminosity: 0.5, disabled: false,
@@ -177,14 +176,14 @@ export class APPresentation {
     Hooks.on("canvasTearDown", () => this.destroy());
     Hooks.on("initializeLightSources", () => this.initializeLights());
     for (const hook of ["createToken", "updateToken", "deleteToken"]) {
-      Hooks.on(hook, (doc: any) => { if (isAP(doc) && doc.parent?.id === canvas.scene?.id) this.queueRefresh(); });
+      Hooks.on(hook, (doc: TokenDocument) => { if (isAP(doc) && doc.parent?.id === canvas.scene?.id) this.queueRefresh(); });
     }
-    Hooks.on("refreshToken", (token: any) => {
-      const entry = this.entries.get(token.id);
+    Hooks.on("refreshToken", (token: Token) => {
+      const entry = this.entries.get(token.id!);
       if (entry) this.layout(entry);
     });
     Hooks.on("updateUser", () => this.queueRefresh());
-    Hooks.on("updateScene", (scene: any) => { if (scene.id === canvas.scene?.id) this.queueRefresh(); });
+    Hooks.on("updateScene", (scene: Scene) => { if (scene.id === canvas.scene?.id) this.queueRefresh(); });
   }
 }
 

@@ -9,7 +9,7 @@ test("concurrent Actor features share one SceneTools root; Scene and Item roots 
   environment();
   const [templates,promoted,aps]=await Promise.all([ensureSceneToolsFolder("Actor",WORLD_FOLDERS.mookTemplates),ensureSceneToolsFolder("Actor",WORLD_FOLDERS.mookPromoted),ensureSceneToolsFolder("Actor",WORLD_FOLDERS.netarchAPs)]);
   const roots=game.folders.filter(folder=>folder.name==="SceneTools");assert.equal(roots.length,1);
-  for(const child of [templates,promoted,aps]) assert.equal(child.folder,roots[0].id);
+  for(const child of [templates,promoted,aps]) assert.equal(child.folder.id,roots[0].id);
   const imported=await ensureSceneToolsFolder("Scene",WORLD_FOLDERS.scenes),itemFolder=await ensureSceneToolsFolder("Item","Generated Items");
   assert.notEqual(imported.folder,templates.folder);assert.notEqual(itemFolder.folder,templates.folder);
   assert.equal(game.folders.filter(folder=>folder.name==="SceneTools").length,3);
@@ -19,6 +19,17 @@ test("concurrent Actor features share one SceneTools root; Scene and Item roots 
 test("players cannot provision in-world folders",async()=>{
   const {player}=environment();game.user=player;
   await assert.rejects(ensureSceneToolsFolder("Actor",WORLD_FOLDERS.netarchAPs),/Only a GM/);assert.equal(game.folders.size,0);
+});
+
+test("renamed legacy roots and children are reused when restoring a missing folder",async()=>{
+  environment();
+  const root=await Folder.create({name:"Renamed root",type:"Actor",folder:null,flags:{"pneuma-scenetools":{FolderKind:"root"}}});
+  const templates=await Folder.create({name:"Renamed templates",type:"Actor",folder:root.id,flags:{"pneuma-scenetools":{FolderKind:"templates"}}});
+  assert.equal(await ensureSceneToolsFolder("Actor",WORLD_FOLDERS.mookTemplates),templates);
+  const promoted=await ensureSceneToolsFolder("Actor",WORLD_FOLDERS.mookPromoted);
+  assert.equal(promoted.folder.id,root.id);
+  assert.equal(game.folders.filter(folder=>folder.folder===null).length,1);
+  assert.equal(game.folders.size,3);
 });
 
 test("MookMaker and Scanner startup use one module namespace without duplicate settings or APIs",async()=> {
@@ -33,7 +44,7 @@ test("MookMaker and Scanner startup use one module namespace without duplicate s
   await import("../dist/scripts/main.js");callbacks.get("init")();
   const api=game.modules.get("pneuma-scenetools").api;
   assert.equal(typeof api.openSceneCreator,"function");assert.equal(typeof api.netArchScanner.openScanner,"function");
-  assert.equal(api.mookMaker.moduleId,"pneuma-scenetools");assert.equal(api.folders.root,"SceneTools");
+  assert.deepEqual(Object.keys(api).sort(),["netArchScanner","openSceneCreator"]);
   assert.ok(settings.has("skillClassifications"));assert.ok(settings.has("apTypes"));assert.ok(settings.has("defaultGrid"));
   assert.ok(menus.has("manageTypes"));assert.ok(hooks.some(hook=>hook.key==="renderSceneDirectory"));
   assert.equal(hooks.filter(hook=>hook.key==="preCreateToken").length,2);

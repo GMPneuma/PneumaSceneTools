@@ -14,25 +14,24 @@ function registerFeature(name: string, register: () => void) {
 }
 
 Hooks.once("init", () => {
+  if (!supported()) return;
   registerDefaults();
   registerSceneCreator();
-  if (!supported()) return;
   registerFeature("MookMaker", registerMookMaker);
   registerFeature("NetArch Scanner", registerNetArchScanner);
   const module = game.modules?.get(MODULE_ID) as unknown as {api?: object} | undefined;
   if (module) {
     const scanner = netArchScannerApi();
-    module.api = Object.freeze({moduleId: MODULE_ID, openSceneCreator, ensureFolder: ensureSceneToolsFolder,
-      folders: WORLD_FOLDERS, mookMaker: {moduleId: MODULE_ID}, netArchScanner: scanner, ...scanner});
+    module.api = {openSceneCreator, netArchScanner: scanner};
   }
 });
 
 Hooks.once("ready", async () => {
-  if (game.user?.isGM) {
+  if (!supported()) return;
+  if (game.user?.isGM && game.users?.activeGM?.id === game.user.id) {
     try { await ensureSceneToolsFolder("Scene", WORLD_FOLDERS.scenes); }
     catch (error) { console.error(`${MODULE_ID} | Scene folder startup failed`, error); ui.notifications?.error("SceneTools scene folders could not be created. See the console."); }
   }
-  if (!supported()) return;
   for (const ready of [readyMookMaker, readyNetArchScanner]) {
     try { await ready(); }
     catch (error) { console.error(`${MODULE_ID} | Feature startup failed`, error); ui.notifications?.error("SceneTools feature startup failed. See the console."); }

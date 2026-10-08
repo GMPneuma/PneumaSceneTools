@@ -1,25 +1,11 @@
 import {
   CREATED_BY_MOOK_MAKER_FLAG,
-  FOLDER_KIND_FLAG,
   FOLDER_NAMES,
   MODULE_ID,
   PROMOTED_FROM_MOOK_MAKER_FLAG,
 } from "./constants.js";
 
-function findPromotedFolder(): Folder | undefined {
-  return game.folders?.find(
-    (folder) =>
-      folder.type === "Actor" &&
-      (foundry.utils.getProperty(folder, `flags.${MODULE_ID}.${FOLDER_KIND_FLAG}`) ===
-        "promoted" || folder.name === FOLDER_NAMES.promoted) &&
-      folder.folder?.type === "Actor" &&
-      (foundry.utils.getProperty(
-        folder.folder,
-        `flags.${MODULE_ID}.${FOLDER_KIND_FLAG}`,
-      ) === "root" || folder.folder.name === FOLDER_NAMES.root) &&
-      folder.folder.folder === null,
-  );
-}
+import {findSceneToolsFolder} from "../world-folders.js";
 
 async function promoteToken(token: Token): Promise<boolean> {
   const actor = token.actor;
@@ -29,7 +15,7 @@ async function promoteToken(token: Token): Promise<boolean> {
     );
     return false;
   }
-  const folder = findPromotedFolder();
+  const folder = findSceneToolsFolder("Actor", FOLDER_NAMES.promoted);
   if (!folder) {
     ui.notifications?.error(
       game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PromotedFolderMissing"),

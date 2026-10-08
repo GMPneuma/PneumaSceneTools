@@ -3,50 +3,9 @@ import {
   DEFAULT_MOOK_TEMPLATE_VERSION,
   DEFAULT_MOOK_TEMPLATE_VERSION_FLAG,
   FOLDER_NAMES,
-  FOLDER_KIND_FLAG,
   MODULE_ID,
 } from "./constants.js";
-import {ensureSceneToolsFolder} from "../world-folders.js";
-
-type FolderKind = keyof typeof FOLDER_NAMES;
-
-function findActorFolder(
-  kind: FolderKind,
-  name: string,
-  parentId: string | null,
-): Folder | undefined {
-  return game.folders?.find(
-    (folder) =>
-      folder.type === "Actor" &&
-      (folder.folder?.id ?? null) === parentId &&
-      (foundry.utils.getProperty(folder, `flags.${MODULE_ID}.${FOLDER_KIND_FLAG}`) ===
-        kind ||
-        folder.name === name),
-  );
-}
-
-async function getOrCreateActorFolder(
-  kind: FolderKind,
-  name: string,
-  parentId: string | null,
-): Promise<Folder | null> {
-  const existing = findActorFolder(kind, name, parentId);
-  if (existing) {
-    if (
-      foundry.utils.getProperty(existing, `flags.${MODULE_ID}.${FOLDER_KIND_FLAG}`) !==
-      kind
-    ) {
-      await (existing as unknown as {
-        setFlag(scope: string, key: string, value: unknown): Promise<unknown>;
-      }).setFlag(MODULE_ID, FOLDER_KIND_FLAG, kind);
-    }
-    return existing;
-  }
-
-  const folder = await ensureSceneToolsFolder("Actor", kind === "root" ? undefined : name);
-  await (folder as unknown as {setFlag(scope: string, key: string, value: unknown): Promise<unknown>}).setFlag(MODULE_ID, FOLDER_KIND_FLAG, kind);
-  return folder;
-}
+import {ensureSceneToolsFolder, findSceneToolsFolder} from "../world-folders.js";
 
 function getCharacterActorType(): string | undefined {
   const actorTypes = (game.documentTypes?.Actor ?? []) as readonly string[];
@@ -166,36 +125,11 @@ async function ensureDefaultMookTemplate(templatesFolder: Folder): Promise<void>
 export async function ensureMookMakerFolders(): Promise<void> {
   if (!game.user?.isGM || game.users?.activeGM?.id !== game.user.id) return;
 
-  try {
-    const root = await getOrCreateActorFolder("root", FOLDER_NAMES.root, null);
-    if (!root) return;
-
-    const [templatesFolder] = await Promise.all([
-      getOrCreateActorFolder("templates", FOLDER_NAMES.templates, root.id),
-      getOrCreateActorFolder("promoted", FOLDER_NAMES.promoted, root.id),
-    ]);
-    if (templatesFolder) await ensureDefaultMookTemplate(templatesFolder);
-  } catch (error) {
-    console.error(`${MODULE_ID} | Failed to create actor folders`, error);
-    ui.notifications?.error(
-      game.i18n.localize("PNEUMA_MOOK_MAKER.Folders.CreationFailed"),
-    );
-  }
+  const templatesFolder = await ensureSceneToolsFolder("Actor", FOLDER_NAMES.templates);
+  await ensureSceneToolsFolder("Actor", FOLDER_NAMES.promoted);
+  await ensureDefaultMookTemplate(templatesFolder);
 }
 
 export function isTemplateActor(actor: Actor | undefined): boolean {
-  if (!actor?.folder) return false;
-
-  const templates = actor.folder;
-  const root = templates.folder;
-
-  return (
-    templates.type === "Actor" &&
-    (foundry.utils.getProperty(templates, `flags.${MODULE_ID}.${FOLDER_KIND_FLAG}`) ===
-      "templates" || templates.name === FOLDER_NAMES.templates) &&
-    root?.type === "Actor" &&
-    (foundry.utils.getProperty(root, `flags.${MODULE_ID}.${FOLDER_KIND_FLAG}`) ===
-      "root" || root.name === FOLDER_NAMES.root) &&
-    root.folder === null
-  );
+  return Boolean(actor?.folder && actor.folder.id === findSceneToolsFolder("Actor", FOLDER_NAMES.templates)?.id);
 }

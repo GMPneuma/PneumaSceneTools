@@ -5,7 +5,8 @@
     "moduleResolution": "Bundler",
     "lib": [
       "ES2022",
-      "DOM"
+      "DOM",
+      "DOM.Iterable"
     ],
     "types": [
       "fvtt-types"
@@ -18,7 +19,8 @@
     "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "noEmitOnError": true
+    "noEmitOnError": true,
+    "noUnusedLocals": true
   },
   "include": [
     "src/**/*.ts"

@@ -5,7 +5,7 @@
 - Foundry v12 manifest targeting Cyberpunk RED.
 - Strict TypeScript, compiler-based build, manifest validation, and CI.
 - Init registration for settings and the Scenes sidebar control.
-- Integrated MookMaker and NetArch Scanner startup, settings, assets, templates, styling, and APIs; independent startup failure handling. libWrapper is required for scanner wrappers.
+- Integrated MookMaker and NetArch Scanner startup, settings, assets, templates, styling, and APIs; per-feature registration and ready error reporting. libWrapper is required for scanner wrappers.
 - Scanner runtime resolves native Foundry lexical globals; startup browser coverage verifies module loading, menus/API, the sidebar button, and seven template Actors.
 
 ## In-world folder convention
@@ -34,7 +34,7 @@ Imported the existing v0.9.0 functionality and ported runtime source to TypeScri
 - Common grid-size ranking, filename hints, Custom/Gridless choices, and square-grid preview.
 - World defaults for grid size, darkness, and global illumination.
 - Same-folder overlay thumbnails, opt-in tiles with placement/dimensions, and one full-map foreground.
-- Unambiguous nearby asset rematching, scan warnings, inactive creation, and native Scene configuration.
+- Unambiguous nearby asset rematching, scan warnings, and inactive creation; native Scene configuration remains available afterward.
 - Case-insensitive Foundry/Foundry Walls/FoundryWalls/FoundryScenes folder recognition and regex ranking for the provided Train Assault and Corporate Eatery naming conventions.
 - Explicit bulk variant selection, per-variant media assignments, Static/Animated/Both Scene creation, and image/video-only layout variants.
 - Matching OVERLAY/Foreground image and video suggestions, preserving floor and zoom layout differences.
@@ -43,4 +43,8 @@ Imported the existing v0.9.0 functionality and ported runtime source to TypeScri
 Type checks, imported regressions, folder/startup checks, and browser fixtures pass. These checks use mocked Foundry APIs. Live Foundry, hosting-provider file browsing, multiplayer visibility, and real map-pack alignment verification are pending. Existing standalone world data is not automatically migrated. See README.md for limits and feature guides.
 
 
-Scene creator submission uses the native Dialog submit path for mouse and keyboard. SceneTools/Imported Scenes is created at GM world startup. Scanner references native Foundry globals directly; type-only declarations emit no runtime adapters.
+Scene Creator uses one native FormApplication for selection and batch review, shared lighting/vision, per-scene overrides, and one batch submission. Empty overlay steps and automatic Scene configuration popups are removed. Failure retains form values and retries only unsaved scenes. World collection membership is checked before reporting success. SceneTools/Imported Scenes is provisioned by the active GM at world startup.
+
+Folder lookup and creation are shared by all features and recognize existing renamed folders by current or legacy flags. Scanner uses native Foundry types plus explicit AP, pulse, discovery, settings, and UI data types; global/constructor proxies and untyped global declarations are absent. Compatibility policy is centralized in the module entry point. The API exposes only openSceneCreator and netArchScanner.
+
+The browser suites run in CI. They cover startup, native-form contracts, static/animated batches, shared settings, invalid forms, failed persistence and retry. Live Foundry verification remains pending because browser attachment reports Debugger unattached.

@@ -1,14 +1,12 @@
-declare const game: any;
-declare const CONST: any;
 import { isAP } from "./model.js";
 
-export function isNetrunner(doc: any) {
-  return Boolean(doc?.actor && !isAP(doc) && doc.actor.items?.some((item: any) =>
-    item.type === "role" && String(item.name ?? "").trim().toLowerCase() === "netrunner"));
+export function isNetrunner(doc: TokenDocument | null | undefined) {
+  return Boolean(doc?.actor && !isAP(doc) && doc.actor.items?.some((item) =>
+    String(item.type) === "role" && String(item.name ?? "").trim().toLowerCase() === "netrunner"));
 }
 
-export function isPlayerOwned(doc: any) {
-  return Boolean(doc?.actor && game.users.some((user: any) => !user.isGM
-    && doc.actor.testUserPermission(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)));
+export function isPlayerOwned(doc: TokenDocument | null | undefined) {
+  return Boolean(doc?.actor && game.users!.some((user) => !user.isGM
+    && doc.actor!.testUserPermission(user, CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)));
 }
 

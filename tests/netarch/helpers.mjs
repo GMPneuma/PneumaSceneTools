@@ -64,7 +64,7 @@ export function environment() {
     settings: { get: (_module, key) => values.get(key), set: async (_module, key, value) => values.set(key, value), register: () => {} },
     time: { serverTime: 10000 }, system: { id: "cyberpunk-red-core" }, release: { generation: 12 },
   };
-  globalThis.foundry = { utils: { randomID: () => "random-id", hasProperty: (object, path) => getPath(object, path) !== undefined, mergeObject: (a, b) => ({ ...a, ...b }) } };
+  globalThis.foundry = { utils: { getProperty: getPath, randomID: () => "random-id", hasProperty: (object, path) => getPath(object, path) !== undefined, mergeObject: (a, b) => ({ ...a, ...b }) } };
   globalThis.CONST = { DOCUMENT_OWNERSHIP_LEVELS: { OWNER: 3 }, TOKEN_DISPLAY_MODES: { OWNER_HOVER: 20, NONE: 0 } };
   const docs = new Map();
   globalThis.fromUuid = async (uuid) => docs.get(uuid) ?? null;
@@ -79,7 +79,7 @@ export function environment() {
     }),
   };
   globalThis.Folder = { create: async (data) => {
-    const folder = { ...data, id: `folder-${game.folders.size}`, getFlag(scope, key) { return this.flags?.[scope]?.[key]; } };
+    const folder = { ...data, folder: game.folders.get(data.folder) ?? null, id: `folder-${game.folders.size}`, getFlag(scope, key) { return this.flags?.[scope]?.[key]; } };
     game.folders.set(folder.id, folder); return folder;
   } };
   return { gm, player, other, offline, values, notices, docs };

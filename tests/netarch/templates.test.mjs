@@ -71,7 +71,7 @@ test("AP templates use SceneTools/NetArchAPs and preserve GM folder edits", asyn
   await ensureTemplates();
   const folder = game.folders.find(entry => entry.name === "NetArchAPs");
   const root = game.folders.find(entry => entry.name === "SceneTools");
-  assert.equal(folder.folder, root.id);
+  assert.equal(folder.folder.id, root.id);
   folder.update = async changes => Object.assign(folder, changes);
   folder.name = "My APs";
   await ensureTemplates();

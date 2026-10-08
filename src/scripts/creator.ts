@@ -1,41 +1,124 @@
 import {MODULE_ID} from "./settings.js";
 import {basename, gridSuggestions, identifyImport, list, nativeScene, positive, record, resolveAsset, universalScene, type Data, type ImportFile} from "./scene-data.js";
-import {isFoundryFolder, isVideo, matchingOverlays, scanRoot} from "./matching.js";
-import {choosePlans} from "./planning.js";
+import {isFoundryFolder, isVideo, matchingOverlays, scanRoot, nameScore, parentPath} from "./matching.js";
+import {planSelection} from "./planning.js";
 import {ensureSceneToolsFolder, WORLD_FOLDERS} from "./world-folders.js";
 
 const escape = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]!));
 const rootElement = (html: JQuery | HTMLElement) => html instanceof HTMLElement ? html : html[0]!;
-let running = false;
+let creator: SceneCreator | undefined;
+let scanning = false;
 
-function promptForm(title: string, content: string, label = "Next", setup?: (root: HTMLElement) => void): Promise<HTMLFormElement | null> {
-  return new Promise(resolve => {
-    let answered = false;
-    class SceneCreatorDialog extends Dialog {
-      override submit(button: Parameters<Dialog["submit"]>[0], event?: PointerEvent) {
-        if (button === this.data.buttons.next) {
-          const form = rootElement(this.element).querySelector<HTMLFormElement>("form")!;
-          if (!form.reportValidity()) return;
-          answered = true;
-          resolve(form);
-        }
-        super.submit(button, event);
-      }
+export class SceneCreator extends FormApplication {
+  private selection: ReturnType<typeof planSelection>;
+  private scenes: PreparedScene[] = [];
+  private busy = false;
+  private failure = "";
+  constructor(private map: string, private imports: ImportFile[], private files: string[], private warnings: string[]) {
+    super({}); this.selection = planSelection(map, imports, files, warnings);
+  }
+  static override get defaultOptions(): FormApplicationOptions {
+    return {...super.defaultOptions, title: "Quick Scene Creator", template: `modules/${MODULE_ID}/templates/scene-creator.hbs`, width: 720, height: "auto", resizable: true, closeOnSubmit: false, submitOnClose: false, submitOnChange: false};
+  }
+  override getData() {
+    const shared = `<fieldset><legend>Shared lighting and vision</legend><label><input name="applyShared" type="checkbox"> Apply these settings to all scenes</label>
+      ${field("Darkness", "sharedDarkness", game.settings!.get(MODULE_ID,"defaultDarkness"),"number",'min="0" max="1" step="any" required')}
+      <label><input name="sharedGlobal" type="checkbox" ${game.settings!.get(MODULE_ID,"defaultGlobalLight") ? "checked" : ""}> Global illumination</label>
+      <label><input name="sharedVision" type="checkbox" checked> Token vision</label><label><input name="sharedFog" type="checkbox" checked> Fog exploration</label></fieldset>`;
+    return {failure: this.failure, content: this.scenes.length ? shared + this.scenes.map((scene,i)=>`<details data-scene="${i}" ${this.scenes.length === 1 ? "open" : ""}><summary>${escape(basename(scene.map))}${scene.created ? " — saved" : ""}</summary><label><input type="checkbox" name="override">Use this scene's lighting and vision</label>${scene.content}</details>`).join("") : this.selection.content,
+      label: this.scenes.length ? "Create selected scenes" : "Review selected scenes"};
+  }
+  override activateListeners(html: JQuery) {
+    super.activateListeners(html);
+    const root = html[0]!;
+    if (!this.scenes.length) {
+      this.selection.setup(root);
+      root.querySelector("[data-browse-json]")!.addEventListener("click",()=>new FilePicker({type:"any",callback:path=>{
+        void (async()=>{
+          const response=await fetch(path,{signal:AbortSignal.timeout(15000)});
+          if (!response.ok) throw new Error(`Could not read Scene file: HTTP ${response.status}`);
+          const imported=identifyImport(await response.json(),path);
+          if (!imported) throw new Error("Choose a Foundry Scene JSON or Universal VTT file.");
+          this.imports=this.imports.filter(item=>item.path!==path);this.imports.push(imported);
+          this.selection=planSelection(this.map,this.imports,this.files,this.warnings,path);this.render(false);
+        })().catch(error=>ui.notifications?.error(error instanceof Error?error.message:String(error)));
+      }}).render(true));
+      return;
     }
-    const dialog = new SceneCreatorDialog({title, content: `<form class="pneuma-scenetools">${content}</form>`, default: "next", buttons: {
-      next: {label, icon: '<i class="fas fa-check"></i>'}, cancel: {label: "Cancel"}
-    }, render: html => {
-      const root = rootElement(html), form = root.querySelector<HTMLFormElement>("form")!;
-      setup?.(root);
-      form.addEventListener("submit", event => {
-        event.preventDefault();
-        dialog.submit(dialog.data.buttons.next!);
+    for (const section of root.querySelectorAll<HTMLElement>("[data-scene]")) {
+      const index = Number(section.dataset.scene), scene = this.scenes[index]!;
+      for (const input of section.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[name]")) {
+        input.dataset.field = input.name; input.name = `scene${index}-${input.name}`;
+        if (scene.created) input.disabled = true;
+      }
+      if (!scene.created) setupPreview(section, scene.map);
+    }
+  }
+  protected override async _updateObject(_event: Event, submitted: Record<string, unknown>) {
+    if (this.busy) return;
+    this.busy = true;
+    try {
+      if (!game.user?.isGM) throw new Error("Only the GM can create scenes.");
+      if (!this.scenes.length) {
+        const plans = this.selection.read(this.form as HTMLFormElement);
+        if (!plans.length) throw new Error("Select at least one scene.");
+        const prepared: PreparedScene[] = [];
+        for (const plan of plans) for (const map of plan.maps) prepared.push(await prepareVariant(map, plan.selected, this.files, plan.maps.length > 1));
+        this.scenes = prepared; this.failure = ""; this.render(false); return;
+      }
+      const values = new FormData();
+      for (const [key,value] of Object.entries(submitted)) if (value !== false && value != null) values.set(key,String(value));
+      const data = this.scenes.map((scene,i) => {
+        if (scene.created) return undefined;
+        const result = scene.build(values, `scene${i}-`);
+        if (!String(result.name).trim()) throw new Error("Enter a Scene name.");
+        if (values.has("applyShared") && !values.has(`scene${i}-override`)) {
+          result.environment = {...record(result.environment), darknessLevel: Number(values.get("sharedDarkness")), globalLight: {...record(record(result.environment).globalLight), enabled: values.has("sharedGlobal")}};
+          result.tokenVision = values.has("sharedVision"); result.fogExploration = values.has("sharedFog");
+        }
+        return result;
       });
-    }, close: () => { if (!answered) resolve(null); }}, {width: 620, resizable: true});
-    dialog.render(true);
-  });
+      const folder = await ensureSceneToolsFolder("Scene", WORLD_FOLDERS.scenes);
+      for (let i = 0; i < data.length; i++) {
+        if (!data[i]) continue;
+        const scene = await Scene.create({...data[i],folder: folder.id} as Scene.CreateData);
+        if (!scene?.id || !game.scenes?.has(scene.id)) throw new Error("Foundry did not confirm the Scene was saved.");
+        this.scenes[i]!.created = scene.id;
+        try { const thumb = await scene.createThumbnail(); await scene.update({thumb: thumb.thumb}); }
+        catch (error) { console.warn(`${MODULE_ID} | Thumbnail generation`,error); }
+      }
+      ui.notifications?.info(`Created ${this.scenes.length} scenes in SceneTools/Imported Scenes.`);
+      this.busy = false; await this.close();
+    } catch (error) {
+      this.failure = `${error instanceof Error ? error.message : String(error)} (${this.scenes.filter(scene=>scene.created).length} scenes saved.)`;
+      console.error(`${MODULE_ID} | Import`,error); ui.notifications?.error(this.failure);
+      const message = this.form?.querySelector<HTMLElement>("[data-error]"); if (message) message.textContent = this.failure;
+    } finally { this.busy = false; }
+  }
+  override async close(options?: Application.CloseOptions) {
+    if (this.busy) return;
+    creator = undefined; return super.close(options);
+  }
 }
 
+export function openSceneCreator() {
+  if (!game.user?.isGM || scanning) return;
+  if (creator) { creator.render(true); return; }
+  const picker = new FilePicker({type: "imagevideo", callback: path => {
+    if (scanning) return; scanning = true;
+    const source = picker.activeSource, folder = picker.sources[source]?.target ?? parentPath(path);
+    const bucket = source === "s3" ? picker.sources.s3?.bucket : undefined;
+    void (async()=>{
+      ui.notifications?.info("Finding nearby Scene files…");
+      const scan = await scanFolders(scanRoot(folder), target=>FilePicker.browse(source,target,{bucket}));
+      if (!scan.files.includes(path)) scan.files.push(path);
+      const found = await readImports(scan.files,path);
+      creator = new SceneCreator(path,found.imports,scan.files,[...scan.warnings,...found.warnings]);
+      creator.render(true);
+    })().catch(error=>{console.error(`${MODULE_ID} | Scan`,error);ui.notifications?.error(error instanceof Error ? error.message : String(error));}).finally(()=>{scanning=false;});
+  }});
+  picker.render(true);
+}
 function imageDimensions(path: string): Promise<{width: number; height: number}> {
   return new Promise((resolve, reject) => {
     if (isVideo(path)) {
@@ -69,9 +152,12 @@ export async function scanFolders(start: string, browse: (path: string) => Promi
   return {files: [...files], warnings};
 }
 
-async function readImports(files: string[]) {
+async function readImports(files: string[], map: string) {
   const imports: ImportFile[] = [], warnings: string[] = [];
-  const candidates = files.filter(path => /\.(json|dd2vtt|uvtt|df2vtt)(?:[?#].*)?$/i.test(path));
+  const jsonFiles = files.filter(path => /\.(json|dd2vtt|uvtt|df2vtt)(?:[?#].*)?$/i.test(path));
+  const named = jsonFiles.filter(path => nameScore(path, map, true) >= 50);
+  const conventional = jsonFiles.filter(path => isFoundryFolder(parentPath(path)));
+  const candidates = named.length ? named : conventional.length === 1 ? conventional : [];
   for (const path of candidates) {
     try {
       const response = await fetch(path, {signal: AbortSignal.timeout(15000)});
@@ -87,30 +173,8 @@ function field(label: string, name: string, value: unknown, type = "number", att
   return `<div class="form-group"><label>${label}</label><input type="${type}" name="${name}" value="${escape(value)}" ${attributes}></div>`;
 }
 
-async function configure(map: string, source: FilePicker.SourceType, folder: string, bucket?: string) {
-  ui.notifications?.info("Searching this folder and subfolders for scene imports.");
-  const scan = await scanFolders(scanRoot(folder), path => FilePicker.browse(source, path, {bucket}));
-  if (!scan.files.includes(map)) scan.files.push(map);
-  const found = await readImports(scan.files);
-  const plans = await choosePlans(map, found.imports, scan.files, [...scan.warnings, ...found.warnings], promptForm);
-  if (!plans) return;
-  let created = 0;
-  for (const plan of plans) for (const media of plan.maps) {
-    try {
-      if (!await configureVariant(media, plan.selected, scan.files, plan.maps.length > 1)) {
-        if (created) ui.notifications?.info(`Stopped. ${created} scene(s) already created.`);
-        return;
-      }
-      created++;
-    } catch (error) {
-      console.error("pneuma-scenetools | Variant import failed", error);
-      ui.notifications?.error(`${error instanceof Error ? error.message : "Import failed"} (${created} scene(s) already created.)`);
-      return;
-    }
-  }
-}
-
-async function configureVariant(map: string, selected: ImportFile | undefined, files: string[], paired: boolean): Promise<boolean> {
+interface PreparedScene {map: string; content: string; created?: string; build(values: FormData, prefix: string): Data;}
+async function prepareVariant(map: string, selected: ImportFile | undefined, files: string[], paired: boolean): Promise<PreparedScene> {
   const dimensions = await imageDimensions(map);
   if (selected?.kind === "Foundry Scene" && Number(String(record(selected.data._stats).coreVersion ?? "12").split(".")[0]) > 12) {
     throw new Error("This Scene export targets a newer Foundry version. Choose a Foundry v12 export or image-only creation.");
@@ -129,7 +193,8 @@ async function configureVariant(map: string, selected: ImportFile | undefined, f
   const initial = positive(grid.size, suggestions[0]?.size ?? 100);
   const initialType = typeof grid.type === "number" ? grid.type : 1;
   const units = String(grid.units ?? systemGrid.units ?? "m");
-  const form = await promptForm("Quick Scene Creator — Details", `
+  data = {...data, width, height};
+  const content = `
     ${field("Scene name", "name", `${data.name ?? basename(map).replace(/\.[^.]+$/, "")}${paired ? isVideo(map) ? " (Animated)" : " (Static)" : ""}`, "text", "required")}
     ${field("Scene width (px)", "width", width, "number", 'min="1" step="1" required')}
     ${field("Scene height (px)", "height", height, "number", 'min="1" step="1" required')}
@@ -144,15 +209,8 @@ async function configureVariant(map: string, selected: ImportFile | undefined, f
     <div class="form-group"><label>Global illumination</label><input type="checkbox" name="globalLight" ${record(environment.globalLight).enabled ?? game.settings!.get(MODULE_ID, "defaultGlobalLight") ? "checked" : ""}></div>
     <div class="form-group"><label>Token vision</label><input type="checkbox" name="tokenVision" ${data.tokenVision ?? true ? "checked" : ""}></div>
     <div class="form-group"><label>Fog exploration</label><input type="checkbox" name="fogExploration" ${data.fogExploration ?? true ? "checked" : ""}></div>
-    <p>${list(data.walls).length} walls · ${list(data.lights).length} lights · ${list(data.tiles).length} imported tiles. Scene dimensions resize the background; imported coordinates stay fixed.</p>`, "Next", root => setupPreview(root, map));
-  if (!form) return false;
-  const values = new FormData(form), getNumber = (name: string) => Number(values.get(name));
-  const choice = String(values.get("gridChoice"));
-  data = {...data, name: String(values.get("name")).trim(), width: getNumber("width"), height: getNumber("height"), active: false, navigation: false,
-    background: {...record(data.background), src: map}, grid: {...grid, type: choice === "gridless" ? 0 : getNumber("gridType"), size: choice === "custom" ? getNumber("customGrid") : choice === "gridless" ? initial : Number(choice), distance: getNumber("distance"), units: String(values.get("units"))},
-    environment: {...environment, darknessLevel: getNumber("darkness"), globalLight: {...record(environment.globalLight), enabled: values.has("globalLight")}},
-    tokenVision: values.has("tokenVision"), fogExploration: values.has("fogExploration")};
-  delete data.img;
+    <p>${list(data.walls).length} walls · ${list(data.lights).length} lights · ${list(data.tiles).length} imported tiles. Scene dimensions resize the background; imported coordinates stay fixed.</p>`;
+
   const unresolved: string[] = [];
   const fix = (path: unknown): unknown => {
     if (typeof path !== "string" || !path) return path;
@@ -169,26 +227,23 @@ async function configureVariant(map: string, selected: ImportFile | undefined, f
     const sound = record(item); sound.path = fix(sound.path);
   }
   const overlayFiles = matchingOverlays(map, files);
-  const overlays = await promptForm("Quick Scene Creator - Overlays", `<p>Matching OVERLAY/Foreground files for <strong>${escape(basename(map))}</strong>. Placement is relative to the top-left of the map. Select the static or animated overlay you want; nothing is added automatically.</p>
+
+  const overlayContent = `<p>Matching OVERLAY/Foreground files for <strong>${escape(basename(map))}</strong>. Placement is relative to the top-left of the map. Select the static or animated overlay you want; nothing is added automatically.</p>
     ${overlayFiles.map((path, i) => `<fieldset data-overlay="${i}"><legend><label><input type="checkbox" name="overlay-${i}"> ${escape(basename(path))}</label></legend>${isVideo(path) ? `<video class="pneuma-overlay-preview" src="${escape(path)}" preload="metadata" muted controls></video>` : `<img class="pneuma-overlay-preview" src="${escape(path)}" loading="lazy">`}<div class="form-group"><label>Layer</label><select name="layer-${i}"><option value="tile">Tile</option><option value="foreground">Scene foreground (one image)</option></select></div>${field("X", `x-${i}`, 0)}${field("Y", `y-${i}`, 0)}${field("Width", `width-${i}`, data.width, "number", 'min="1" required')}${field("Height", `height-${i}`, data.height, "number", 'min="1" required')}</fieldset>`).join("") || "<p>No matching overlay or foreground files found.</p>"}
     ${unresolved.length ? `<p>These imported asset paths could not be matched nearby. They will be retained; confirm they exist on your server:</p><ul>${[...new Set(unresolved)].map(p => `<li>${escape(p)}</li>`).join("")}</ul>` : ""}
-    ${selected?.kind === "Foundry Scene" ? "<p>Imported tokens and notes may refer to actors or journals from another world. Review them in the new Scene. Scene-level journal and playlist links are cleared.</p>" : ""}`, "Create Scene", root => {
-      const validate = () => {
-        const form = root.querySelector<HTMLFormElement>("form")!, v = new FormData(form);
-        let foregrounds = 0;
-        for (let i = 0; i < overlayFiles.length; i++) {
-          const input = form.querySelector<HTMLInputElement>(`[name="width-${i}"]`)!;
-          input.setCustomValidity("");
-          if (!v.has(`overlay-${i}`) || v.get(`layer-${i}`) !== "foreground") continue;
-          if (++foregrounds > 1) input.setCustomValidity("Choose only one foreground image.");
-          else if (Number(v.get(`x-${i}`)) !== 0 || Number(v.get(`y-${i}`)) !== 0 || Number(v.get(`width-${i}`)) !== data.width || Number(v.get(`height-${i}`)) !== data.height) input.setCustomValidity("Foreground covers the whole map. Use a tile for custom placement.");
-        }
-      };
-      root.addEventListener("input", validate); root.addEventListener("change", validate);
-    });
-  if (!overlays) return false;
-  const overlayValues = new FormData(overlays), tiles = list(data.tiles);
-  const geometry = new Scene(data as Scene.CreateData).getDimensions();
+    ${selected?.kind === "Foundry Scene" ? "<p>Imported tokens and notes may refer to actors or journals from another world. Review them in the new Scene. Scene-level journal and playlist links are cleared.</p>" : ""}`;
+  const original = structuredClone(data);
+  return {map, content: content + (overlayFiles.length || unresolved.length ? '<details><summary>Optional overlays and asset paths</summary>' + overlayContent + '</details>' : ''), build(valuesAll, prefix) {
+    data = structuredClone(original);
+  const values = {get: (name: string) => valuesAll.get(prefix + name), has: (name: string) => valuesAll.has(prefix + name)}, getNumber = (name: string) => Number(values.get(name));
+  const choice = String(values.get("gridChoice"));
+  data = {...data, name: String(values.get("name")).trim(), width: getNumber("width"), height: getNumber("height"), active: false, navigation: false,
+    background: {...record(data.background), src: map}, grid: {...grid, type: choice === "gridless" ? 0 : getNumber("gridType"), size: choice === "custom" ? getNumber("customGrid") : choice === "gridless" ? initial : Number(choice), distance: getNumber("distance"), units: String(values.get("units"))},
+    environment: {...environment, darknessLevel: getNumber("darkness"), globalLight: {...record(environment.globalLight), enabled: values.has("globalLight")}},
+    tokenVision: values.has("tokenVision"), fogExploration: values.has("fogExploration")};
+  delete data.img;
+  const overlayValues = values, tiles = list(data.tiles);
+
   let foregroundCount = 0;
   for (let i = 0; i < overlayFiles.length; i++) {
     if (!overlayValues.has(`overlay-${i}`)) continue;
@@ -198,27 +253,23 @@ async function configureVariant(map: string, selected: ImportFile | undefined, f
       if (++foregroundCount > 1) throw new Error("Select only one Scene foreground image.");
       if (x !== 0 || y !== 0 || w !== data.width || h !== data.height) throw new Error("Scene foreground covers the whole map. Use a tile for custom placement.");
       data.foreground = overlayFiles[i];
-    } else tiles.push({texture: {src: overlayFiles[i]}, x: geometry.sceneX + x, y: geometry.sceneY + y, width: w, height: h});
+    } else {
+      const geometry = new Scene(data as Scene.CreateData).getDimensions();
+      tiles.push({texture: {src: overlayFiles[i]}, x: geometry.sceneX + x, y: geometry.sceneY + y, width: w, height: h});
+    }
   }
   data.tiles = tiles;
-  if (!game.user?.isGM) throw new Error("Only the GM can create scenes with this tool.");
-  data.folder = (await ensureSceneToolsFolder("Scene", WORLD_FOLDERS.scenes)).id;
-  const scene = await Scene.create(data as Scene.CreateData);
-  if (!scene) throw new Error("Scene creation was cancelled.");
-  ui.notifications?.info(`Created scene: ${scene.name}`);
-  scene.sheet?.render(true);
-  try { const thumb = await scene.createThumbnail(); await scene.update({thumb: thumb.thumb}); }
-  catch { ui.notifications?.warn("Scene created; thumbnail generation failed."); }
-  return true;
-}
 
+    return data;
+  }};
+}
 function setupPreview(root: HTMLElement, map: string) {
-  const form = root.querySelector<HTMLFormElement>("form")!, canvas = root.querySelector<HTMLCanvasElement>("canvas")!;
+  const form = root, canvas = root.querySelector<HTMLCanvasElement>("canvas")!;
   const image = isVideo(map) ? document.createElement("video") : new Image();
   if (image instanceof HTMLVideoElement) { image.preload = "auto"; image.muted = true; }
   const update = () => {
-    const values = new FormData(form), choice = String(values.get("gridChoice"));
-    const custom = form.querySelector<HTMLInputElement>('[name="customGrid"]')!;
+    const values = {get: (name: string) => form.querySelector<HTMLInputElement | HTMLSelectElement>(`[data-field="${name}"]`)!.value}, choice = String(values.get("gridChoice"));
+    const custom = form.querySelector<HTMLInputElement>('[data-field="customGrid"]')!;
     custom.disabled = choice !== "custom";
     const width = Number(values.get("width")), height = Number(values.get("height"));
     const size = choice === "custom" ? Number(custom.value) : Number(choice);
@@ -238,21 +289,6 @@ function setupPreview(root: HTMLElement, map: string) {
   if (image instanceof HTMLVideoElement) image.onloadeddata = update; else image.onload = update;
   image.src = map;
   form.addEventListener("input", update); form.addEventListener("change", update); update();
-}
-
-export function openSceneCreator() {
-  if (!game.user?.isGM || running) return;
-  const picker = new FilePicker({type: "imagevideo", callback: path => {
-    if (running) return;
-    running = true;
-    const source = picker.activeSource, folder = picker.sources[source]?.target ?? path.slice(0, path.lastIndexOf("/"));
-    const bucket = source === "s3" ? picker.sources.s3?.bucket : undefined;
-    void configure(path, source, folder, bucket).catch(error => {
-      console.error("pneuma-scenetools | Scene creator failed", error);
-      ui.notifications?.error(error instanceof Error ? error.message : "Scene creator failed.");
-    }).finally(() => { running = false; });
-  }});
-  picker.render(true);
 }
 
 export function registerSceneCreator() {
