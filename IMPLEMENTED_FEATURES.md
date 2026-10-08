@@ -6,6 +6,7 @@
 - Strict TypeScript, compiler-based build, manifest validation, and CI.
 - Init registration for settings and the Scenes sidebar control.
 - Integrated MookMaker and NetArch Scanner startup, settings, assets, templates, styling, and APIs; independent startup failure handling. libWrapper is required for scanner wrappers.
+- Scanner runtime resolves native Foundry lexical globals; startup browser coverage verifies module loading, menus/API, the sidebar button, and seven template Actors.
 
 ## In-world folder convention
 

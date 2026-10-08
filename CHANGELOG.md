@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 - 2026-10-08
+
+- Fix module startup failing before hook registration: use Foundry's lexical global classes and services instead of assuming they are globalThis properties. Add a browser regression that runs init and ready with lexical globals and verifies the sidebar button and MookMaker/AP provisioning.
+
 ## 0.1.1 - 2026-10-08
 
 - Fix the missing Quick Scene Creator button by supporting native sidebar header actions, the generic sidebar render hook, and already-rendered Scenes sidebars. Prevent duplicate buttons and retain GM-only visibility.

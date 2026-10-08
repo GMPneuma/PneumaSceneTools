@@ -55,5 +55,5 @@ Edit strict TypeScript under `src/scripts/`; use `.js` extensions for relative r
 
 Install using the [latest module manifest](https://github.com/GMPneuma/PneumaSceneTools/releases/latest/download/module.json). Release ZIPs contain the contents of `dist/` directly at the archive root. Build checks do not establish live Foundry compatibility.
 
-Optional browser fixtures: set `PNEUMA_PLAYWRIGHT_MODULE` to a Playwright ESM module URL, optionally set `PNEUMA_BROWSER_CHANNEL` to `chrome` or `msedge`, then run `node scripts/browser-test.mjs` and `node scripts/variants-browser-test.mjs` after building. The variants fixture also requires FFmpeg on PATH to generate a small local WebM. These fixtures use mocked Foundry APIs, with real image/video decoding and DOM form interactions.
+Optional browser fixtures: set `PNEUMA_PLAYWRIGHT_MODULE` to a Playwright ESM module URL, optionally set `PNEUMA_BROWSER_CHANNEL` to `chrome` or `msedge`, then run `node scripts/browser-test.mjs`, `node scripts/variants-browser-test.mjs`, and `node scripts/startup-browser-test.mjs` after building. The startup fixture uses Foundry-style lexical globals and verifies registration and template provisioning. The variants fixture also requires FFmpeg on PATH to generate a small local WebM. These fixtures use mocked Foundry APIs, with real image/video decoding and DOM form interactions.
 
