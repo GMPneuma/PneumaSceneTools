@@ -28,6 +28,10 @@ Hooks.once("init", () => {
 });
 
 Hooks.once("ready", async () => {
+  if (game.user?.isGM) {
+    try { await ensureSceneToolsFolder("Scene", WORLD_FOLDERS.scenes); }
+    catch (error) { console.error(`${MODULE_ID} | Scene folder startup failed`, error); ui.notifications?.error("SceneTools scene folders could not be created. See the console."); }
+  }
   if (!supported()) return;
   for (const ready of [readyMookMaker, readyNetArchScanner]) {
     try { await ready(); }

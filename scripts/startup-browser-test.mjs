@@ -59,9 +59,12 @@ try {
     if(globalThis.FormApplication!==undefined||globalThis.Hooks!==undefined)throw Error('Fixture must use lexical Foundry globals');
     await import('/modules/pneuma-scenetools/scripts/main.js');
     await Hooks.fire('init');await Hooks.fire('ready');
-    return {folders:[...game.folders].map(folder=>folder.name),actors:game.actors.size,button:document.querySelectorAll('.pneuma-scene-create').length,api:Boolean(game.modules.get('pneuma-scenetools').api)};
+    return {folders:[...game.folders].map(folder=>folder.name),sceneFolders:[...game.folders].filter(folder=>folder.type==='Scene').map(folder=>({id:folder.id,name:folder.name,parent:folder.folder?.id??null})),actors:game.actors.size,button:document.querySelectorAll('.pneuma-scene-create').length,api:Boolean(game.modules.get('pneuma-scenetools').api)};
   });
   assert.deepEqual(errors,[]);assert.equal(state.api,true);assert.equal(state.button,1);assert.equal(state.actors,7);
-  assert.deepEqual(new Set(state.folders),new Set(['SceneTools','MookMaker Templates','MookMaker Promoted Actors','NetArchAPs']));
+  assert.deepEqual(new Set(state.folders),new Set(['SceneTools','Imported Scenes','MookMaker Templates','MookMaker Promoted Actors','NetArchAPs']));
+  assert.equal(state.sceneFolders.length,2);
+  assert.equal(state.sceneFolders[1].name,"Imported Scenes");
+  assert.equal(state.sceneFolders[1].parent,state.sceneFolders[0].id);
   console.log("Foundry-style lexical globals: module loads, settings/API register, scene button appears, and seven template Actors provision.");
 } finally {await browser.close();}

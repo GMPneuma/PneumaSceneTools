@@ -1,4 +1,6 @@
-import {game, Hooks, ui} from "./runtime.js";
+declare const game: any;
+declare const Hooks: any;
+declare const ui: any;
 import { ensureTemplates } from "./templates.js";
 import { MODULE_ID } from "./constants.js";
 

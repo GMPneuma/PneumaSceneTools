@@ -11,18 +11,26 @@ let running = false;
 function promptForm(title: string, content: string, label = "Next", setup?: (root: HTMLElement) => void): Promise<HTMLFormElement | null> {
   return new Promise(resolve => {
     let answered = false;
-    const dialog = new Dialog({title, content: `<form class="pneuma-scenetools">${content}</form>`, buttons: {
+    class SceneCreatorDialog extends Dialog {
+      override submit(button: Parameters<Dialog["submit"]>[0], event?: PointerEvent) {
+        if (button === this.data.buttons.next) {
+          const form = rootElement(this.element).querySelector<HTMLFormElement>("form")!;
+          if (!form.reportValidity()) return;
+          answered = true;
+          resolve(form);
+        }
+        super.submit(button, event);
+      }
+    }
+    const dialog = new SceneCreatorDialog({title, content: `<form class="pneuma-scenetools">${content}</form>`, default: "next", buttons: {
       next: {label, icon: '<i class="fas fa-check"></i>'}, cancel: {label: "Cancel"}
     }, render: html => {
       const root = rootElement(html), form = root.querySelector<HTMLFormElement>("form")!;
       setup?.(root);
-      const accept = (event: Event) => {
-        event.preventDefault(); event.stopImmediatePropagation();
-        if (!form.reportValidity()) return;
-        answered = true; resolve(form); void dialog.close();
-      };
-      root.querySelector('[data-button="next"]')?.addEventListener("click", accept, true);
-      form.addEventListener("submit", accept);
+      form.addEventListener("submit", event => {
+        event.preventDefault();
+        dialog.submit(dialog.data.buttons.next!);
+      });
     }, close: () => { if (!answered) resolve(null); }}, {width: 620, resizable: true});
     dialog.render(true);
   });

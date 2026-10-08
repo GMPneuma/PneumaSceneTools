@@ -42,3 +42,5 @@ Imported the existing v0.9.0 functionality and ported runtime source to TypeScri
 
 Type checks, imported regressions, folder/startup checks, and browser fixtures pass. These checks use mocked Foundry APIs. Live Foundry, hosting-provider file browsing, multiplayer visibility, and real map-pack alignment verification are pending. Existing standalone world data is not automatically migrated. See README.md for limits and feature guides.
 
+
+Scene creator submission uses the native Dialog submit path for mouse and keyboard. SceneTools/Imported Scenes is created at GM world startup. Scanner references native Foundry globals directly; type-only declarations emit no runtime adapters.

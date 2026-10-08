@@ -1,4 +1,4 @@
-import {game} from "./runtime.js";
+declare const game: any;
 import { MODULE_ID, TYPES, iconPath } from "./constants.js";
 
 export function accessPointTypes({ includeDisabled = false }: any = {}) {

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 - 2026-10-08
+
+- Remove all scanner global and constructor proxy wrappers; use Foundry globals directly.
+- Route scene creator buttons and Enter through native Dialog submission, preserving validation and cancellation.
+- Create SceneTools/Imported Scenes folders when the GM loads the world.
+
 ## 0.1.2 - 2026-10-08
 
 - Fix module startup failing before hook registration: use Foundry's lexical global classes and services instead of assuming they are globalThis properties. Add a browser regression that runs init and ready with lexical globals and verifies the sidebar button and MookMaker/AP provisioning.

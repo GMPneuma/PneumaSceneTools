@@ -1,4 +1,8 @@
-import {FormApplication, foundry, game, FilePicker, ui} from "./runtime.js";
+declare const FormApplication: any;
+declare const foundry: any;
+declare const game: any;
+declare const FilePicker: any;
+declare const ui: any;
 import { MODULE_ID, iconPath } from "./constants.js";
 import { accessPointTypes, validateTypes } from "./types.js";
 import { ensureTemplates } from "./templates.js";

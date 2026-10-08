@@ -1,4 +1,8 @@
-import {canvas, PIXI, game, loadTexture, Hooks} from "./runtime.js";
+declare const canvas: any;
+declare const PIXI: any;
+declare const game: any;
+declare const loadTexture: any;
+declare const Hooks: any;
 import { MODULE_ID, iconPath } from "./constants.js";
 import { apData, canSeeAP, canSeePulse, isAP, pulseProgress, tokenCenter } from "./model.js";
 import { colorFor, serverNow } from "./actions.js";

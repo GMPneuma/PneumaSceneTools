@@ -1,4 +1,3 @@
-import {} from "./runtime.js";
 import { DEFAULT_COLOR, MODULE_ID, PALETTE, SCHEMA_VERSION, TYPES } from "./constants.js";
 
 export const isAP = (doc: any) => doc?.flags?.[MODULE_ID]?.accessPoint === true;

@@ -1,4 +1,3 @@
-import {} from "./runtime.js";
 import {MODULE_ID} from "../settings.js";
 export {MODULE_ID};
 export const MODULE_TITLE = "Pneuma's NetArch Scanner";

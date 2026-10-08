@@ -1,4 +1,13 @@
-import {ui, FormApplication, foundry, fromUuid, Application, game, canvas, Token, libWrapper, Hooks} from "./runtime.js";
+declare const ui: any;
+declare const FormApplication: any;
+declare const foundry: any;
+declare const fromUuid: any;
+declare const Application: any;
+declare const game: any;
+declare const canvas: any;
+declare const Token: any;
+declare const libWrapper: any;
+declare const Hooks: any;
 import { accessPointTypes, typeInfo } from "./types.js";
 import { MODULE_ID, MODULE_TITLE, TYPES } from "./constants.js";
 import { apData, isAP, sceneDistance, validateRadius, withinRadius } from "./model.js";

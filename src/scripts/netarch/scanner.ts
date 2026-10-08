@@ -1,4 +1,9 @@
-import {libWrapper, canvas, ui, foundry, game, Hooks} from "./runtime.js";
+declare const libWrapper: any;
+declare const canvas: any;
+declare const ui: any;
+declare const foundry: any;
+declare const game: any;
+declare const Hooks: any;
 import { MODULE_ID, SYSTEM_ID } from "./constants.js";
 import { scanContext } from "./model.js";
 import { activeGM } from "./templates.js";

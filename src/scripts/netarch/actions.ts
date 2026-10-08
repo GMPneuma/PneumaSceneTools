@@ -1,4 +1,8 @@
-import {game, canvas, CONST, foundry, fromUuid} from "./runtime.js";
+declare const game: any;
+declare const canvas: any;
+declare const CONST: any;
+declare const foundry: any;
+declare const fromUuid: any;
 import { activeGM } from "./templates.js";
 import { accessPointTypes, typeInfo, typeImage } from "./types.js";
 import { MODULE_ID, TYPES, iconPath } from "./constants.js";

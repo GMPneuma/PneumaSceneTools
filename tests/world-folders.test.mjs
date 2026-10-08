@@ -3,14 +3,7 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import {Collection, environment, getPath} from "./netarch/helpers.mjs";
 import {ensureSceneToolsFolder, WORLD_FOLDERS} from "../dist/scripts/world-folders.js";
-import {PIXI as runtimePIXI} from "../dist/scripts/netarch/runtime.js";
 
-test("scanner runtime preserves PIXI constructor static properties",()=>{
-  globalThis.PIXI={Texture:class {static EMPTY={empty:true};}};
-  assert.equal(runtimePIXI.Texture,globalThis.PIXI.Texture);
-  assert.equal(runtimePIXI.Texture.EMPTY,globalThis.PIXI.Texture.EMPTY);
-  assert.ok(new runtimePIXI.Texture() instanceof globalThis.PIXI.Texture);
-});
 
 test("concurrent Actor features share one SceneTools root; Scene and Item roots remain separate",async()=> {
   environment();

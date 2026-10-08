@@ -1,4 +1,7 @@
-import {game, Hooks, ui, canvas} from "./runtime.js";
+declare const game: any;
+declare const Hooks: any;
+declare const ui: any;
+declare const canvas: any;
 import { MODULE_ID, MODULE_TITLE, SYSTEM_ID } from "./constants.js";
 import { registerSettings } from "./settings.js";
 import { ensureTemplates, registerTokenGuards } from "./templates.js";

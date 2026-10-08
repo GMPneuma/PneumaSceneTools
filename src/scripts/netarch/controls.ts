@@ -1,4 +1,3 @@
-import {} from "./runtime.js";
 import { apData, pulseProgress } from "./model.js";
 import { setting, pulseLabel } from "./settings.js";
 export const CONTROL_OPTIONS = [

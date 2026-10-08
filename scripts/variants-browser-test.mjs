@@ -46,7 +46,8 @@ try {
     window.ui={notifications:{info:()=>{},warn:()=>{},error:message=>{window.failure=message;}}};
     window.Dialog=class {
       constructor(data){this.data=data;}
-      render(){this.element=document.createElement("section");this.element.innerHTML=`<h2>${this.data.title}</h2>${this.data.content}<button data-button="next">Next</button><button data-button="cancel">Cancel</button>`;document.body.append(this.element);this.element.querySelector('[data-button="cancel"]').onclick=()=>this.close();this.data.render(this.element);}
+      submit(button,event){button.callback?.(this.element,event);this.close();}
+      render(){this.element=document.createElement("section");this.element.innerHTML=`<h2>${this.data.title}</h2>${this.data.content}<button data-button="next">Next</button><button data-button="cancel">Cancel</button>`;document.body.append(this.element);this.element.querySelector('[data-button="cancel"]').onclick=()=>this.close();this.element.querySelectorAll("[data-button]").forEach(button=>button.onclick=event=>this.submit(this.data.buttons[button.dataset.button],event));this.element.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();this.submit(this.data.buttons[this.data.default]);}});this.data.render(this.element);}
       close(){this.element.remove();this.data.close();}
     };
     window.FilePicker=class {

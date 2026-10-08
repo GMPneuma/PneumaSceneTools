@@ -1,4 +1,8 @@
-import {game, Actor, Folder, CONST, Hooks} from "./runtime.js";
+declare const game: any;
+declare const Actor: any;
+declare const Folder: any;
+declare const CONST: any;
+declare const Hooks: any;
 import { accessPointTypes, typeImage } from "./types.js";
 import { MODULE_ID, MODULE_TITLE, SYSTEM_ID, TYPES, iconPath } from "./constants.js";
 import { apData, freshAP, isAP } from "./model.js";

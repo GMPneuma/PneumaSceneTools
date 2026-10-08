@@ -1,4 +1,5 @@
-import {game, CONST} from "./runtime.js";
+declare const game: any;
+declare const CONST: any;
 import { isAP } from "./model.js";
 
 export function isNetrunner(doc: any) {
