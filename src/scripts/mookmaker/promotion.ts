@@ -2,7 +2,6 @@ import {withMookOperation} from "./operations.js";
 import {
   CREATED_BY_MOOK_MAKER_FLAG,
   DEFAULT_MOOK_TEMPLATE_FLAG,
-  DEFAULT_MOOK_TEMPLATE_VERSION_FLAG,
   FOLDER_NAMES,
   MODULE_ID,
   PROMOTED_FROM_MOOK_MAKER_FLAG,
@@ -40,7 +39,6 @@ async function promoteTokenUnlocked(token: Token): Promise<boolean> {
     const flags = (actorData.flags ??= {}) as Record<string, Record<string, unknown>>;
     const moduleFlags = (flags[MODULE_ID] ??= {});
     delete moduleFlags[DEFAULT_MOOK_TEMPLATE_FLAG];
-    delete moduleFlags[DEFAULT_MOOK_TEMPLATE_VERSION_FLAG];
     moduleFlags[PROMOTED_FROM_MOOK_MAKER_FLAG] = true;
     Object.assign(actorData, {
       name: actor.name,

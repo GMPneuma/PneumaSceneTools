@@ -51,7 +51,7 @@ export function environment() {
     revealStyle: "fog", visionRadius: 0.5, scannerRadius: 0,
     revealAudience: "all", pulseAudience: "all", autoPulse: true,
     pulseDuration: 1.4,
-    showLabels: true, autoScanner: true, netarchColors: { entries: [] },
+    showRevealAll: true, autoScanner: true, netarchColors: { entries: [] },
   }));
   const gm = { id: "gm", name: "GM", isGM: true, active: true };
   const player = { id: "player", name: "Netrunner player", isGM: false, active: true };
@@ -64,12 +64,15 @@ export function environment() {
     settings: { get: (_module, key) => values.get(key), set: async (_module, key, value) => values.set(key, value), register: () => {} },
     time: { serverTime: 10000 }, system: { id: "cyberpunk-red-core" }, release: { generation: 12 },
   };
-  globalThis.foundry = { utils: { getProperty: getPath, randomID: () => "random-id", hasProperty: (object, path) => getPath(object, path) !== undefined, mergeObject: (a, b) => ({ ...a, ...b }) } };
-  globalThis.CONST = { DOCUMENT_OWNERSHIP_LEVELS: { OWNER: 3 }, TOKEN_DISPLAY_MODES: { OWNER_HOVER: 20, NONE: 0 } };
+  game.users.activeGM=gm;
+  globalThis.CONFIG={RegionBehavior:{dataModels:{}}};
+  globalThis.foundry = { data:{regionBehaviors:{RegionBehaviorType:class{}}}, utils: { getProperty: getPath, randomID: () => "random-id", hasProperty: (object, path) => getPath(object, path) !== undefined, mergeObject: (a, b) => ({ ...a, ...b }) } };
+  globalThis.CONST = { REGION_VISIBILITY:{GAMEMASTER:1}, REGION_EVENTS:{TOKEN_ENTER:"tokenEnter",TOKEN_EXIT:"tokenExit",TOKEN_MOVE:"tokenMove",TOKEN_TURN_START:"tokenTurnStart",TOKEN_TURN_END:"tokenTurnEnd"}, DOCUMENT_OWNERSHIP_LEVELS: { OWNER: 3 }, TOKEN_DISPLAY_MODES: { OWNER_HOVER: 20, NONE: 0 } };
   const docs = new Map();
   globalThis.fromUuid = async (uuid) => docs.get(uuid) ?? null;
   globalThis.fromUuidSync = (uuid) => docs.get(uuid) ?? null;
   globalThis.canvas = { ready: true, scene: null, tokens: { controlled: [], placeables: [], get: (id) => canvas.tokens.placeables.find((token) => token.id === id) }, grid: { size: 100 } };
+  globalThis.Item = {createDocuments: async data => data.map(entry => {const item={...structuredClone(entry),id:`world-item-${game.items.size}`};game.items.set(item.id,item);return item;})};
   globalThis.Actor = {
     updateDocuments: async (updates) => updates.map((changes) => {
       const actor = game.actors.get(changes._id); applyChanges(actor, changes); return actor;

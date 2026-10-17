@@ -1,0 +1,21 @@
+<aside class="hazard-library" aria-label="Hazards on this scene">
+  <div class="hazard-library-heading"><h2>Hazards</h2><span class="notes">On this scene</span></div>
+  <div class="hazard-library-list">
+    {{#each entries}}<div class="hazard-library-entry" {{#if color}}style="--hazard-region-color:{{color}}"{{/if}}>
+      <button type="button" data-action="selectScene" data-id="{{id}}" {{#if selected}}aria-current="true"{{/if}}>
+        <div class="hazard-card-title"><span>{{name}}</span><small>{{status}}</small></div>
+        {{#if error}}<span class="hazard-warning" title="{{error}}" aria-label="Incomplete hazard">&#9888;</span>{{/if}}
+      </button>
+      {{#if controls}}{{> "modules/pneuma-scenetools/templates/hazard-controls.hbs" controls}}{{/if}}
+    </div>{{else}}<p class="notes">No hazards in this scene.</p>{{/each}}
+  </div>
+  {{#if closeEditor}}<button type="button" data-action="toggleEditor">Close editor</button>{{/if}}
+  <button type="button" data-action="newHazard">Add hazard</button>
+  <button type="button" data-action="presetFiles">Import / Export</button>
+  <div class="hazard-preset-files" {{#unless presetFilesOpen}}hidden{{/unless}}>
+    <h3>Preset files</h3><button type="button" data-action="export">Export presets</button>
+    <input type="file" name="presetFile" accept="application/json,.json">
+    <button type="button" data-action="import">Import file</button><button type="button" data-action="presetDelete">Delete selected preset</button>
+  </div>
+  <p role="alert" aria-live="polite"></p>
+</aside>

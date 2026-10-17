@@ -1,0 +1,10 @@
+Scene Tools city-map pictograms
+
+Artwork: Pictogrammers / Material Design Icons contributors
+Source: https://github.com/Templarian/MaterialDesign
+Revision: 2424e748e0cc63ab7b9c095a099b9fe239b737c0
+License: Apache License 2.0 (LICENSE-APACHE-2.0.txt), with the upstream license notice in LICENSE.txt.
+
+Changes: selected icons renamed to city-map location names; SVGs normalized to white fill and transparent background for Foundry Icon Tint. Original path geometry preserved.
+
+Cargo Container, H Landing Pad, NetRunner circuit, and Ripperdoc scalpel are Scene Tools artwork. Cyberware Dealer adapts Material Design Icons arm-flex with mechanical joint/seam cutouts.

@@ -1,0 +1,41 @@
+<form class="pneuma-patrol" autocomplete="off">
+<div class="patrol-columns"><section class="patrol-settings">
+  <div class="form-group"><label>Token</label><select name="token">{{#each tokens}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></div>
+  <div class="form-group patrol-speed"><label>Movement speed</label><div class="form-fields"><input name="speed" type="number" min="0.1" max="5" step="0.1" value="{{config.speed}}"><span>grid spaces/sec</span></div></div>
+  <div class="form-group patrol-section-start"><label>Mode</label><select name="mode">{{selectOptions modes selected=config.mode}}</select></div>
+<section data-mode-options>
+  <section data-mode="roam">
+  <div class="form-group" data-mode="roam"><label>Region</label><select name="regionId"><option value="">Choose a Region</option>{{selectOptions regions selected=config.regionId}}</select></div>
+    <div class="form-group"><label>Favor distant locations</label><input type="checkbox" name="favorDistance"></div>
+    <div class="form-group"><label>Maximum movement time (seconds)</label><input name="maxMovementTime" type="number" min="0" max="3600" step="0.1" value="{{config.maxMovementTime}}"></div>
+  </section>
+  <div class="form-group" data-mode="route"><label>Pauses at waypoints</label><input type="checkbox" name="waypointPauses"></div>
+<div data-mode="route">    <div class="form-group"><label>Pauses along path</label><input type="checkbox" name="pathPauses"></div>
+</div>
+  <div class="form-group" data-arrival-pause><label>Pause duration (seconds)</label><div class="form-fields"><input aria-label="Minimum pause" name="pauseMin" type="number" min="0" max="3600" step="0.1" value="{{config.pauseMin}}"><span>to</span><input aria-label="Maximum pause" name="pauseMax" type="number" min="0" max="3600" step="0.1" value="{{config.pauseMax}}"></div></div>
+  <section data-mode="route">
+    <div data-option="pathPauses">
+      <div class="form-group"><label>Pause every (movement seconds)</label><input name="pathPauseEvery" type="number" min="1" max="3600" step="1" value="{{config.pathPauseEvery}}"></div>
+      <div class="form-group"><label>Path pause duration (seconds)</label><div class="form-fields"><input aria-label="Minimum path pause" name="pathPauseMin" type="number" min="0" max="3600" step="0.1" value="{{config.pathPauseMin}}"><span>to</span><input aria-label="Maximum path pause" name="pathPauseMax" type="number" min="0" max="3600" step="0.1" value="{{config.pathPauseMax}}"></div></div>
+    </div>
+</section>
+<section data-mode="route">    <div data-side-tracks>
+    <div class="form-group"><label>Side tracks</label><input type="checkbox" name="sideTracks"></div>
+    <div class="form-group" data-option="sideTracks"><label>Maximum deviation (grid spaces)</label><input name="sideTrackDistance" type="number" min="0" max="20" step="0.1" value="{{config.sideTrackDistance}}"></div>
+    </div>
+  </section>
+</section>
+<div class="form-group patrol-section-start"><label>This is a vehicle</label><span data-vehicle-status></span></div>
+  <div class="form-group" data-vehicle-front><label>Artwork front</label><select name="frontOffset"><option value="0">Up (0°)</option><option value="90">Right (90°)</option><option value="180">Down (180°)</option><option value="270">Left (270°)</option></select></div>
+</section>
+<aside class="patrol-activity"><h3>Recent operations</h3><ol data-operations role="log" aria-label="Recent patrol operations" aria-live="polite"></ol>
+  <section data-mode="route">
+    <button type="button" data-action="pick"><i class="fas fa-map-marker-alt"></i> Place Waypoints</button>
+    <div class="patrol-waypoints"><table><thead><tr><th>Stop</th><th>X</th><th>Y</th><th></th></tr></thead><tbody data-stops></tbody></table></div>
+  </section>
+</aside></div>
+  <p role="alert"></p>
+  <footer class="patrol-actions">
+    <button type="button" data-action="save">Save</button><button type="button" data-action="start"><i class="fas fa-play"></i> Start</button><button type="button" data-action="stop"><i class="fas fa-stop"></i> Stop</button><button type="button" data-action="stop-all">Stop scene</button>
+  </footer>
+</form>

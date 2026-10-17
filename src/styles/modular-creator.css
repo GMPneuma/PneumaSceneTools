@@ -1,0 +1,54 @@
+.pneuma-modular-creator {min-width:380px;max-width:calc(100vw - 24px);max-height:calc(100vh - 24px)}
+.pneuma-modular-creator .window-content {overflow:auto}
+.modular-body {display:flex;flex-direction:column;min-height:0;height:100%;gap:6px}
+.modular-body fieldset {border:0;padding:0;margin:0;display:flex;flex:1;flex-direction:column;min-height:0;gap:8px}
+.modular-row {display:flex;align-items:center;gap:6px;flex:none}
+.modular-row label {flex:none}
+.modular-row select,.modular-row input {flex:1;min-width:0}
+.modular-row button {width:auto;flex:none;margin:0;min-width:30px}
+.modular-row span {flex:1}
+.modular-row [name=gridSize] {flex:0 0 68px}
+.modular-body .selected {outline:2px solid var(--color-border-highlight, currentColor);outline-offset:-3px}
+.modular-picker {display:grid;grid-template-columns:230px minmax(0,1fr);gap:12px;flex:1;min-height:140px;overflow:hidden}
+.modular-library {display:flex;flex-direction:column;min-height:0;min-width:0;gap:6px}
+.modular-media-tabs {display:flex;gap:4px;flex:none}
+.modular-media-tabs button {flex:1;width:auto;margin:0;line-height:26px}
+.modular-media-tabs .active {outline:1px solid var(--color-border-highlight, currentColor);outline-offset:-2px}
+.modular-library .modular-images {flex:1}
+.modular-images {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;overflow:auto;align-content:start;min-height:0;padding:3px}
+.modular-image {position:relative;display:flex;align-items:center;justify-content:center;min-width:0;height:70px;padding:3px;margin:0;line-height:1.2;overflow:hidden}
+.modular-image[hidden] {display:none}
+.modular-image img,.modular-image video {width:100%;height:62px;object-fit:contain;border:0;flex:none}
+.modular-hover-action {position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);color:#fff;font-size:11px;opacity:0;pointer-events:none}
+.modular-image:hover .modular-hover-action,.modular-image:focus-visible .modular-hover-action {opacity:1}
+.modular-large-preview {position:relative;min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.modular-large-preview img,.modular-large-preview video {position:absolute;width:100%;height:100%;object-fit:contain;border:0}
+.modular-image video,.modular-large-preview video {pointer-events:none;}
+.modular-large-preview [hidden] {display:none}
+.modular-preview-hint {font-size:12px;text-align:center}
+.modular-footer {display:flex;align-items:center;gap:8px;flex:none}
+.modular-footer>span {flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.modular-footer>button {width:auto;margin:0}
+.modular-body .notes {margin:0;font-size:12px;flex:none}
+.modular-status {max-height:52px;overflow:auto}
+#pneuma-modular-canvas {position:fixed;inset:0;pointer-events:none;z-index:60}
+#pneuma-modular-canvas button {pointer-events:auto;width:auto;min-height:30px;padding:3px 8px;color:var(--color-text-light-highlight, #f0f0e0);background:rgba(0,0,0,.5);border:1px solid var(--color-border-dark, #555);border-radius:4px;box-shadow:0 0 6px var(--color-shadow-dark, #000);white-space:nowrap}
+#pneuma-modular-canvas button:hover {background:rgba(0,0,0,.7)}
+#pneuma-modular-canvas .modular-live-cell,#pneuma-modular-canvas .modular-live-expand,#pneuma-modular-canvas .modular-live-toolbar {position:absolute;transform:translate(-50%,-50%)}
+#pneuma-modular-canvas .modular-live-toolbar {display:flex;gap:4px;pointer-events:none}
+#pneuma-modular-canvas .modular-live-expand {font-size:24px;width:38px;height:38px;line-height:28px}
+#pneuma-modular-canvas .modular-live-shrink {font-size:20px;width:30px;height:30px;line-height:22px}
+#pneuma-modular-canvas .modular-live-shrink:disabled {opacity:.35;cursor:default}
+#pneuma-modular-canvas .modular-live-done {position:absolute;bottom:25px;left:50%;transform:translateX(-50%)}
+#pneuma-modular-canvas [hidden] {display:none}
+
+
+#pneuma-new-modular .window-content {padding:16px}
+#pneuma-new-modular .modular-new-intro h2 {margin:0 0 10px}
+#pneuma-new-modular .modular-new-intro p {margin:8px 0;line-height:1.45}
+#pneuma-new-modular .modular-new-pack {margin:16px 0;padding:12px 0;border-top:1px solid var(--color-border-light-primary);border-bottom:1px solid var(--color-border-light-primary)}
+#pneuma-new-modular .modular-new-pack h3 {margin:0 0 6px}
+#pneuma-new-modular .modular-new-name {display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:16px 0 0}
+#pneuma-new-modular .modular-new-name .form-fields {flex:0 0 auto}
+#pneuma-new-modular .modular-new-name input {box-sizing:border-box;width:100%}
+#pneuma-new-modular .dialog-buttons {margin-top:18px;padding-top:12px;border-top:1px solid var(--color-border-light-primary)}

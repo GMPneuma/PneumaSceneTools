@@ -1,0 +1,24 @@
+{{#if hud}}
+<div class="vehicle-seat-hud-content">
+  <header class="vehicle-seat-hud-heading"><strong>{{vehicle}}</strong><small>{{occupied}} / {{capacity}} occupied</small></header>
+  {{#if choosePassenger}}<select name="passenger" aria-label="Passenger"><option value="">Choose character</option>{{#each passengers}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select>{{else}}<p data-selected-passenger>{{#if selectedPassengerName}}{{selectedPassengerName}}{{else}}Select one character token on the scene.{{/if}}</p>{{/if}}
+  <div class="vehicle-seat-hud-list">
+  {{#each seats}}
+    {{#if occupant}}<div class="vehicle-seat-hud-row occupied"><span class="vehicle-seat-hud-name">{{name}}<small class="vehicle-seat-taken">{{occupant}}</small></span>{{#if canExit}}<button type="button" data-action="exit" data-rider="{{riderId}}" title="Exit vehicle" aria-label="Exit vehicle">Exit</button>{{/if}}</div>
+    {{else}}<button type="button" class="vehicle-seat-hud-row" data-action="board" data-seat="{{id}}" title="Enter {{name}}" aria-label="Enter {{name}}" {{#unless canBoard}}disabled{{/unless}}><span>{{name}}</span><small>Enter</small></button>{{/if}}
+  {{else}}<p>No seats defined.</p>{{/each}}
+  </div>
+  {{#if missingSeats}}<small>{{missingSeats}} seat positions need to be defined.</small>{{/if}}
+  <p role="alert"></p>
+</div>
+{{else}}
+<form class="pneuma-vehicle-seats">
+  <p><strong>{{vehicle}}</strong></p>
+  <p>Seats: {{occupied}} / {{capacity}} occupied</p>
+  {{#if missingSeats}}<p>{{missingSeats}} seat positions still need to be defined.</p>{{/if}}
+  {{#if choosePassenger}}<div class="form-group"><label>Passenger</label><div class="form-fields"><select name="passenger"><option value="">Choose character</option>{{#each passengers}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></div></div>{{else}}<p data-selected-passenger>{{#if selectedPassengerName}}{{selectedPassengerName}}{{else}}Select one character token on the scene.{{/if}}</p>{{/if}}
+  {{#each seats}}<div class="form-group vehicle-seat-choice {{#if occupant}}occupied{{/if}}"><label>{{name}}</label><div class="form-fields">{{#if occupant}}<span class="vehicle-seat-taken">{{occupant}}</span><button type="button" disabled aria-label="Occupied seat">Occupied</button>{{#if canExit}}<button type="button" data-action="exit" data-rider="{{riderId}}">Exit</button>{{/if}}{{else}}{{#if canBoard}}<button type="button" data-action="board" data-seat="{{id}}">Enter</button>{{else}}<span>Outside capacity</span>{{/if}}{{/if}}</div></div>{{else}}<p>No seats defined for this image. A GM can place them with Define seats.</p>{{/each}}
+  {{#if gm}}<button type="button" data-action="edit"><i class="fas fa-chair"></i> Define seats</button>{{/if}}
+  <p role="alert"></p>
+</form>
+{{/if}}

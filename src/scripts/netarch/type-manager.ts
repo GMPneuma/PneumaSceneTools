@@ -10,7 +10,7 @@ export class APTypeManager extends FormApplication {
   static override get defaultOptions(): FormApplicationOptions {
     return foundry.utils.mergeObject(super.defaultOptions, {
       title: "Manage Access Point Types", classes: ["pneuma-scanner", "pneuma-type-manager"],
-      template: `modules/${MODULE_ID}/templates/type-manager.hbs`, width: 640, height: "auto",
+      template: `modules/${MODULE_ID}/templates/type-manager.hbs`, width: 760, resizable: true, height: "auto",
       closeOnSubmit: true, submitOnChange: false, submitOnClose: false,
     }) as FormApplicationOptions;
   }
@@ -33,9 +33,18 @@ export class APTypeManager extends FormApplication {
       this.types.push({ id: foundry.utils.randomID(), label: "", img: iconPath("generic"), enabled: true });
       this.render(false);
     });
+    const preview = (input: HTMLInputElement) => {
+      const image = input.closest<HTMLElement>("[data-type-row]")!.querySelector<HTMLImageElement>(".ap-type-preview")!;
+      image.src = input.value.trim() || iconPath("generic");
+      input.title = input.value;
+    };
+    root.querySelectorAll<HTMLInputElement>('[data-field="img"]').forEach(input => input.addEventListener("input", () => preview(input)));
+    root.querySelectorAll<HTMLImageElement>(".ap-type-preview").forEach(image => image.addEventListener("error", () => {
+      if(image.getAttribute("src") !== iconPath("generic"))image.src = iconPath("generic");
+    }));
     root.querySelectorAll<HTMLInputElement>('[data-action="browse-type"]').forEach((button) => button.addEventListener("click", () => {
       const input = button.closest<HTMLElement>("[data-type-row]")!.querySelector<HTMLInputElement>('[data-field="img"]')!;
-      new FilePicker({ type: "image", current: input.value, callback: (path) => { input.value = path; } }).browse();
+      new FilePicker({ type: "image", current: input.value, callback: (path) => { input.value = path; preview(input); } }).browse();
     }));
   }
   protected override async _updateObject() {

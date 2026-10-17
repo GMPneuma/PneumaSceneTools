@@ -1,5 +1,5 @@
 import { CREATED_BY_MOOK_MAKER_FLAG, MODULE_ID } from "./constants.js";
-import { isTemplateActor } from "./folders.js";
+import {registerTemplateSpawning} from "../template-spawning.js";
 import { showMookMakerMenu } from "./mook-form.js";
 
 function isMookMakerToken(token: Token): boolean {
@@ -10,19 +10,7 @@ function isMookMakerToken(token: Token): boolean {
 }
 
 export function registerTemplateTokenTagging(): void {
-  Hooks.on(
-    "preCreateToken",
-    (token: TokenDocument, _data: object, _options: object, userId: string) => {
-      if (userId !== game.user?.id || token.actorLink) return;
-      const sourceActor = token.actorId ? game.actors?.get(token.actorId) : undefined;
-      if (!isTemplateActor(sourceActor as Actor | undefined)) return;
-      token.updateSource({
-        flags: {
-          [MODULE_ID]: { [CREATED_BY_MOOK_MAKER_FLAG]: true },
-        },
-      } as object);
-    },
-  );
+  registerTemplateSpawning();
 }
 
 export function registerTokenHudAction(): void {

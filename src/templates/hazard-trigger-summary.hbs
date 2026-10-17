@@ -1,0 +1,5 @@
+<ul>
+  {{#each selected}}<li>{{this}}</li>{{/each}}
+  {{#each incoming}}<li class="hazard-incoming">{{this}}</li>{{/each}}
+  {{#unless selected.length}}{{#unless incoming.length}}<li>Manual activation only</li>{{/unless}}{{/unless}}
+</ul>

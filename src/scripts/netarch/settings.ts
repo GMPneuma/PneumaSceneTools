@@ -1,5 +1,4 @@
 import type {ScannerSettings} from "./data.js";
-import { ensureTemplates } from "./templates.js";
 import { MODULE_ID } from "./constants.js";
 
 export const setting = <K extends keyof ScannerSettings>(key: K): ScannerSettings[K] => game.settings!.get(MODULE_ID, key) as ScannerSettings[K];
@@ -26,14 +25,10 @@ export function registerSettings(onChange: () => void) {
     name: "Default Scanner selection radius", hint: "A GM selection filter, not a rules limit. Zero lists every AP. Adjustable in the Scanner window.",
     type: Number, default: 0,
   });
-  // Use the former preference as the default until the positive option is saved.
-  game.settings!.register(MODULE_ID, "hideRevealAll", {...defaults, config: false, type: Boolean, default: false });
-  game.settings!.register(MODULE_ID, "showRevealAll", {...defaults, name: "Show 'Reveal to all' option", hint: "Show the Reveal to all column and bulk checkbox in the Scanner window. Existing discoveries are unchanged.", type: Boolean, default: !setting("hideRevealAll") });
+  game.settings!.register(MODULE_ID, "showRevealAll", {...defaults, name: "Show 'Reveal to all' option", hint: "Show the Reveal to all column and bulk checkbox in the Scanner window. Existing discoveries are unchanged.", type: Boolean, default: true });
   game.settings!.register(MODULE_ID, "autoPulse", {...defaults, name: "Pulse when revealing an AP", type: Boolean, default: true });
   game.settings!.register(MODULE_ID, "pulseCount", {...defaults, name: "Number of pulses", hint: "Used by finite pulses and the Scanner checkbox labels. Looping is selected in the AP list.", type: Number, default: 5, range: { min: 1, max: 20, step: 1 } });
   game.settings!.register(MODULE_ID, "pulseDuration", {...defaults, name: "Seconds per pulse", hint: "Lower values pulse faster. Saving updates running pulses as well as new pulses.", onChange: async (value: number) => { try { const { updateActivePulseSpeed } = await import("./actions.js"); await updateActivePulseSpeed(value); } catch (error) { ui.notifications?.error((error instanceof Error ? error.message : String(error))); } finally { onChange?.(); } }, type: Number, default: 1.4, range: { min: 0.4, max: 5, step: 0.1 } });
-  // Retained only as the fallback for APs created before per-token name controls.
-  game.settings!.register(MODULE_ID, "showLabels", {...defaults, config: false, type: Boolean, default: true });
   game.settings!.register(MODULE_ID, "autoScanner", {...defaults, name: "Open GM controls after a Scanner roll", type: Boolean, default: true });
   game.settings!.register(MODULE_ID, "netarchColors", {...defaults, config: false, type: Object, default: { entries: [] } });
 }
@@ -52,24 +47,6 @@ export function groupRevealSettings(html: JQuery | HTMLElement) {
   group.append(legend);
   styleRow.before(group);
   group.append(styleRow, radiusRow);
-  if (game.user!.isGM) {
-    const row = document.createElement("div");
-    row.className = "form-group";
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = "Re-create default AP templates";
-    button.title = "Create missing default templates. Existing templates are found in any Actor folder and are preserved.";
-    button.addEventListener("click", async () => {
-      button.disabled = true;
-      try {
-        const count = await ensureTemplates({ defaults: true, manual: true });
-        ui.notifications?.info(count ? `Created ${count} missing AP templates.` : "All default AP templates already exist.");
-      } catch (error) { ui.notifications?.error((error instanceof Error ? error.message : String(error))); }
-      finally { button.disabled = false; }
-    });
-    row.append(button);
-    group.after(row);
-  }
   const sync = () => {
     const disabled = style.value !== "vision";
     radiusRow.querySelectorAll("input").forEach((input) => { input.disabled = disabled; });

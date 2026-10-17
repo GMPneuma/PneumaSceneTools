@@ -22,17 +22,12 @@ export function registerNetArchScanner() {
 export function netArchScannerApi() {
   return Object.freeze({
     openScanner, reveal: revealAPs, hide: hideAPs, pulse: pulseAPs, stopPulses,
-    ensureTemplates,
     edit: (tokenDocument: TokenDocument) => { requireGM(); return new APEditor(tokenDocument).render(true); },
   });
 }
 
 export async function readyNetArchScanner() {
-  try { await installScannerIntegration(); }
-  catch (error) {
-    console.error(`${MODULE_ID} | Scanner integration`, error);
-    if (game.user!.isGM) ui.notifications?.warn("Automatic Scanner integration is unavailable. Use the Scanner button in the token toolbar.", { permanent: true });
-  }
+  await installScannerIntegration();
   await ensureTemplates();
   if (canvas.ready) presentation.queueRefresh();
   console.info(`${MODULE_ID} | Ready`);

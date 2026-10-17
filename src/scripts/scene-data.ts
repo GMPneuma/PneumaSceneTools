@@ -9,19 +9,35 @@ export function basename(path: string): string {
 }
 export const stem = (path: string): string => basename(path).replace(/\.[^.]+$/, "").toLowerCase().replace(/(?:[ _-](?:scene|foundry|map|grid|gridless))+$/g, "");
 
-export function gridSuggestions(width: number, height: number, filename: string, preferred = 100) {
-  const px = basename(filename).match(/(?:^|[ _-])(\d{2,4})\s*(?:px|ppi)(?:[ _.-]|$)/i);
-  const counts = basename(filename).match(/(?:^|[ _-])(\d+)\s*[x×]\s*(\d+)(?:[ _.-]|$)/i);
+/** Publisher companion filename; "offset" here describes cell size, not image position. */
+export function gridSizeMarker(path:string):number|undefined {
+  const match=basename(path).match(/^grid[ _-]+offset[ _-]+(\d{2,4})(?:[ _-]*(?:px|ppi|pixels))?(?:\.[a-z0-9]+)?$/i);
+  const value=Number(match?.[1]);
+  return match&&value>=50?value:undefined;
+}
+export function gridSuggestions(width: number, height: number, filename: string, preferred = 100, companionHint = 0) {
+  const px = basename(filename).match(/(?:^|[^a-z\d])(\d{2,4})[ _-]*(?:px|ppi|dpi|pixels)(?=[^a-z\d]|$)/i);
+  const counts = basename(filename).match(/(?:^|[ _-])(\d+)\s*[xx]\s*(\d+)(?:[ _.-]|$)/i);
   let hint = px ? Number(px[1]) : 0;
+  let hintSource="Filename hint";
   if (!hint && counts) {
     const x = width / Number(counts[1]), y = height / Number(counts[2]);
     if (Math.abs(x - y) < 1 && x >= 50) hint = Math.round(x);
   }
+  if(hint<50 && companionHint>=50){hint=companionHint;hintSource="Folder grid hint";}
+  const exactSizes: number[] = [];
+  if (Number.isSafeInteger(width) && Number.isSafeInteger(height) && width > 0 && height > 0) {
+    let a = width, b = height;
+    while (b) { const rest = a % b; a = b; b = rest; }
+    for (let divisor = 1; divisor <= Math.sqrt(a); divisor++) {
+      if (a % divisor === 0) exactSizes.push(divisor, a / divisor);
+    }
+  }
   const remainder = (n: number) => Math.abs(n - Math.round(n));
-  return [...new Set([...COMMON_GRIDS, preferred, ...(hint >= 50 ? [hint] : [])])]
+  return [...new Set([...COMMON_GRIDS, ...exactSizes, preferred, ...(hint >= 50 ? [hint] : [])])]
     .filter(n => n >= 50 && Number.isFinite(n))
     .map(size => ({size, columns: width / size, rows: height / size,
-      score: remainder(width / size) + remainder(height / size), hint: size === hint}))
+      score: remainder(width / size) + remainder(height / size), hint: size === hint,hintSource:size===hint?hintSource:undefined}))
     .sort((a, b) => Number(b.hint) - Number(a.hint) || a.score - b.score || Number(b.size === preferred) - Number(a.size === preferred) || a.size - b.size);
 }
 

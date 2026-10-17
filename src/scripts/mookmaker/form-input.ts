@@ -8,7 +8,7 @@ import {
 } from "./skills.js";
 import { getStatsForHitPoints } from "./stats.js";
 import { type AvailableRole } from "./roles.js";
-import {getCivilianCombatNumber} from "./skill-settings.js";
+
 import {getWeaponUpdates} from "./weapons.js";
 
 
@@ -110,10 +110,7 @@ export function readMookForm(html: JQuery, token: Token, availableRoles: Availab
       "No change",
   );
   let combatNumber: number | null = null;
-  if (combatSelection === "Civilian") {
-    combatNumber = getCivilianCombatNumber();
-  }
-  else if (combatSelection === "custom") {
+  if (combatSelection === "custom") {
     const customCombatNumber = String(
       html.find<HTMLInputElement>('input[name="customCombatNumber"]').val() ?? "",
     );
@@ -154,7 +151,7 @@ export function readMookForm(html: JQuery, token: Token, availableRoles: Availab
     if (target !== null) skillTargets[category] = target;
   }
 
-  const bulletDodging = String(html.find<HTMLSelectElement>('select[name="bulletDodging"]').val() ?? "unchanged") as BulletDodging;
+  const bulletDodging = String(html.find<HTMLInputElement>('input[name="bulletDodging"]:checked').val() ?? "unchanged") as BulletDodging;
   if (!getBulletDodgingChoices().includes(bulletDodging)) {
     throw new Error(game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.DodgeInvalid"));
   }

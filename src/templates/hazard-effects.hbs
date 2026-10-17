@@ -1,0 +1,13 @@
+<div class="hazard-effect-table-wrap"><table class="hazard-effect-table">
+  <thead><tr><th>Effect</th><th>Details</th><th>Avoid</th><th aria-label="Actions"></th></tr></thead>
+  <tbody>{{#each this}}<tr class="hazard-effect-row {{#if error}}hazard-invalid{{/if}}" {{#if error}}title="{{error}}"{{/if}}>
+    <td><strong>{{kind}}</strong>{{#if name}}<small>{{name}}</small>{{/if}}</td><td>{{summary}}</td><td>{{avoid}}</td>
+    <td><div>
+      {{> "modules/pneuma-scenetools/templates/hazard-button.hbs" action="editEffect" label="Edit effect" icon="fa-pen" id=index}}
+      {{#if canMoveUp}}{{> "modules/pneuma-scenetools/templates/hazard-button.hbs" action="moveUp" label="Move effect up" icon="fa-arrow-up" id=index}}{{/if}}
+      {{> "modules/pneuma-scenetools/templates/hazard-button.hbs" action="remove" label="Delete effect" icon="fa-trash" id=index}}
+    </div></td>
+  </tr>{{/each}}</tbody>
+</table></div>
+{{#unless this.length}}<p class="notes">No effects configured.</p>{{/unless}}
+<button type="button" data-action="add">Add Effect</button>

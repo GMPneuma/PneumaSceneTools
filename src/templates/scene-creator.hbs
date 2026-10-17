@@ -1,87 +1,126 @@
-<form class="pneuma-scenetools" autocomplete="off">
+{{#if folderStep}}
+<section class="pneuma-scene-folder-step">
+  <nav class="pneuma-wizard-steps" aria-label="Import progress"><span aria-current="step">1. Select map</span><span>2. Select maps</span><span>3. Review scenes</span></nav>
+  <p>Select a map image or video. Clicking Next will attempt to discover variant maps and Foundry scene data in the same folder tree.</p>
+  <div class="filepicker" data-native-folder></div>
+  <form class="pneuma-folder-actions" autocomplete="off">
+    <p data-error role="alert">{{failure}}</p><p data-folder-status role="status">Loading folder…</p>
+    <button type="button" data-cancel-scan hidden>Cancel search</button>
+    <footer class="sheet-footer"><button type="submit" data-folder-next>Next: Select variants</button></footer>
+  </form>
+</section>
+{{else}}
+<form class="pneuma-scenetools{{#if review}} pneuma-review-form{{/if}}" autocomplete="off">
   <p data-error role="alert">{{failure}}</p>
-  {{#if chooseImportMode}}
-  <p>Foundry Scene JSON found. Import according to JSON, or make changes?</p>
-  <label><input type="radio" name="importMode" value="json" checked> Import according to JSON</label>
-  <p>Import the complete JSON through Foundry, then apply the selected map file.</p>
-  <label><input type="radio" name="importMode" value="edit"> Make changes</label>
-  <p>Start with the JSON's values. Saving imports the complete JSON first, then applies your overrides.</p>
-  {{else}}
+  <nav class="pneuma-wizard-steps" aria-label="Import progress"><span {{#if folderStep}}aria-current="step"{{/if}}>1. Select map</span><span {{#if selecting}}aria-current="step"{{/if}}>2. Select maps</span><span {{#if review}}aria-current="step"{{/if}}>3. Review scenes</span></nav>
   {{#if review}}
-  {{#if edit}}
-  <fieldset><legend>Shared lighting and vision</legend>
-    <label><input name="applyShared" type="checkbox"> Apply these settings to all scenes</label>
+  <fieldset class="pneuma-shared-settings"><legend>Settings for all scenes</legend>
+    <label class="pneuma-shared-toggle"><input name="applyShared" type="checkbox"> Apply these settings to all scenes</label>
+    <div class="pneuma-shared-row"><strong>Lighting</strong>
     <div class="form-group"><label>Darkness</label><input name="sharedDarkness" type="number" value="{{defaults.darkness}}" min="0" max="1" step="any" required></div>
     <label><input name="sharedGlobal" type="checkbox" {{#if defaults.globalLight}}checked{{/if}}> Global illumination</label>
     <label><input name="sharedVision" type="checkbox" checked> Token vision</label>
     <label><input name="sharedFog" type="checkbox" checked> Fog exploration</label>
+    </div>
+    <div class="pneuma-shared-row"><strong>Grid</strong>
+    <div class="form-group"><label>Padding (%)</label><input name="sharedPadding" type="number" value="{{sharedAppearance.padding}}" min="0" max="50" step="5" required></div>
+    <div class="form-group"><label>Grid style</label><select name="sharedStyle">{{#each sharedAppearance.styles}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
+    <div class="form-group"><label>Grid thickness</label><input name="sharedThickness" type="number" value="{{sharedAppearance.thickness}}" min="1" step="1" required></div>
+    <div class="form-group"><label>Grid color</label><input name="sharedColor" type="color" value="{{sharedAppearance.color}}"></div>
+    <div class="form-group"><label>Grid opacity</label><input name="sharedOpacity" type="number" value="{{sharedAppearance.alpha}}" min="0" max="1" step="0.05" required></div>
+    </div>
   </fieldset>
-  {{else}}<p>Review the JSON settings below. Saving imports the complete JSON, then applies the selected map file. Choose Make changes to add other overrides.</p><button type="button" data-make-changes>Make changes</button>{{/if}}
+  <div class="pneuma-review-layout">
+  <nav class="pneuma-scene-list" aria-label="Scenes to import"><h3>Selected maps</h3>
+  {{#each scenes}}<button type="button" data-select-scene="{{index}}" aria-pressed="{{#if selected}}true{{else}}false{{/if}}">{{title}}{{#if created}} - saved{{/if}}</button>{{/each}}
+  </nav>
+  <div class="pneuma-scene-editor">
   {{#each scenes}}
-  <details data-scene="{{index}}" {{#if open}}open{{/if}}>
-    <summary>{{title}}{{#if created}} - saved{{/if}}</summary>
-    {{#if sourcePath}}<p>Scene source: {{sourcePath}}</p>{{/if}}
+  <section data-scene="{{index}}" {{#unless selected}}hidden{{/unless}}>
+    <div class="pneuma-scene-main">
+    <h3 data-scene-title title="{{title}}">{{title}}{{#if created}} - saved{{/if}}</h3>
     <fieldset class="pneuma-scene-fields" {{#if locked}}disabled{{/if}}>
-      <label><input type="checkbox" name="{{prefix}}override"> Use this scene's lighting and vision</label>
-      <div class="form-group"><label>Scene name</label><input name="{{prefix}}name" type="text" value="{{defaults.name}}" required></div>
-      <div class="form-group"><label>Scene width (px)</label><input name="{{prefix}}width" data-field="width" type="number" value="{{defaults.width}}" min="1" step="1" required></div>
-      <div class="form-group"><label>Scene height (px)</label><input name="{{prefix}}height" data-field="height" type="number" value="{{defaults.height}}" min="1" step="1" required></div>
-      <div class="form-group"><label>Grid</label><select name="{{prefix}}gridChoice" data-field="gridChoice">
+      <div class="form-group pneuma-name-field"><label>Scene name</label><input name="{{prefix}}name" type="text" value="{{defaults.name}}" required></div>
+      <h4>Map dimensions and grid</h4>
+      <div class="pneuma-dimensions">
+      <div class="form-group"><label>Width (px)</label><input name="{{prefix}}width" data-field="width" type="number" value="{{defaults.width}}" min="1" step="1" required></div>
+      <div class="form-group"><label>Height (px)</label><input name="{{prefix}}height" data-field="height" type="number" value="{{defaults.height}}" min="1" step="1" required></div>
+      </div>
+      <div class="form-group"><label>Grid size</label><select name="{{prefix}}gridChoice" data-field="gridChoice">
         {{#each gridOptions}}<option value="{{size}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
-        <option value="custom">Custom</option><option value="gridless" {{#if gridless}}selected{{/if}}>Gridless</option>
+        <option value="custom">Custom</option>
       </select></div>
       <div class="form-group"><label>Custom grid size (px)</label><input name="{{prefix}}customGrid" data-field="customGrid" type="number" value="{{defaults.gridSize}}" min="50" step="1" required></div>
       <div class="form-group"><label>Grid type</label><select name="{{prefix}}gridType" data-field="gridType">
         {{#each gridTypes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
       </select></div>
-      <p>Suggestions use filename hints and whole-square fit. Check alignment in the preview. Hex grids require Foundry's native grid configuration.</p>
-      <canvas class="pneuma-grid-preview" width="540" height="300"></canvas><p class="pneuma-grid-count"></p>
-      <div class="form-group"><label>Distance per square</label><input name="{{prefix}}distance" type="number" value="{{defaults.distance}}" min="0.01" step="any" required></div>
-      <div class="form-group"><label>Distance units</label><input name="{{prefix}}units" type="text" value="{{defaults.units}}" required></div>
+      <div class="form-group pneuma-distance-field"><label>Scale</label><select name="{{prefix}}distance">{{#each distanceOptions}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
+      <fieldset data-scene-appearance><legend>Grid appearance and padding</legend>
+    <div class="form-group"><label>Padding (%)</label><input name="{{prefix}}Padding" type="number" value="{{appearance.padding}}" min="0" max="50" step="5" required></div>
+    <div class="form-group"><label>Grid style</label><select name="{{prefix}}Style">{{#each appearance.styles}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
+    <div class="form-group"><label>Grid thickness</label><input name="{{prefix}}Thickness" type="number" value="{{appearance.thickness}}" min="1" step="1" required></div>
+    <div class="form-group"><label>Grid color</label><input name="{{prefix}}Color" type="color" value="{{appearance.color}}"></div>
+    <div class="form-group"><label>Grid opacity</label><input name="{{prefix}}Opacity" type="number" value="{{appearance.alpha}}" min="0" max="1" step="0.05" required></div>
+      </fieldset>
+      <fieldset data-scene-lighting><legend>Scene lighting and vision</legend>
       <div class="form-group"><label>Darkness (0-1)</label><input name="{{prefix}}darkness" type="number" value="{{defaults.darkness}}" min="0" max="1" step="any" required></div>
       <label><input name="{{prefix}}globalLight" type="checkbox" {{#if defaults.globalLight}}checked{{/if}}> Global illumination</label>
       <label><input name="{{prefix}}tokenVision" type="checkbox" {{#if defaults.tokenVision}}checked{{/if}}> Token vision</label>
       <label><input name="{{prefix}}fogExploration" type="checkbox" {{#if defaults.fogExploration}}checked{{/if}}> Fog exploration</label>
-      <p>{{wallCount}} walls · {{lightCount}} lights · {{tileCount}} imported tiles. Cyan lines show imported walls; amber markers show light sources. Scene dimensions resize the background; imported coordinates stay fixed.</p>
-      {{#if imported}}<p>{{tokenCount}} tokens · {{soundCount}} sounds · {{noteCount}} notes · {{drawingCount}} drawings. Settings and flags outside this form are retained for the native import.</p>{{/if}}
-      {{#if hasAssets}}
-      <details><summary>Optional overlays and asset paths</summary>
-        {{#if overlays.length}}
-        <p>Matching OVERLAY/Foreground files for <strong>{{title}}</strong>. Placement is relative to the top-left of the map. Nothing is added automatically.</p>
-        {{#each overlays}}
-        <fieldset data-overlay="{{index}}"><legend><label><input name="{{../prefix}}overlay-{{index}}" type="checkbox"> {{label}}</label></legend>
-          {{#if animated}}<video class="pneuma-overlay-preview" src="{{path}}" preload="metadata" muted controls></video>
-          {{else}}<img class="pneuma-overlay-preview" src="{{path}}" loading="lazy">{{/if}}
-          <div class="form-group"><label>Layer</label><select name="{{../prefix}}layer-{{index}}"><option value="tile">Tile</option><option value="foreground">Scene foreground (one image)</option></select></div>
-          <div class="form-group"><label>X</label><input name="{{../prefix}}x-{{index}}" type="number" value="0" step="any" required></div>
-          <div class="form-group"><label>Y</label><input name="{{../prefix}}y-{{index}}" type="number" value="0" step="any" required></div>
-          <div class="form-group"><label>Width</label><input name="{{../prefix}}width-{{index}}" type="number" value="{{../defaults.width}}" min="1" step="any" required></div>
-          <div class="form-group"><label>Height</label><input name="{{../prefix}}height-{{index}}" type="number" value="{{../defaults.height}}" min="1" step="any" required></div>
-        </fieldset>
+      </fieldset>
+      <div class="form-group"><label>Foreground / overlay</label><select name="{{prefix}}foreground" data-foreground-choice>{{#if missingForeground}}<option value="{{data.foreground}}" selected disabled>Missing foreground — select a file</option>{{/if}}<option value="">None</option>{{#each foregroundOptions}}<option value="{{path}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
+      {{#if imageAssets.length}}
+      <details><summary>Imported image paths</summary>
+        <p>These images are already used by the imported scene. Verify the paths or choose replacement files; their placement is preserved.</p>
+        {{#each imageAssets}}
+        <div class="form-group"><label>{{label}}</label><select name="{{../prefix}}asset-{{collection}}-{{index}}" data-image-asset data-original-path="{{path}}">
+          <option value="{{path}}" selected>{{path}} (Imported)</option>
+          {{#each options}}<option value="{{this}}">{{this}}</option>{{/each}}
+        </select></div>
         {{/each}}
-        {{/if}}
-        {{#if unresolved.length}}<p>These imported asset paths could not be matched nearby. Confirm they exist on your server:</p><ul>{{#each unresolved}}<li>{{this}}</li>{{/each}}</ul>{{/if}}
       </details>
       {{/if}}
-      {{#if imported}}<p>All Scene fields and embedded documents use Foundry's standard JSON import. Review references to documents from another world afterward.</p>{{/if}}
     </fieldset>
-  </details>
+    <div class="pneuma-preview-panel">
+      <h4>Map preview</h4>
+      <canvas class="pneuma-grid-preview" width="960" height="540"></canvas>
+      <aside class="pneuma-scene-notes" aria-label="Scene notes">
+        <section><h4>Grid alignment</h4>
+          <p class="pneuma-grid-count"></p>
+          <p>Check that the preview grid lines up with the map. Suggested sizes use the filename and map dimensions.</p>
+          <p class="pneuma-foreground-preview-status" data-foreground-status hidden></p>
+        </section>
+        <section><h4>Scene contents</h4>
+          <dl class="pneuma-import-counts"><div><dt>Walls</dt><dd>{{wallCount}}</dd></div><div><dt>Lights</dt><dd>{{lightCount}}</dd></div><div><dt>Tiles</dt><dd>{{tileCount}}</dd></div>
+          {{#if imported}}<div><dt>Tokens</dt><dd>{{tokenCount}}</dd></div><div><dt>Sounds</dt><dd>{{soundCount}}</dd></div><div><dt>Notes</dt><dd>{{noteCount}}</dd></div><div><dt>Drawings</dt><dd>{{drawingCount}}</dd></div>{{/if}}</dl>
+          <p><strong>Cyan lines:</strong> walls. <strong>Amber markers:</strong> lights.</p>
+        </section>
+        <details class="pneuma-import-details"><summary>Import details</summary>
+          <p>Changing map dimensions resizes the background. Imported walls, lights and other objects keep their original positions.</p>
+          {{#if sourcePath}}<p><strong>Scene data:</strong> {{sourcePath}}</p>{{/if}}
+          {{#if imported}}<p>Foundry imports all scene settings and objects. Settings outside this form are preserved. Review links to documents from other worlds after import.</p>{{/if}}
+        </details>
+        {{#if unresolved.length}}<section class="pneuma-import-details" data-unresolved-assets><h4>Check missing files</h4><p>Choose replacements under Foreground / overlay or Imported image paths, or check that these files exist on your server:</p><ul>{{#each unresolved}}<li data-unresolved-path="{{this}}">{{this}}</li>{{/each}}</ul></section>{{/if}}
+      </aside>
+    </div>
+    </div>
+  </section>
   {{/each}}
+  </div></div>
   {{else}}
-  <p>Selected map: <strong>{{mapName}}</strong></p>
-  <p>Select map variants and assign their Scene JSON. The same JSON may be used for several variants.</p><button type="button" data-browse-json>Choose another Scene JSON or UVTT file</button>
+  <p>Map folder: <strong>{{folderPath}}</strong></p>
+  <div class="pneuma-source-file"><span>Assign maps and Scene JSON below.</span><button type="button" class="pneuma-file-button" data-browse-json title="Choose a Scene JSON or UVTT file"><i class="fas fa-file-import"></i> File</button></div>
   {{#if selection.showAllVariants}}<label><input name="allVariants" type="checkbox"> Import all matching variants</label>{{/if}}
   <label><input name="bothMedia" type="checkbox"> Use static and animated where both are available</label>
   {{#each selection.plans}}
   <fieldset data-plan="{{index}}"><legend><label><input name="variant-{{index}}" type="checkbox" {{#if checked}}checked{{/if}}> {{label}}{{#if recommended}} (best match){{/if}}</label></legend>
     {{#if ../selection.imports.length}}<div class="form-group"><label>Scene JSON</label><select name="json-{{index}}"><option value="">No JSON - map only</option>{{#each jsonOptions}}<option value="{{path}}" {{#if selected}}selected{{/if}}>{{label}}{{#if recommended}} (match){{/if}}</option>{{/each}}</select></div>{{/if}}
-    <div class="form-group"><label>Static image</label><select name="static-{{index}}"><option value="">Choose static map</option>{{#each staticMaps}}<option value="{{path}}" {{#if selected}}selected{{/if}}>{{label}} (match)</option>{{/each}}</select><button type="button" data-map-picker="static-{{index}}">Browse</button></div>
-    <div class="form-group"><label>Animated video</label><select name="animated-{{index}}"><option value="">Choose animated map</option>{{#each videos}}<option value="{{path}}" {{#if selected}}selected{{/if}}>{{label}} (match)</option>{{/each}}</select><button type="button" data-map-picker="animated-{{index}}">Browse</button></div>
-    <div class="form-group"><label>Create</label><select name="mode-{{index}}"><option value="static" {{#if staticMode}}selected{{/if}}>Static</option><option value="animated" {{#if animatedMode}}selected{{/if}}>Animated</option><option value="both">Both (two scenes)</option></select></div>
+    <div class="form-group"><label><input type="checkbox" name="import-static-{{index}}" {{#if staticMode}}checked{{/if}}> Static image</label><select name="static-{{index}}"><option value="">Choose static map</option>{{#each staticMaps}}<option value="{{path}}" {{#if selected}}selected{{/if}}>{{label}} (match)</option>{{/each}}</select><button type="button" data-map-picker="static-{{index}}" class="pneuma-file-button" title="Choose a map file"><i class="fas fa-file-import"></i> File</button></div>
+    <div class="form-group"><label><input type="checkbox" name="import-animated-{{index}}" {{#if animatedMode}}checked{{/if}}> Animated video</label><select name="animated-{{index}}"><option value="">Choose animated map</option>{{#each videos}}<option value="{{path}}" {{#if selected}}selected{{/if}}>{{label}} (match)</option>{{/each}}</select><button type="button" data-map-picker="animated-{{index}}" class="pneuma-file-button" title="Choose a map file"><i class="fas fa-file-import"></i> File</button></div>
   </fieldset>
   {{/each}}
   {{#if selection.warnings.length}}<details><summary>Scan warnings ({{selection.warnings.length}})</summary>{{#each selection.warnings}}<p>{{this}}</p>{{/each}}</details>{{/if}}
   {{/if}}
-  {{/if}}
-  <footer class="sheet-footer"><button type="submit"><i class="fas fa-check"></i> {{#if chooseImportMode}}Continue{{else}}{{#if review}}Create selected scenes{{else}}Review selected scenes{{/if}}{{/if}}</button></footer>
+  <footer class="sheet-footer pneuma-wizard-footer">{{#unless folderStep}}<button type="button" data-back {{#unless canGoBack}}disabled title="Scenes have already been saved. Finish or retry this batch."{{/unless}}><i class="fas fa-arrow-left"></i> Back</button>{{/unless}}<button type="submit" {{#if folderLoading}}disabled{{/if}}><i class="fas fa-check"></i> {{#if folderStep}}Next: Select variants{{else}}{{#if review}}Create selected scenes{{else}}Next: Review scenes{{/if}}{{/if}}</button></footer>
 </form>
+{{/if}}

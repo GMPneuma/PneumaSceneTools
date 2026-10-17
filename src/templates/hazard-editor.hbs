@@ -1,0 +1,38 @@
+<form class="pneuma-trap-editor hazard-workflow hazard-wide hazard-sections hazard-summary-layout hazard-control-panel {{#if expanded}}hazard-editor-expanded{{else}}hazard-editor-collapsed{{/if}}">
+  {{> "modules/pneuma-scenetools/templates/hazard-sidebar.hbs" sidebar}}
+  <div class="hazard-editor">
+    <section aria-label="Presets" class="hazard-preset-bar">
+      <h3>Presets</h3>
+      <div class="form-group"><div class="form-fields"><select name="preset">{{#each presetOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></div></div>
+      <div class="hazard-actions"><button type="button" data-action="load">Load Preset</button><button type="button" data-action="presetSave">Save as preset</button></div>
+    </section>
+    <div class="hazard-editor-scroll">
+      <header class="hazard-top"><div aria-label="Hazard"><h3>Hazard</h3><div class="hazard-header-columns">
+        <div class="hazard-identity">
+          <div class="form-group"><label>Name</label><div class="form-fields"><input name="name" type="text" value="{{draft.name}}"></div></div>
+          <label>Description<textarea name="notes" rows="3">{{draft.notes}}</textarea></label>
+        </div>
+        <div class="hazard-check-column">
+          <div class="form-group"><label>Perception DV</label><div class="form-fields"><input name="spotDV" type="number" step="any" value="{{draft.spotDV}}"></div></div>
+          <div class="form-group"><label>Elect/Sec Counter DV</label><div class="form-fields"><input name="disarmDV" type="number" step="any" value="{{draft.disarmDV}}"></div></div>
+          <div class="form-group"><label>Counter Time (Seconds)</label><div class="form-fields"><input name="disarmSeconds" type="number" step="any" value="{{draft.disarmSeconds}}"></div></div>
+        </div>
+        <div class="hazard-artwork-column">
+          <div class="hazard-token-icon"><div class="form-group"><label>Hazard Actor Token</label><div class="form-fields"><select name="hazardActorTemplateId">{{#each actorOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></div></div>
+            <div class="hazard-token-preview"><img src="{{draft.tokenIcon}}" alt="Hazard token icon"><input type="hidden" name="tokenIcon" value="{{draft.tokenIcon}}"><button type="button" data-action="tokenIcon">Choose icon</button></div>
+          </div>
+          {{> "modules/pneuma-scenetools/templates/hazard-access-point.hbs" accessPoint}}
+        </div>
+      </div></div></header>
+      <div class="hazard-second" role="group" aria-label="Hazard progression: Triggers, Targets, Effects">
+        <section aria-label="Triggers"><div class="hazard-stage-header"><h3>Triggers</h3><button type="button" data-action="editTriggers">Edit triggers</button></div><div class="hazard-stage-options"><div class="hazard-trigger-summary">{{> "modules/pneuma-scenetools/templates/hazard-trigger-summary.hbs" triggerSummary}}</div></div></section>
+        <section aria-label="Targets / Area"><h3>Targets</h3><div class="hazard-stage-options">{{> "modules/pneuma-scenetools/templates/hazard-field.hbs" targets}}</div></section>
+        <section aria-label="Effects"><h3>Effects</h3>{{> "modules/pneuma-scenetools/templates/hazard-effects.hbs" effects}}</section>
+      </div>
+    </div>
+    <footer class="hazard-third">
+      <section aria-label="Draft requirements" class="hazard-draft-requirements hazard-requirements"><h3>Draft requirements</h3>{{#if issues}}<ul>{{#each issues}}<li>{{message}}</li>{{/each}}</ul>{{else}}<p class="notes">No missing requirements.</p>{{/if}}</section>
+      <section aria-label="Save hazard" class="hazard-save-panel"><h3>Save</h3><button type="button" data-action="save" title="Save Hazard" aria-label="Save Hazard"><i class="fas fa-save" aria-hidden="true"></i> Save Hazard</button><button type="button" data-action="deleteHazard" title="Delete Hazard" aria-label="Delete Hazard" {{#unless canDelete}}disabled{{/unless}}><i class="fas fa-trash" aria-hidden="true"></i> Delete Hazard</button></section>
+    </footer>
+  </div>
+</form>

@@ -13,7 +13,7 @@ export function wrapRollCards(chatClass: ScannerChatClass) {
   if (typeof original !== "function") throw new Error("The Cyberpunk RED roll-card entry point is unavailable.");
   if (typeof globalThis.libWrapper?.register !== "function") throw new Error("Enable libWrapper to use NetArch Scanner.");
   // Expose the imported class itself so libWrapper wraps the actual system method.
-  globalThis.pneumaSceneToolsNetArchCompat = {chatClass};
+  globalThis.pneumaSceneToolsScannerBridge = {chatClass};
   const wrapper = function(this: ScannerChatClass, wrapped: ScannerChatClass["RenderRollCard"], roll: ScannerRoll, ...args: unknown[]) {
     const context = scanContext(roll, canvas.scene?.id);
     const result = wrapped(roll, ...args);
@@ -28,7 +28,7 @@ export function wrapRollCards(chatClass: ScannerChatClass) {
       return message;
     });
   };
-  libWrapper.register(MODULE_ID, "pneumaSceneToolsNetArchCompat.chatClass.RenderRollCard", wrapper, "WRAPPER");
+  libWrapper.register(MODULE_ID, "pneumaSceneToolsScannerBridge.chatClass.RenderRollCard", wrapper, "WRAPPER");
   wrappedChatClasses.add(chatClass);
 }
 

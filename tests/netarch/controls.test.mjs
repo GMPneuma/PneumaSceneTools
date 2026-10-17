@@ -132,3 +132,9 @@ test("legacy private discoveries retain their first runner when adding another",
   assert.deepEqual(apData(ap).discovery.users, ["player"]);
   assert.deepEqual(apData(ap).discovery.runners, [first.uuid]);
 });
+
+test("AP names require the token option even if an obsolete world preference remains", () => {
+  const {values}=environment();values.set("showLabels",true);const ap=makeToken(makeScene());
+  delete apData(ap).showName;assert.equal(controlState(ap,10000).showName,false);
+  apData(ap).showName=true;assert.equal(controlState(ap,10000).showName,true);
+});

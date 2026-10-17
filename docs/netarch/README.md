@@ -14,7 +14,7 @@ For manual installation, copy the contents of `dist/` into `Data/modules/pneuma-
 
 The first active GM automatically receives an Actor folder **SceneTools/NetArchAPs**, containing six reusable templates: **Computer, Camera, Turret, Door Controller, Alarm Panel, and Generic**.
 
-Templates use the system's native container Actor type. Existing templates and GM edits are preserved; missing templates are recreated on a later GM startup.
+Templates use the system's native container Actor type. Startup provisions missing configured AP types through Foundry's active GM. Existing templates and GM edits are preserved without upgrades. The default-template restore control and on-demand template repair are removed; hazard AP creation requires an existing selected template.
 
 ## Prepare a scene
 

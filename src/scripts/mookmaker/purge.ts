@@ -1,19 +1,31 @@
+import {isNaturalWeapon} from "./weapons.js";
 import {withMookOperation} from "./operations.js";
+import {assertStoredChanges} from "../persistence.js";
 import { MODULE_ID } from "./constants.js";
 import {
-  isPurgeAmmunitionEnabled,
   isPurgeConfirmationEnabled,
   isRetainWeaponAmmunitionEnabled,
 } from "./skill-settings.js";
+
+export function hasSavedMook(token: Token): boolean {
+  return foundry.utils.getProperty(token.document, `flags.${MODULE_ID}.mookMakerSaved`) === true;
+}
+
+function requireSavedMook(token: Token): boolean {
+  if (hasSavedMook(token)) return true;
+  ui.notifications?.warn(game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.SaveBeforePurge"));
+  return false;
+}
 
 const PURGEABLE_GEAR_TYPES = new Set([
   "armor", "clothing", "cyberware", "drug", "gear", "itemUpgrade", "weapon",
 ]);
 
-function isProtectedNaturalWeapon(item: Item): boolean {
-  if (String(item.type) !== "weapon") return false;
-  const name = (item.name ?? "").trim().toLocaleLowerCase();
-  return name.includes("unarmed") || name.includes("martial arts");
+function referencedItem(actor: Actor, reference: unknown): Item | undefined {
+  if (typeof reference !== "string") return;
+  const native = actor as Actor & {getOwnedItem?(id: string): Item | undefined};
+  return (native.getOwnedItem ? native.getOwnedItem(reference) : actor.items.get(reference) ?? actor.items.find(item => item.uuid === reference))
+    ?? (reference.includes(".Item.") ? actor.items.get(reference.split(".").at(-1)!) : undefined);
 }
 
 function getAmmoSignature(item: Item): string {
@@ -32,13 +44,6 @@ function getRetainedAmmoSignatures(actor: Actor): Set<string> {
   const signatures = new Set<string>();
   if (!isRetainWeaponAmmunitionEnabled()) return signatures;
 
-  const ammoByReference = new Map<string, Item>();
-  for (const item of actor.items) {
-    if (String(item.type) !== "ammo") continue;
-    if (item.id) ammoByReference.set(item.id, item);
-    ammoByReference.set(item.uuid, item);
-  }
-
   for (const weapon of actor.items) {
     if (String(weapon.type) !== "weapon") continue;
     const state = String(
@@ -49,7 +54,7 @@ function getRetainedAmmoSignatures(actor: Actor): Set<string> {
     const ammoDataReference = String(
       foundry.utils.getProperty(weapon, "system.magazine.ammoData.uuid") ?? "",
     );
-    let ammo = ammoByReference.get(ammoDataReference);
+    let ammo = referencedItem(actor, ammoDataReference);
     if (!ammo) {
       const installedItems = foundry.utils.getProperty(
         weapon,
@@ -58,7 +63,7 @@ function getRetainedAmmoSignatures(actor: Actor): Set<string> {
       if (Array.isArray(installedItems)) {
         ammo = installedItems
           .filter((reference): reference is string => typeof reference === "string")
-          .map((reference) => ammoByReference.get(reference))
+          .map((reference) => referencedItem(actor, reference))
           .find((item): item is Item => Boolean(item));
       }
     }
@@ -69,9 +74,7 @@ function getRetainedAmmoSignatures(actor: Actor): Set<string> {
 
 function getPurgeableGear(actor: Actor): Item[] {
   const protectedIds = new Set<string>();
-  const purgeAmmunition = isPurgeAmmunitionEnabled();
   const retainedAmmoSignatures = getRetainedAmmoSignatures(actor);
-  const childrenByParent = new Map<string, string[]>();
   const itemTypesById = new Map(
     Array.from(actor.items).flatMap((item) =>
       item.id ? [[item.id, String(item.type)] as const] : [],
@@ -82,8 +85,9 @@ function getPurgeableGear(actor: Actor): Item[] {
     "system.installedItems.list",
   );
   if (Array.isArray(actorInstalledItems)) {
-    for (const id of actorInstalledItems) {
-      if (typeof id === "string") protectedIds.add(id);
+    for (const reference of actorInstalledItems) {
+      const id = referencedItem(actor, reference)?.id;
+      if (id) protectedIds.add(id);
     }
   }
 
@@ -99,43 +103,21 @@ function getPurgeableGear(actor: Actor): Item[] {
       "system.installedItems.list",
     );
     if (!Array.isArray(installedItems)) continue;
-    const children = installedItems.filter(
-      (id): id is string =>
-        typeof id === "string" && itemTypesById.get(id) !== "ammo",
-    );
-    childrenByParent.set(item.id, children);
+    const children = installedItems.flatMap(reference => {
+      const id = referencedItem(actor, reference)?.id;
+      return id && itemTypesById.get(id) !== "ammo" ? [id] : [];
+    });
+    if (children.length) protectedIds.add(item.id);
     for (const id of children) protectedIds.add(id);
-  }
-
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const [parentId, childIds] of childrenByParent) {
-      if (protectedIds.has(parentId)) {
-        for (const childId of childIds) {
-          if (!protectedIds.has(childId)) {
-            protectedIds.add(childId);
-            changed = true;
-          }
-        }
-      }
-      if (
-        childIds.some((childId) => protectedIds.has(childId)) &&
-        !protectedIds.has(parentId)
-      ) {
-        protectedIds.add(parentId);
-        changed = true;
-      }
-    }
   }
 
   return Array.from(actor.items).filter((item) => {
     if (!item.id) return false;
     if (String(item.type) === "ammo") {
-      return purgeAmmunition && !retainedAmmoSignatures.has(getAmmoSignature(item));
+      return !retainedAmmoSignatures.has(getAmmoSignature(item));
     }
     if (!PURGEABLE_GEAR_TYPES.has(String(item.type))) return false;
-    if (isProtectedNaturalWeapon(item)) return false;
+    if (isNaturalWeapon(item)) return false;
     if (protectedIds.has(item.id)) return false;
     const state = String(
       foundry.utils.getProperty(item, "system.equipped") ?? "",
@@ -149,6 +131,7 @@ export async function purgeGear(token: Token): Promise<boolean> {
 }
 
 async function purgeGearUnlocked(token: Token): Promise<boolean> {
+  if (!requireSavedMook(token)) return false;
   const actor = token.actor;
   if (!actor || token.document.actorLink) {
     ui.notifications?.warn(
@@ -166,13 +149,9 @@ async function purgeGearUnlocked(token: Token): Promise<boolean> {
     );
     return true;
   }
-  const unloadedWeaponRollbacks: object[] = [];
+  const unloadedWeaponRollbacks: {_id: string; "system.magazine.value": number; "system.installedItems.list": string[]}[] = [];
+  const loadedAmmo = new Map<string, string>();
   try {
-    const itemTypesById = new Map(
-      Array.from(actor.items).flatMap((item) =>
-        item.id ? [[item.id, String(item.type)] as const] : [],
-      ),
-    );
     const unloadedWeaponUpdates = purgeableGear.flatMap((item) => {
       if (!item.id || String(item.type) !== "weapon") return [];
       const installedItems = foundry.utils.getProperty(
@@ -182,11 +161,13 @@ async function purgeGearUnlocked(token: Token): Promise<boolean> {
       const installedIds = Array.isArray(installedItems)
         ? installedItems.filter((id): id is string => typeof id === "string")
         : [];
-      const retainedIds = installedIds.filter((id) => itemTypesById.get(id) !== "ammo");
+      const retainedIds = installedIds.filter(reference => String(referencedItem(actor, reference)?.type) !== "ammo");
       const magazineValue = Number(
         foundry.utils.getProperty(item, "system.magazine.value") ?? 0,
       );
       if (magazineValue === 0 && retainedIds.length === installedIds.length) return [];
+      const ammoReference = foundry.utils.getProperty(item, "system.magazine.ammoData.uuid");
+      if (typeof ammoReference === "string" && ammoReference) loadedAmmo.set(item.id, ammoReference);
       unloadedWeaponRollbacks.push({
         _id: item.id,
         "system.magazine.value": magazineValue,
@@ -200,8 +181,10 @@ async function purgeGearUnlocked(token: Token): Promise<boolean> {
     });
     if (unloadedWeaponUpdates.length > 0) {
       await actor.updateEmbeddedDocuments("Item", unloadedWeaponUpdates);
+      for (const update of unloadedWeaponUpdates) assertStoredChanges(token.actor?.items.get(update._id), update);
     }
     await actor.deleteEmbeddedDocuments("Item", ids);
+    if (!token.actor || ids.some(id => token.actor!.items.has(id))) throw new Error("Gear deletion was cancelled or only partially completed.");
     ui.notifications?.info(
       game.i18n!.format("PNEUMA_MOOK_MAKER.Form.GearPurged", { count: ids.length }),
     );
@@ -209,20 +192,29 @@ async function purgeGearUnlocked(token: Token): Promise<boolean> {
   } catch (error) {
     if (unloadedWeaponRollbacks.length > 0) {
       try {
-        await actor.updateEmbeddedDocuments("Item", unloadedWeaponRollbacks);
+        const current = token.actor;
+        // Never restore a magazine pointing at ammunition already removed by a partial delete.
+        const restorable = unloadedWeaponRollbacks.filter(update => current?.items.has(update._id)
+          && update["system.installedItems.list"].every(reference => referencedItem(current, reference))
+          && (!loadedAmmo.has(update._id) || referencedItem(current, loadedAmmo.get(update._id))));
+        if (current && restorable.length) {
+          await current.updateEmbeddedDocuments("Item", restorable);
+          for (const update of restorable) assertStoredChanges(token.actor?.items.get(update._id), update);
+        }
       } catch (rollbackError) {
         console.error(`${MODULE_ID} | Failed to restore weapon ammunition after purge failure`, rollbackError);
       }
     }
     console.error(`${MODULE_ID} | Failed to purge mook gear`, error);
     ui.notifications?.error(
-      game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PurgeFailed"),
+      `${game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PurgeFailed")} ${ids.filter(id => !token.actor?.items.has(id)).length} of ${ids.length} items removed. Check remaining gear before retrying.`,
     );
     return false;
   }
 }
 
 export async function confirmPurgeGear(token: Token): Promise<boolean> {
+  if (!requireSavedMook(token)) return false;
   const actor = token.actor;
   if (!actor) return false;
   const count = getPurgeableGear(actor).length;

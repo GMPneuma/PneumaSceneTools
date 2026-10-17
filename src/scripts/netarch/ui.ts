@@ -1,6 +1,6 @@
 import type {APChanges, APDetails, ScannerOptions} from "./data.js";
 import { accessPointTypes, typeInfo } from "./types.js";
-import { MODULE_ID, MODULE_TITLE } from "./constants.js";
+import { MODULE_ID } from "./constants.js";
 import { apData, isAP, sceneDistance, validateRadius, withinRadius } from "./model.js";
 import { architectures, colorFor, saveUnassignedColor, hideAPs, pulseAPs, requireGM, applyAPControls, serverNow, saveAP, stopPulses } from "./actions.js";
 import { setting, pulseLabel, pulseCount } from "./settings.js";
@@ -408,7 +408,7 @@ export function registerUI() {
   Hooks.on("getSceneControlButtons", (controls) => {
     if (!game.user!.isGM) return;
     controls.find((control) => control.name === "token")?.tools.push({
-      name: MODULE_ID, title: MODULE_TITLE, icon: "fas fa-tower-broadcast", button: true,
+      name: MODULE_ID, title: "Scene Tools - Access Points", icon: "fas fa-tower-broadcast", button: true,
       onClick: () => { try { openScanner(); } catch (error) { report(error); } },
     });
   });

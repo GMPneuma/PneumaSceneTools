@@ -1,0 +1,16 @@
+<section class="pneuma-map-pins">
+  <form class="pin-create">
+    <p class="notes">Defaults for new pins on enabled scenes. Existing pins are unchanged.</p>
+    <div class="form-group"><label>Icon size (pixels)</label><div class="form-fields"><input type="number" name="size" value="{{size}}" min="16" max="256" step="1" required></div></div>
+    <div class="form-group"><label>Icon tint</label><div class="form-fields"><input type="text" name="tint" value="{{tint}}" aria-label="Icon tint"><input type="color" data-pin-color="tint" value="{{tint}}" aria-label="Choose icon tint"></div></div>
+    <div class="form-group"><label>Font family</label><div class="form-fields"><select name="fontFamily">{{{fontOptions}}}</select></div></div>
+    <div class="form-group"><label>Font size</label><div class="form-fields"><input type="number" name="fontSize" value="{{fontSize}}" min="1" step="1" required></div></div>
+    <div class="form-group"><label>Text color</label><div class="form-fields"><input type="text" name="textColor" value="{{textColor}}" aria-label="Text color"><input type="color" data-pin-color="textColor" value="{{textColor}}" aria-label="Choose text color"></div></div>
+    <div class="form-group"><label>Text anchor point</label><div class="form-fields"><select name="textAnchor">{{{anchorOptions}}}</select></div></div>
+    <div class="form-group"><label>Globally visible</label><div class="form-fields"><input type="checkbox" name="global" {{#if global}}checked{{/if}}></div></div>
+    <div class="form-group"><label>Journal preview on hover</label><div class="form-fields"><input type="checkbox" name="hover" {{#if hover}}checked{{/if}}></div></div>
+    <div class="pin-options"><button type="button" data-action="template"><i class="fas fa-book"></i> Journal template &amp; hover layout</button></div>
+    <footer class="sheet-footer flexrow"><button type="submit"><i class="fas fa-save"></i> Save defaults</button></footer>
+    <p class="pin-error" role="alert"></p>
+  </form>
+</section>

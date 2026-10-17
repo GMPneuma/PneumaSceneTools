@@ -1,3 +1,4 @@
+import {assertStoredChanges} from "../persistence.js";
 import type {Audience, Discovery, Pulse, APChanges, APDetails} from "./data.js";
 import { activeGM } from "./templates.js";
 import { accessPointTypes, typeImage } from "./types.js";
@@ -21,6 +22,7 @@ export async function saveUnassignedColor(scene: Scene, color: string) {
   if (scene?.documentName !== "Scene") throw new Error("Choose a scene first.");
   if (!/^#[\da-f]{6}$/i.test(color ?? "")) throw new Error("Choose a valid color.");
   await scene.setFlag(MODULE_ID, "unassignedColor", color);
+  assertStoredChanges(scene, {[`flags.${MODULE_ID}.unassignedColor`]: color});
 }
 
 export function architectures() {
@@ -67,7 +69,10 @@ async function updateGroups(documents: TokenDocument[], changes: (doc: TokenDocu
     if (!groups.has(doc.parent!)) groups.set(doc.parent!, []);
     groups.get(doc.parent!)!.push({ _id: doc.id, hidden: true, ...changes(doc) });
   }
-  for (const [scene, updates] of groups) await scene.updateEmbeddedDocuments("Token", updates);
+  for (const [scene, updates] of groups) {
+    await scene.updateEmbeddedDocuments("Token", updates);
+    for (const update of updates) assertStoredChanges(scene.tokens.get(String(update._id)), update);
+  }
 }
 
 export async function revealAPs(documents: TokenDocument[], { runner = null, audience = "all", pulseAudience = "all", pulse = setting("autoPulse") }: {runner?: TokenDocument | null; audience?: string; pulseAudience?: string; pulse?: boolean} = {}) {
@@ -115,6 +120,7 @@ export async function saveAP(doc: TokenDocument, { name, type, netarch, color }:
   const updates: Record<string, unknown> = { name, [`flags.${MODULE_ID}.type`]: type, [`flags.${MODULE_ID}.netarch`]: netarch || "" };
   if (type !== apData(doc).type && (accessPointTypes({ includeDisabled: true }).some((entry) => entry.img === doc.texture.src) || TYPES.some((entry) => iconPath(entry.id) === doc.texture.src))) updates["texture.src"] = typeImage(type);
   await doc.update(updates);
+  assertStoredChanges(doc, updates);
   if (netarch) {
     const entries = (setting("netarchColors")?.entries ?? []).filter((entry) => entry.uuid !== netarch);
     entries.push({ uuid: netarch, color });

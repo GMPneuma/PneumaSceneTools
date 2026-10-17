@@ -1,0 +1,308 @@
+// Generated from scripts/city-icon-catalog.json.
+export const CITY_ICONS = [
+  {
+    "category": "Food & nightlife",
+    "id": "bar",
+    "label": "Bar"
+  },
+  {
+    "category": "Food & nightlife",
+    "id": "nightclub",
+    "label": "Nightclub"
+  },
+  {
+    "category": "Food & nightlife",
+    "id": "restaurant",
+    "label": "Restaurant"
+  },
+  {
+    "category": "Food & nightlife",
+    "id": "street-food",
+    "label": "Street food"
+  },
+  {
+    "category": "Food & nightlife",
+    "id": "cafe",
+    "label": "Café"
+  },
+  {
+    "category": "Shopping",
+    "id": "general-store",
+    "label": "General store"
+  },
+  {
+    "category": "Shopping",
+    "id": "weapons-dealer",
+    "label": "Weapons dealer"
+  },
+  {
+    "category": "Shopping",
+    "id": "clothing-armor",
+    "label": "Clothing / armor"
+  },
+  {
+    "category": "Shopping",
+    "id": "cyberware-dealer",
+    "label": "Cyberware dealer"
+  },
+  {
+    "category": "Shopping",
+    "id": "electronics",
+    "label": "Electronics"
+  },
+  {
+    "category": "Shopping",
+    "id": "netrunner",
+    "label": "NetRunner"
+  },
+  {
+    "category": "Shopping",
+    "id": "vehicle-dealer",
+    "label": "Vehicle dealer"
+  },
+  {
+    "category": "Services",
+    "id": "ripperdoc",
+    "label": "Ripperdoc"
+  },
+  {
+    "category": "Services",
+    "id": "hospital",
+    "label": "Hospital / clinic"
+  },
+  {
+    "category": "Services",
+    "id": "mechanic",
+    "label": "Mechanic"
+  },
+  {
+    "category": "Services",
+    "id": "tech-workshop",
+    "label": "Tech workshop"
+  },
+  {
+    "category": "Services",
+    "id": "hotel",
+    "label": "Hotel"
+  },
+  {
+    "category": "Services",
+    "id": "bank-atm",
+    "label": "Bank / ATM"
+  },
+  {
+    "category": "Street economy",
+    "id": "fixer",
+    "label": "Fixer"
+  },
+  {
+    "category": "Street economy",
+    "id": "night-market",
+    "label": "Night Market"
+  },
+  {
+    "category": "Street economy",
+    "id": "black-market",
+    "label": "Black market"
+  },
+  {
+    "category": "Street economy",
+    "id": "pawn-shop",
+    "label": "Pawn shop"
+  },
+  {
+    "category": "Street economy",
+    "id": "scrapyard",
+    "label": "Scrapyard"
+  },
+  {
+    "category": "Residential",
+    "id": "apartments",
+    "label": "Apartment building"
+  },
+  {
+    "category": "Residential",
+    "id": "luxury-housing",
+    "label": "Luxury housing"
+  },
+  {
+    "category": "Residential",
+    "id": "megabuilding",
+    "label": "Megabuilding"
+  },
+  {
+    "category": "Residential",
+    "id": "encampment",
+    "label": "Homeless encampment"
+  },
+  {
+    "category": "Residential",
+    "id": "cargo-container",
+    "label": "Cargo Container"
+  },
+  {
+    "category": "Corporate & government",
+    "id": "corporate-headquarters",
+    "label": "Corporate headquarters"
+  },
+  {
+    "category": "Corporate & government",
+    "id": "corporate-facility",
+    "label": "Corporate facility"
+  },
+  {
+    "category": "Corporate & government",
+    "id": "government",
+    "label": "Government building"
+  },
+  {
+    "category": "Corporate & government",
+    "id": "police",
+    "label": "Police station"
+  },
+  {
+    "category": "Corporate & government",
+    "id": "prison",
+    "label": "Prison"
+  },
+  {
+    "category": "Transport",
+    "id": "metro",
+    "label": "Metro station"
+  },
+  {
+    "category": "Transport",
+    "id": "bus-terminal",
+    "label": "Bus terminal"
+  },
+  {
+    "category": "Transport",
+    "id": "parking-garage",
+    "label": "Parking garage"
+  },
+  {
+    "category": "Transport",
+    "id": "fuel-charging",
+    "label": "Fuel / charging station"
+  },
+  {
+    "category": "Transport",
+    "id": "airport",
+    "label": "Airport"
+  },
+  {
+    "category": "Transport",
+    "id": "landing-pad",
+    "label": "Landing pad"
+  },
+  {
+    "category": "Transport",
+    "id": "docks",
+    "label": "Docks"
+  },
+  {
+    "category": "Industrial & infrastructure",
+    "id": "warehouse",
+    "label": "Warehouse"
+  },
+  {
+    "category": "Industrial & infrastructure",
+    "id": "factory",
+    "label": "Factory"
+  },
+  {
+    "category": "Industrial & infrastructure",
+    "id": "power-plant",
+    "label": "Power plant"
+  },
+  {
+    "category": "Industrial & infrastructure",
+    "id": "communications",
+    "label": "Communications tower"
+  },
+  {
+    "category": "Industrial & infrastructure",
+    "id": "water-treatment",
+    "label": "Water treatment"
+  },
+  {
+    "category": "Industrial & infrastructure",
+    "id": "freight-yard",
+    "label": "Freight yard"
+  },
+  {
+    "category": "Community & media",
+    "id": "community-center",
+    "label": "Community center"
+  },
+  {
+    "category": "Community & media",
+    "id": "place-of-worship",
+    "label": "Place of worship"
+  },
+  {
+    "category": "Community & media",
+    "id": "park",
+    "label": "Park"
+  },
+  {
+    "category": "Community & media",
+    "id": "entertainment",
+    "label": "Entertainment venue"
+  },
+  {
+    "category": "Community & media",
+    "id": "media-studio",
+    "label": "Media studio"
+  },
+  {
+    "category": "Street locations",
+    "id": "safehouse",
+    "label": "Safehouse"
+  },
+  {
+    "category": "Street locations",
+    "id": "gang-hideout",
+    "label": "Gang hideout"
+  },
+  {
+    "category": "Street locations",
+    "id": "abandoned",
+    "label": "Abandoned building"
+  },
+  {
+    "category": "Street locations",
+    "id": "ruins",
+    "label": "Ruins"
+  },
+  {
+    "category": "Street locations",
+    "id": "combat-zone",
+    "label": "Combat zone"
+  },
+  {
+    "category": "Campaign pins",
+    "id": "mission",
+    "label": "Mission location"
+  },
+  {
+    "category": "Campaign pins",
+    "id": "meeting",
+    "label": "Meeting point"
+  },
+  {
+    "category": "Campaign pins",
+    "id": "person-of-interest",
+    "label": "Person of interest"
+  },
+  {
+    "category": "Campaign pins",
+    "id": "stash",
+    "label": "Stash"
+  },
+  {
+    "category": "Campaign pins",
+    "id": "unknown",
+    "label": "Unknown location"
+  }
+] as const;

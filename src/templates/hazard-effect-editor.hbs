@@ -1,0 +1,9 @@
+<div data-effect-index="{{index}}">
+  {{#each fields}}{{> "modules/pneuma-scenetools/templates/hazard-field.hbs"}}{{/each}}
+  {{#if note}}<p class="notes">{{note}}</p>{{/if}}
+  {{#if status}}<div class="form-group"><label>Effect</label><div class="form-fields">
+    <button type="button" data-action="chooseStatus" class="hazard-status-choice">{{#if status.img}}<img src="{{status.img}}" alt="">{{/if}}<span>{{status.name}}</span></button>
+    <input type="hidden" name="status" value="{{status.id}}">
+  </div></div>{{/if}}
+  {{#if avoid}}<div class="hazard-skill-check">{{> "modules/pneuma-scenetools/templates/hazard-field.hbs" avoid.skill}}{{> "modules/pneuma-scenetools/templates/hazard-field.hbs" avoid.dv}}</div>{{/if}}
+</div>

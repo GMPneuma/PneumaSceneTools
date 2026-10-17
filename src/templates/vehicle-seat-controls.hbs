@@ -1,0 +1,8 @@
+<div class="vehicle-preview-grid"><div class="vehicle-seat-image">{{#if video}}<video src="{{image}}" muted autoplay loop></video>{{else}}<img src="{{image}}" alt="Vehicle artwork" draggable="false">{{/if}}</div></div>
+<div class="vehicle-seat-preview-help"><label><input type="checkbox" name="snapSeats" checked> Snap to other seats</label>
+<p class="notes">Dashed outline: token footprint. Scale changes the artwork inside it.</p>
+<p class="notes">Click to place seats. Select a marker, then click to move it. Hold Shift to bypass snapping.</p>
+</div>
+<div class="vehicle-seat-rows"></div>
+<button type="button" data-action="add">Place a new seat</button>
+<p role="alert"></p>

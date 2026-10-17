@@ -8,7 +8,8 @@ export interface WeaponInventoryChoices {
   selectedWeaponIds: string[];
 }
 
-function isNaturalWeapon(item: Item): boolean {
+export function isNaturalWeapon(item: Item): boolean {
+  if (String(item.type) !== "weapon") return false;
   const name = (item.name ?? "").trim().toLocaleLowerCase();
   return name.includes("unarmed") || name.includes("martial arts");
 }

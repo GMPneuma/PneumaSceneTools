@@ -1,0 +1,15 @@
+<form class="pneuma-vehicle-seats">
+  <p>Click the image to add seats. Select a numbered marker, then click elsewhere to move it. Rename seats below. This shows the original image before rotation or mirroring.</p>
+  {{#if templateOptions}}<p>Vehicle Item seat capacity: {{capacity}}</p>{{else}}<p>Markers are used in numbered order, up to the vehicle type’s seat count.</p>{{/if}}
+  <label><input type="checkbox" name="snapSeats" checked> Snap to other seats</label>
+  <p class="notes">Align nearby rows and columns. Hold Shift to place freely.</p>
+  <div class="vehicle-seat-image">{{#if video}}<video src="{{image}}" muted autoplay loop></video>{{else}}<img src="{{image}}" alt="Vehicle seat layout" draggable="false">{{/if}}</div>
+  <button type="button" data-action="add">Place a new seat</button>
+  <div class="vehicle-seat-rows"></div>
+  {{#if templateOptions}}<label><input type="checkbox" name="template"> Also save seats on the vehicle template</label>
+  <div class="form-group"><label for="vehicle-seat-template-scope">Template layout</label><select id="vehicle-seat-template-scope" name="templateScope"><option value="all">All artwork (standard layout)</option><option value="image">This artwork only</option></select></div>
+  <p>New vehicles inherit template seats. Standard layouts use proportional positions for similarly framed artwork. An artwork-specific layout takes priority.</p>
+  {{/if}}
+  <p role="alert"></p>
+  <button type="submit"><i class="fas fa-save"></i> Save seats</button>
+</form>

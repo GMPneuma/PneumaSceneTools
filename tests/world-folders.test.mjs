@@ -1,7 +1,8 @@
+globalThis.Token = class {_applyRenderFlags(){}};
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
-import {Collection, environment, getPath, applyChanges} from "./netarch/helpers.mjs";
+import {Collection, environment, getPath} from "./netarch/helpers.mjs";
 import {ensureSceneToolsFolder, findSceneToolsFolder, WORLD_FOLDERS} from "../dist/scripts/world-folders.js";
 
 
@@ -21,10 +22,10 @@ test("players cannot provision in-world folders",async()=>{
   await assert.rejects(ensureSceneToolsFolder("Actor",WORLD_FOLDERS.netarchAPs),/Only a GM/);assert.equal(game.folders.size,0);
 });
 
-test("renamed legacy roots and children are reused when restoring a missing folder",async()=>{
+test("renamed current roots and children are reused when restoring a missing folder",async()=>{
   environment();
-  const root=await Folder.create({name:"Renamed root",type:"Actor",folder:null,flags:{"pneuma-scenetools":{FolderKind:"root"}}});
-  const templates=await Folder.create({name:"Renamed templates",type:"Actor",folder:root.id,flags:{"pneuma-scenetools":{FolderKind:"templates"}}});
+  const root=await Folder.create({name:"Renamed root",type:"Actor",folder:null,flags:{"pneuma-scenetools":{SceneToolsFolder:"root"}}});
+  const templates=await Folder.create({name:"Renamed templates",type:"Actor",folder:root.id,flags:{"pneuma-scenetools":{SceneToolsFolder:"MookMaker Templates"}}});
   assert.equal(await ensureSceneToolsFolder("Actor",WORLD_FOLDERS.mookTemplates),templates);
   const promoted=await ensureSceneToolsFolder("Actor",WORLD_FOLDERS.mookPromoted);
   assert.equal(promoted.folder.id,root.id);
@@ -34,8 +35,12 @@ test("renamed legacy roots and children are reused when restoring a missing fold
 
 test("MookMaker and Scanner startup use one module namespace without duplicate settings or APIs",async()=> {
   const env=environment(),settings=new Set(),menus=new Set(),hooks=[];
+  CONFIG.Token={objectClass:class {_onUpdate(){} control(){return true}}};
+  globalThis.PrimarySpriteMesh=class {resize() {}};
   globalThis.Application=class {static get defaultOptions(){return {};}};
   globalThis.FormApplication=class extends Application {};
+  globalThis.FilePicker=class extends Application {};
+  globalThis.document={addEventListener(){}};
   game.modules=new Map([["pneuma-scenetools",{}]]);
   game.settings.register=(scope,key,config)=>{assert.equal(scope,"pneuma-scenetools");assert.ok(!settings.has(key),`Duplicate setting ${key}`);settings.add(key);env.values.set(key,config.default);};
   game.settings.registerMenu=(scope,key)=>{assert.equal(scope,"pneuma-scenetools");assert.ok(!menus.has(key));menus.add(key);};
@@ -44,10 +49,16 @@ test("MookMaker and Scanner startup use one module namespace without duplicate s
   await import("../dist/scripts/main.js");await import("../dist/scripts/mookmaker/entry.js");await import("../dist/scripts/netarch/entry.js");callbacks.get("init")();
   const api=game.modules.get("pneuma-scenetools").api;
   assert.equal(typeof api.openSceneCreator,"function");assert.equal(typeof api.netArchScanner.openScanner,"function");
-  assert.deepEqual(Object.keys(api).sort(),["netArchScanner","openSceneCreator"]);
+  assert.deepEqual(Object.keys(api).sort(),["netArchScanner","openModularSceneCreator","openPatrols","openSceneCreator","sceneEffects","traps"]);
+  assert.equal(typeof api.openPatrols,"function");
+  assert.equal(typeof api.openModularSceneCreator,"function");assert.ok(settings.has("modularCollections"));
+  assert.equal(typeof api.sceneEffects.apply,"function");
+  assert.equal(typeof api.traps.open,"function");assert.ok(settings.has("trapPresets"));
+  assert.equal(settings.has("hideRevealAll"),false);assert.equal(settings.has("showLabels"),false);assert.equal(env.values.get("showRevealAll"),true);
   assert.ok(settings.has("skillClassifications"));assert.ok(settings.has("apTypes"));assert.ok(settings.has("defaultGrid"));
+  assert.ok(settings.has("pinTemplate"));assert.ok(hooks.some(hook=>hook.key==="hoverNote"));
   assert.ok(menus.has("manageTypes"));assert.ok(hooks.some(hook=>hook.key==="renderSceneDirectory"));
-  assert.equal(hooks.filter(hook=>hook.key==="preCreateToken").length,2);
+  assert.equal(hooks.filter(hook=>hook.key==="preCreateToken").length,3);
 });
 
 test("MookMaker default template and AP templates provision together into their dedicated folders",async()=> {
@@ -83,7 +94,7 @@ test("MookMaker default template and AP templates provision together into their 
 
 test("moved current Mook templates including intentionally empty Actors are preserved without fetching defaults",async()=>{
  environment();game.users.activeGM=game.user;
- const actor={id:"custom",type:"character",name:"Custom",folder:{id:"elsewhere"},items:new Collection(),flags:{"pneuma-scenetools":{IsDefaultMookTemplate:true,DefaultMookTemplateVersion:5}}};
+ const actor={id:"custom",type:"character",name:"Custom",folder:{id:"elsewhere"},items:new Collection(),flags:{"pneuma-scenetools":{IsDefaultMookTemplate:true}}};
  game.actors.set(actor.id,actor);
  const fetch=globalThis.fetch;globalThis.fetch=()=>{throw Error("Must not fetch or overwrite current template")};
  try {const {ensureMookMakerFolders}=await import("../dist/scripts/mookmaker/folders.js");await ensureMookMakerFolders();}
@@ -91,31 +102,11 @@ test("moved current Mook templates including intentionally empty Actors are pres
  assert.equal(game.actors.size,1);assert.equal(actor.folder.id,"elsewhere");assert.equal(actor.name,"Custom");assert.equal(actor.items.size,0);
 });
 
-test("failed default template Item migration remains retryable",async()=>{
- environment();game.users.activeGM=game.user;game.i18n={localize:key=>key};
- const scope="pneuma-scenetools";
- const actor={id:"default",type:"character",items:new Collection(),flags:{[scope]:{IsDefaultMookTemplate:true}},
-  async update(data){const {items,...rest}=data;applyChanges(this,rest);},
-  async createEmbeddedDocuments(){throw Error("write failed");}};
- game.actors.set(actor.id,actor);
- const original=globalThis.fetch;globalThis.fetch=async()=>({ok:true,json:async()=>({items:[{type:"gear",name:"Gear"}]})});
- try {
-  const {ensureMookMakerFolders}=await import("../dist/scripts/mookmaker/folders.js");
-  await assert.rejects(ensureMookMakerFolders(),/write failed/);
-  assert.equal(actor.flags[scope].DefaultMookTemplateVersion,0);
-  actor.createEmbeddedDocuments=async()=>[];
-  await assert.rejects(ensureMookMakerFolders(),/did not create all/);
-  assert.equal(actor.flags[scope].DefaultMookTemplateVersion,0);
-  actor.createEmbeddedDocuments=async(_type,data)=>data.map((item,i)=>{const doc={...item,id:String(i)};actor.items.set(doc.id,doc);return doc;});
-  await ensureMookMakerFolders();assert.equal(actor.items.size,1);assert.equal(actor.flags[scope].DefaultMookTemplateVersion,5);
- } finally {globalThis.fetch=original;}
-});
-
-test("legacy promoted Actors cannot replace the default template",async()=>{
+test("promoted Actors cannot replace the default template",async()=>{
  environment();game.users.activeGM=game.user;game.i18n={localize:key=>key};
  const folder=await ensureSceneToolsFolder("Actor",WORLD_FOLDERS.mookPromoted);
- game.actors.set("legacy",{id:"legacy",type:"character",folder,flags:{"pneuma-scenetools":{IsDefaultMookTemplate:true,DefaultMookTemplateVersion:5}}});
- game.actors.set("moved",{id:"moved",type:"character",folder:{id:"elsewhere"},flags:{"pneuma-scenetools":{IsDefaultMookTemplate:true,DefaultMookTemplateVersion:5,PromotedFromMookMaker:true}}});
+ game.actors.set("legacy",{id:"legacy",type:"character",folder,flags:{"pneuma-scenetools":{IsDefaultMookTemplate:true}}});
+ game.actors.set("moved",{id:"moved",type:"character",folder:{id:"elsewhere"},flags:{"pneuma-scenetools":{IsDefaultMookTemplate:true,PromotedFromMookMaker:true}}});
  const original=globalThis.fetch;globalThis.fetch=async()=>({ok:true,json:async()=>({items:[]})});
  let created;Actor.create=async data=>created=data;
  try {const {ensureMookMakerFolders}=await import("../dist/scripts/mookmaker/folders.js");await ensureMookMakerFolders();}

@@ -5,8 +5,16 @@ import {execFileSync} from "node:child_process";
 import { check, root } from "./check.mjs";
 
 await check(resolve(root, "dist"));
+execFileSync(process.execPath, ["scripts/default-hazard-template-test.mjs"], {cwd: root, stdio: "inherit"});
+execFileSync(process.execPath, ["--test", "tests/patrol.test.mjs"], {cwd: root, stdio: "inherit"});
+execFileSync(process.execPath, ["--test", "tests/modular-scenes.test.mjs"], {cwd: root, stdio: "inherit"});
 globalThis.FormApplication = class {};
+globalThis.FilePicker = class {};
 await import("./scene-tests.mjs");
 await import("./matching-tests.mjs");
-execFileSync(process.execPath, ["--test", "tests/netarch/*.test.mjs", "tests/world-folders.test.mjs", "tests/mookmaker/workflows.test.mjs", "tests/io.test.mjs"], {cwd: root, stdio: "inherit"});
+execFileSync(process.execPath, ["--test", "tests/map-pins-visibility.test.mjs"], {cwd: root, stdio: "inherit"});
+execFileSync(process.execPath, ["--test", "tests/scene-thumbnail.test.mjs"], {cwd: root, stdio: "inherit"});
+execFileSync(process.execPath, ["--test", "tests/persistence.test.mjs"], {cwd: root, stdio: "inherit"});
+execFileSync(process.execPath, ["--test", "tests/traps.test.mjs", "tests/hazard-status-picker.test.mjs"], {cwd: root, stdio: "inherit"});
+execFileSync(process.execPath, ["--test", "tests/netarch/*.test.mjs", "tests/world-folders.test.mjs", "tests/mookmaker/workflows.test.mjs", "tests/io.test.mjs", "tests/template-spawning.test.mjs", "tests/vehicle-rotation.test.mjs", "tests/vehicle-footprint.test.mjs", "tests/vehicle-seats.test.mjs", "tests/map-pins.test.mjs"], {cwd: root, stdio: "inherit"});
 execFileSync(process.execPath, ["tests/mookmaker/bullet-dodging.test.mjs"], {cwd: root, stdio: "inherit"});

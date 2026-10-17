@@ -12,8 +12,8 @@ export interface ScanContext { actorId: string; tokenId: string | null; sceneId:
 export interface ScannerChatClass { RenderRollCard(roll: ScannerRoll, ...args: unknown[]): Promise<ChatMessage | undefined>; }
 export interface ScannerSettings {
   apTypes: {entries?: APType[]}; revealStyle: string; visionRadius: number; scannerRadius: number;
-  hideRevealAll: boolean; showRevealAll: boolean; autoPulse: boolean; pulseCount: number;
-  pulseDuration: number; showLabels: boolean; autoScanner: boolean; netarchColors: {entries: ArchitectureColor[]};
+  showRevealAll: boolean; autoPulse: boolean; pulseCount: number;
+  pulseDuration: number; autoScanner: boolean; netarchColors: {entries: ArchitectureColor[]};
 }
 declare global {
   interface SettingConfig {
@@ -21,12 +21,10 @@ declare global {
     "pneuma-scenetools.revealStyle": string;
     "pneuma-scenetools.visionRadius": number;
     "pneuma-scenetools.scannerRadius": number;
-    "pneuma-scenetools.hideRevealAll": boolean;
     "pneuma-scenetools.showRevealAll": boolean;
     "pneuma-scenetools.autoPulse": boolean;
     "pneuma-scenetools.pulseCount": number;
     "pneuma-scenetools.pulseDuration": number;
-    "pneuma-scenetools.showLabels": boolean;
     "pneuma-scenetools.autoScanner": boolean;
     "pneuma-scenetools.netarchColors": ScannerSettings["netarchColors"];
   }
@@ -37,5 +35,5 @@ declare global {
     ChatMessage: {"pneuma-scenetools": {scan?: ScanContext}};
   }
   var libWrapper: {register(module: string, target: string, callback: Function, kind: "WRAPPER" | "MIXED"): void};
-  var pneumaSceneToolsNetArchCompat: {chatClass: ScannerChatClass} | undefined;
+  var pneumaSceneToolsScannerBridge: {chatClass: ScannerChatClass} | undefined;
 }

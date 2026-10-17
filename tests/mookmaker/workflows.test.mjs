@@ -4,14 +4,14 @@ import {environment, Collection,applyChanges} from "../netarch/helpers.mjs";
 globalThis.FormApplication=class {};
 const {withMookOperation}=await import("../../dist/scripts/mookmaker/operations.js");
 const {applyMookChanges}=await import("../../dist/scripts/mookmaker/apply-mook.js");
-const {purgeGear}=await import("../../dist/scripts/mookmaker/purge.js");
+const {purgeGear,confirmPurgeGear}=await import("../../dist/scripts/mookmaker/purge.js");
 const {promoteToken}=await import("../../dist/scripts/mookmaker/promotion.js");
 const {ensureSceneToolsFolder,WORLD_FOLDERS}=await import("../../dist/scripts/world-folders.js");
 function setup(){
  const env=environment();foundry.utils.deepClone=structuredClone;
  game.i18n={localize:key=>key,format:key=>key};
  const actor={name:"Mook",items:new Collection(),toObject(){return {name:this.name,items:[],prototypeToken:{texture:{src:"old"}}}}};
- const token={actor,document:{uuid:"Scene.test.Token.mook",actorId:"original",actorLink:false,texture:{src:"portrait"},async update(changes){applyChanges(this,changes)}}};
+ const token={actor,document:{uuid:"Scene.test.Token.mook",actorId:"original",flags:{"pneuma-scenetools":{mookMakerSaved:true}},actorLink:false,texture:{src:"portrait"},async update(changes){applyChanges(this,changes)}}};
  return {...env,actor,token};
 }
 test("Apply, Purge and Promote reject overlapping actions and release the guard after failure",async()=>{
@@ -39,7 +39,7 @@ test("promotion removes the new Actor if linking fails, and successful retry pre
  assert.equal(created.img,"portrait");assert.equal(created.prototypeToken.texture.src,"portrait");
 });
 test("purge restores magazine state on deletion failure and preserves equipped gear on retry",async()=>{
- const {token,actor}=setup();
+ const {token,actor,values}=setup();values.set("purgeAmmunition",false);
  actor.items=new Collection([{id:"weapon",name:"Pistol",type:"weapon",system:{equipped:"owned",magazine:{value:6},installedItems:{list:["ammo"]}}},{id:"ammo",type:"ammo",name:"Ammo",system:{}},{id:"keep",name:"Armor",type:"armor",system:{equipped:"equipped"}}]);
  actor.updateEmbeddedDocuments=async(_type,updates)=>updates.forEach(data=>applyChanges(actor.items.get(data._id),data));
  actor.deleteEmbeddedDocuments=async()=>{throw Error("delete failed")};
@@ -48,7 +48,7 @@ test("purge restores magazine state on deletion failure and preserves equipped g
  assert.equal(actor.items.get("weapon").system.magazine.value,6);
  assert.deepEqual(actor.items.get("weapon").system.installedItems.list,["ammo"]);
  actor.deleteEmbeddedDocuments=async(_type,ids)=>ids.forEach(id=>actor.items.delete(id));
- assert.equal(await purgeGear(token),true);assert.deepEqual([...actor.items.keys()],["ammo","keep"]);
+ assert.equal(await purgeGear(token),true);assert.deepEqual([...actor.items.keys()],["keep"]);
 });
 
 test("confirmed Purge waits for deletion despite Foundry closing the confirmation immediately",async()=>{
@@ -71,7 +71,7 @@ test("confirmed Purge waits for deletion despite Foundry closing the confirmatio
 
 test("promotion removes template identity but preserves other flags",async()=>{
  const {token,actor}=setup();await ensureSceneToolsFolder("Actor",WORLD_FOLDERS.mookPromoted);
- const flags={"pneuma-scenetools":{IsDefaultMookTemplate:true,DefaultMookTemplateVersion:5,custom:"keep"},other:{value:1}};
+ const flags={"pneuma-scenetools":{IsDefaultMookTemplate:true,custom:"keep"},other:{value:1}};
  actor.toObject=()=>({name:"Mook",flags:structuredClone(flags)});
  let created;Actor.create=async data=>created={...data,id:"promoted"};
  assert.equal(await promoteToken(token),true);
@@ -86,4 +86,16 @@ test("cancelled promotion linking reports failure and removes the unused Actor",
  const old=console.error;console.error=()=>{};
  try {assert.equal(await promoteToken(token),false);}finally{console.error=old;}
  assert.equal(deleted,1);assert.equal(token.document.actorId,"original");assert.equal(token.document.actorLink,false);
+});
+
+test("unsaved mooks cannot purge, including when confirmation is disabled",async()=>{
+ const {token,actor,values}=setup();delete token.document.flags;
+ actor.items=new Collection([{id:"gear",type:"gear",system:{equipped:"owned"}}]);
+ actor.deleteEmbeddedDocuments=async()=>{throw Error("unexpected deletion")};
+ for(const enabled of [true,false]) {
+  values.set("confirmPurgeGear",enabled);
+  assert.equal(await confirmPurgeGear(token),false);
+  assert.equal(await purgeGear(token),false);
+  assert.equal(actor.items.size,1);
+ }
 });

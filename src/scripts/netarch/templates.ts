@@ -1,27 +1,23 @@
 import { accessPointTypes, typeImage } from "./types.js";
-import { MODULE_ID, SYSTEM_ID, TYPES } from "./constants.js";
+import { MODULE_ID, SYSTEM_ID } from "./constants.js";
 import { apData, freshAP, isAP } from "./model.js";
 import {ensureSceneToolsFolder, WORLD_FOLDERS} from "../world-folders.js";
 
 export function activeGM() {
-  return game.users!.activeGM ?? game.users!.filter((user) => user.active && user.isGM).sort((a, b) => a.id!.localeCompare(b.id!))[0];
+  return game.users!.activeGM;
 }
 
 let provisioning: Promise<number> | undefined;
-export async function ensureTemplates({ defaults = false, manual = false } = {}) {
-  if (!game.user!.isGM || (!manual && activeGM()?.id !== game.user!.id)) return;
-  if (provisioning) { await provisioning; if (!manual) return; }
-  provisioning = provision(defaults).finally(() => { provisioning = undefined; });
+export async function ensureTemplates() {
+  if (!game.user!.isGM || activeGM()?.id !== game.user!.id) return;
+  if (provisioning) return provisioning;
+  provisioning = provision().finally(() => { provisioning = undefined; });
   return provisioning;
 }
 
-async function provision(defaults: boolean) {
+async function provision() {
   if (!(game.documentTypes!.Actor as readonly string[]).includes("container")) throw new Error("Cyberpunk RED's container Actor type is unavailable.");
-  const updates = game.actors!.filter((actor) => Boolean(actor.getFlag?.(MODULE_ID, "templateType") || isAP(actor.prototypeToken))
-    && actor.prototypeToken?.appendNumber !== true)
-    .map((actor) => ({ _id: actor.id, "prototypeToken.appendNumber": true }));
-  if (updates.length) await Actor.updateDocuments(updates);
-  const missing = (defaults ? TYPES : accessPointTypes()).filter((type) => !game.actors!.some((actor) => actor.getFlag(MODULE_ID, "templateType") === type.id));
+  const missing = accessPointTypes().filter((type) => !game.actors!.some((actor) => actor.getFlag(MODULE_ID, "templateType") === type.id));
   if (!missing.length) return 0;
   const folder = await ensureSceneToolsFolder("Actor", WORLD_FOLDERS.netarchAPs);
   // createDocuments uses the native data model without CPRContainerActor.create's shop defaults.

@@ -5,11 +5,12 @@ export const WORLD_FOLDERS = {
   scenes: "Imported Scenes",
   mookTemplates: "MookMaker Templates",
   mookPromoted: "MookMaker Promoted Actors",
+  vehicleTemplates: "Vehicle Templates",
   netarchAPs: "NetArchAPs",
+  hazardActorTemplates: "Hazard Actor Templates",
 } as const;
 export type WorldFolderType = "Actor" | "Scene" | "Item" | "JournalEntry" | "RollTable" | "Playlist";
 const pending = new Map<string, Promise<Folder>>();
-const legacyKinds: Record<string, string> = {root: "root", [WORLD_FOLDERS.mookTemplates]: "templates", [WORLD_FOLDERS.mookPromoted]: "promoted"};
 
 export function findSceneToolsFolder(type: WorldFolderType, child?: string): Folder | undefined {
   const parent = child ? findSceneToolsFolder(type) : undefined;
@@ -18,7 +19,6 @@ export function findSceneToolsFolder(type: WorldFolderType, child?: string): Fol
   return game.folders?.find(folder => folder.type === type
     && (folder.folder?.id ?? null) === (parent?.id ?? null)
     && (foundry.utils.getProperty(folder, `flags.${MODULE_ID}.SceneToolsFolder`) === identity
-      || (legacyKinds[identity] !== undefined && foundry.utils.getProperty(folder, `flags.${MODULE_ID}.FolderKind`) === legacyKinds[identity])
       || folder.name === (child ?? WORLD_FOLDERS.root)));
 }
 

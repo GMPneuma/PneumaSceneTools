@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0 - 2026-10-17
+
+- Add live modular scene building with named tile collections, placement, rotation, expansion, shrinking, Undo, and persistent browser thumbnails for static and animated tiles.
+- Add Loop, Back & Forth, and Random Region patrols with compact scene controls, configurable movement and pauses, vehicle-aware routing, traffic waits, and rider synchronization.
+- Add vehicle artwork, footprint, facing, seat layout, boarding, exit, and player driving controls.
+- Add scene POIs with searchable icons, journal-backed hover fields, live journal updates, pin editing, and bulk styling.
+- Add scene-stored hazards with GM-confirmed activations, default armed hazard Actors, Regions, access points, and Combat Tools attack/damage/effect integration.
+- Refine scene importing, shared review settings, map scale, thumbnail handling, directory buttons, MookMaker workflows, and access-point management.
+- Remove obsolete module migration and legacy storage paths. Preserve native Foundry document behavior and GM permissions.
+- Automated source, runtime, and browser checks are separate from live Foundry and multiplayer verification.
+
+
 ## 0.2.6 - 2026-10-08
 
 - Remove default-template identity from promoted Actors and exclude promoted Actors from template lookup.
@@ -51,7 +63,7 @@
 ## 0.2.0 - 2026-10-08
 
 - Consolidate folder discovery and creation, including renamed folders identified by legacy MookMaker flags.
-- Use a single native Scene Creator window for batch review, shared lighting/vision, per-scene overrides, overlays, validation and creation. Keep failed imports open and retry only unsaved scenes.
+- Use a single native Quick Scene Importer window for batch review, shared lighting/vision, per-scene overrides, overlays, validation and creation. Keep failed imports open and retry only unsaved scenes.
 - Filter unrelated JSON/media candidates before loading and rendering; retain native file-picker overrides.
 - Restore native Foundry types and explicit Scanner data models; remove untyped globals and redundant startup checks.
 - Reduce the public API to openSceneCreator and netArchScanner; remove duplicate Scanner aliases and empty/internal API entries.
@@ -60,7 +72,7 @@
 ## 0.1.3 - 2026-10-08
 
 - Remove all scanner global and constructor proxy wrappers; use Foundry globals directly.
-- Route scene creator buttons and Enter through native Dialog submission, preserving validation and cancellation.
+- Route scene importer buttons and Enter through native Dialog submission, preserving validation and cancellation.
 - Create SceneTools/Imported Scenes folders when the GM loads the world.
 
 ## 0.1.2 - 2026-10-08
@@ -69,12 +81,12 @@
 
 ## 0.1.1 - 2026-10-08
 
-- Fix the missing Quick Scene Creator button by supporting native sidebar header actions, the generic sidebar render hook, and already-rendered Scenes sidebars. Prevent duplicate buttons and retain GM-only visibility.
+- Fix the missing Quick Scene Importer button by supporting native sidebar header actions, the generic sidebar render hook, and already-rendered Scenes sidebars. Prevent duplicate buttons and retain GM-only visibility.
 
 ## 0.1.0 - 2026-10-08
 
 - Initialize the TypeScript Foundry v12 module scaffold using Combat Tools tooling conventions.
-- Add the GM Quick Scene Creator: native map picker, recursive nearby import discovery, Foundry Scene/Universal VTT import, editable grid suggestions and preview, lighting defaults, and opt-in overlays.
+- Add the GM Quick Scene Importer: native map picker, recursive nearby import discovery, Foundry Scene/Universal VTT import, editable grid suggestions and preview, lighting defaults, and opt-in overlays.
 - Add convention-aware regex matching, all-variant imports, Static/Animated/Both Scene choices, and closely matching overlay/foreground images and videos.
 - Consolidate MookMaker v0.93.4 and NetArch Scanner v0.9.0 functionality, source, assets, documentation, and regressions; port scanner runtime to TypeScript.
 - Use `pneuma-scenetools` for integrated module paths/storage and document-type-specific `SceneTools` world folders with the requested child names.

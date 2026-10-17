@@ -23,7 +23,7 @@ test("six private templates are created once without overwriting GM edits", asyn
   await ensureTemplates();
   assert.equal(game.actors.size, 6);
   assert.equal(computer.name, "GM custom terminal");
-  assert.equal(computer.prototypeToken.appendNumber, true);
+  assert.equal(computer.prototypeToken.appendNumber, false);
 });
 test("only the active GM provisions Actors, and simultaneous requests share work", async () => {
   const { player } = environment();
@@ -78,19 +78,7 @@ test("AP templates use SceneTools/NetArchAPs and preserve GM folder edits", asyn
   assert.equal(folder.name, "My APs");
   assert.equal(game.folders.size, 2);
 });
-test("moved templates do not recreate their folder or duplicate Actors; restore creates only missing defaults", async () => {
-  environment();
-  await ensureTemplates();
-  for (const actor of game.actors) actor.folder = "elsewhere";
-  game.folders.clear();
-  await ensureTemplates();
-  assert.equal(game.folders.size, 0);
-  assert.equal(await ensureTemplates({ defaults: true, manual: true }), 0);
-  assert.equal(game.folders.size, 0);
-  const computer = game.actors.find(actor => actor.getFlag(MODULE_ID, "templateType") === "computer");
-  game.actors.delete(computer.id);
-  assert.equal(await ensureTemplates({ defaults: true, manual: true }), 1);
-  assert.equal(game.actors.size, 6);
-  assert.equal(game.actors.filter(actor => actor.folder === "elsewhere").length, 5);
-  assert.equal(game.folders.size, 2);
+test('moved templates do not recreate their folder or duplicate Actors',async()=>{
+ environment();await ensureTemplates();for(const actor of game.actors)actor.folder='elsewhere';game.folders.clear();
+ await ensureTemplates();assert.equal(game.folders.size,0);assert.equal(game.actors.size,6);
 });

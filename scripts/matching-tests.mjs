@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import {planSelection} from "../dist/scripts/planning.js";
 import {isFoundryFolder, isVideo, mapIdentity, nameScore, rankImports, mediaForImport, matchingOverlays, scanRoot, uncoveredVariants} from "../dist/scripts/matching.js";
 const train = "maps/Cybermaps_Train Assault 35x19 4K - Gridless.jpg";
 const trainVideo = "maps/Cybermaps_Train Assault 35x19 4K.mp4";
@@ -6,6 +7,16 @@ const trainZoom = "maps/Cybermaps_Train Assault 71x40 4K Zoomed Out - Gridless.j
 const trainZoomVideo = "maps/Cybermaps_Train Assault 71x40 4K Zoomed Out.mp4";
 const train8k = "maps/Cybermaps_Train Assault 35x19 8K - Gridless.jpg";
 const item = path => ({path,kind:"Foundry Scene",data:{}});
+const brineStatic = "maps/SOL-Brineworks-Map-64px-1080.webp";
+const brineVideo = "maps/SOL-Brineworks-Map-64px-VTT.webm";
+assert.equal(mapIdentity(brineStatic),mapIdentity(brineVideo));
+for (const anchor of [brineStatic,brineVideo]) {
+  const selection = planSelection(anchor,[],[brineStatic,brineVideo],[],undefined,true);
+  assert.equal(selection.plans.length,1);
+  assert.deepEqual(selection.plans[0].staticMaps.map(file=>file.path),[brineStatic]);
+  assert.deepEqual(selection.plans[0].videos.map(file=>file.path),[brineVideo]);
+}
+assert.notEqual(mapIdentity("maps/Map1-1080.webp"),mapIdentity("maps/Map2-1080.webp"));
 const regular = item("maps/foundry walls/fvtt-train-assault.json"), zoom = item("maps/foundry walls/fvtt-train-assault-zoomed-out.json");
 assert.equal(mapIdentity(train),"train assault");
 assert.equal(mapIdentity(trainZoom),"train assault zoomout");

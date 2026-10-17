@@ -12,11 +12,12 @@ export async function check(base = root) {
   assert.equal(manifest.version, pkg.version);
   assert.equal(manifest.compatibility.minimum, "12");
   assert.equal(manifest.compatibility.maximum, "12");
+  assert.deepEqual(manifest.documentTypes?.RegionBehavior?.trap, {}, "Declare the trap RegionBehavior subtype in the module manifest");
   assert.ok(manifest.relationships.systems.some(system => system.id === "cyberpunk-red-core"));
   assert.ok(manifest.relationships.requires.some(module => module.id === "lib-wrapper"));
-  const featureAssets = ["templates/mook-maker.hbs","templates/scene-creator.hbs", "templates/default-mook.json", "templates/skill-classifications.hbs", "templates/scanner.hbs", "templates/ap-editor.hbs", "templates/type-manager.hbs", "assets/actor/default-mook.png",
+  const featureAssets = ["templates/hazard-field.hbs", "templates/hazard-button.hbs", "templates/hazard-controls.hbs", "templates/hazard-sidebar.hbs", "templates/hazard-effects.hbs", "templates/hazard-access-point.hbs", "templates/hazard-trigger-summary.hbs", "templates/hazard-effect-editor.hbs", "templates/hazard-trigger-editor.hbs", "templates/hazard-editor.hbs", "templates/hazard-popup.hbs", "templates/vehicle-config.hbs", "templates/vehicle-seat-controls.hbs", "assets/vehicle-outline.svg","templates/vehicle-seats.hbs", "templates/vehicle-seat-editor.hbs", "templates/vehicle-seat-choose.hbs","templates/vehicle-pivot.hbs", "templates/token-artwork.hbs", "templates/map-pins.hbs", "templates/map-pins-bulk.hbs", "templates/mook-maker.hbs","templates/scene-creator.hbs", "templates/default-mook.json", "templates/skill-classifications.hbs", "templates/scanner.hbs", "templates/ap-editor.hbs", "templates/type-manager.hbs", "assets/actor/default-mook.png",
     ...[1,2,3,4,5,6].map(n => `assets/tokens/mook-0${n}.png`), ...["computer","camera","turret","door","alarm","generic"].map(name => `assets/${name}.svg`)];
-  for (const asset of [...manifest.esmodules, ...manifest.styles, ...manifest.languages.map(lang => lang.path), ...featureAssets]) {
+  for (const asset of [...manifest.esmodules, ...manifest.styles, ...manifest.languages.map(lang => lang.path), ...featureAssets, "templates/modular-creator.hbs", "templates/patrol.hbs"]) {
     const sourceAsset = asset.endsWith(".js") ? asset.replace(/\.js$/, ".ts") : asset;
     const path = base === root ? resolve(root, "src", sourceAsset) : resolve(base, asset);
     assert.ok(path.startsWith(resolve(base) + sep), `Asset outside module: ${asset}`);

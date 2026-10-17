@@ -1,0 +1,28 @@
+<form class="pneuma-vehicle-config">
+  <div class="vehicle-config-columns">
+    <fieldset class="vehicle-config-left pneuma-mook-maker-section"><legend>Artwork Category</legend>
+      <input type="hidden" name="artwork" value="{{selectedArtwork}}">
+      <input type="search" data-category-filter aria-label="Filter artwork categories" placeholder="Filter categories">
+      <div class="vehicle-category-list"><table><thead><tr><th>Name</th><th>Footprint</th><th>Seats</th></tr></thead><tbody>
+      <tr><td colspan="3"><button type="button" data-category="">Keep current artwork</button></td></tr>
+      <tr><td colspan="3"><button type="button" data-category="__manual">Manual artwork</button></td></tr>
+      {{#each artwork}}<tr data-category-row><td><button type="button" data-category="{{folder}}">{{name}}</button></td><td>{{width}} × {{height}}</td><td>{{seatCount}}</td></tr>{{/each}}
+      </tbody></table><p data-no-categories hidden>No matching categories.</p></div>
+      <button type="button" data-action="artwork-file">Choose artwork file</button>
+    </fieldset>
+    <div class="vehicle-config-middle pneuma-vehicle-seats">
+      <fieldset class="vehicle-config-stats pneuma-mook-maker-section pneuma-mook-maker-section-stats"><legend>Stats</legend>
+  <div class="form-group"><label>HP</label><div class="form-fields"><input aria-label="Current HP" name="hp" type="number" step="1" value="{{stats.hp}}"><span>/</span><input aria-label="Maximum HP" name="maxHp" type="number" min="1" step="1" value="{{stats.maxHp}}"></div></div>
+  <div class="form-group"><label>SP</label><div class="form-fields"><input aria-label="Current SP" name="sp" type="number" min="0" step="1" value="{{stats.sp}}"><span>/</span><input aria-label="Maximum SP" name="maxSp" type="number" min="0" step="1" value="{{stats.maxSp}}"></div></div>
+  <div class="form-group"><label for="vehicle-move">MOVE</label><input id="vehicle-move" name="move" type="number" min="0" step="1" value="{{stats.move}}"></div>
+  <div class="form-group"><label for="vehicle-seats-count">Seats</label><input id="vehicle-seats-count" name="seats" type="number" min="0" max="100" step="1" value="{{stats.seats}}"></div>
+      <div class="form-group"><label>Size</label><div class="form-fields"><input aria-label="Token width" name="width" type="number" min="0.1" max="100" step="0.1" value="{{width}}"><span>×</span><input aria-label="Token height" name="height" type="number" min="0.1" max="100" step="0.1" value="{{height}}"></div></div>
+      <div class="form-group"><label for="vehicle-scale">Scale</label><input id="vehicle-scale" name="scale" type="range" min="0.1" max="10" step="0.1" value="{{scale}}"><output for="vehicle-scale" data-scale-value>{{scale}}×</output></div>
+      {{#if gm}}<label><input type="checkbox" name="playersCanDrive" {{#if playersCanDrive}}checked{{/if}}> Players Can Drive</label>{{/if}}
+      </fieldset>
+      <fieldset class="pneuma-mook-maker-section pneuma-mook-maker-section-gear"><legend>Seats</legend><div data-seat-editor></div></fieldset>
+    </div>
+    <fieldset class="vehicle-config-preview pneuma-vehicle-seats pneuma-mook-maker-section"><legend>Preview</legend><p data-preview-status role="status"></p><div data-preview-image></div></fieldset>
+  </div>
+  <p data-config-error role="alert"></p><button type="submit"><i class="fas fa-save"></i> Save</button>
+</form>

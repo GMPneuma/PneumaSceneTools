@@ -1,0 +1,500 @@
+.pneuma-trap-editor { max-height: min(72vh, 780px); overflow-y: auto; padding-right: 6px; }
+.pneuma-trap-editor details, .pneuma-trap-editor fieldset { margin: 8px 0; padding: 6px; border: 1px solid var(--color-border-light-tertiary, #999); }
+.pneuma-trap-editor summary { cursor: pointer; font-weight: bold; padding: 4px 0; }
+.pneuma-trap-editor textarea { width: 100%; resize: vertical; }
+.pneuma-trap-editor button { width: auto; margin: 3px 2px; }
+.pneuma-trap-editor .form-group { gap: 8px; }
+.pneuma-trap-editor .form-group > label { flex: 1.2; }
+.pneuma-trap-editor [role="alert"], .pneuma-trap-card [role="alert"] { color: var(--color-level-error, #a21c1c); }
+.pneuma-trap-card button { margin-top: 4px; }
+.hazard-workflow { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 18px; height: min(760px, 82vh); max-height: 82vh; overflow: hidden; padding: 0; }
+.hazard-editor { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.hazard-library { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--color-border-light-tertiary, #999); padding-right: 14px; }
+/* Native form notes reserve a full flex row; this sidebar uses a column. */
+.hazard-library > .notes { flex: 0 0 auto; }
+.hazard-library-list { flex: 1; min-height: 0; overflow-y: auto; }
+.hazard-library-list button { display: block; width: calc(100% - 4px); text-align: left; overflow-wrap: anywhere; padding: 8px; }
+.hazard-library-list [aria-current="true"] { font-weight: bold; border: 2px solid var(--color-border-highlight, #7b3827); }
+.hazard-library > button { flex-shrink: 0; }
+.hazard-workflow header, .hazard-workflow footer { flex-shrink: 0; }
+.hazard-workflow header textarea { min-height: 48px; max-height: 110px; }
+.hazard-steps { display: flex; gap: 6px; margin: 10px 0; }
+.hazard-steps button { flex: 1; margin: 0; padding: 8px 4px; }
+.hazard-steps [aria-current="step"] { font-weight: bold; border: 2px solid var(--color-border-highlight, #7b3827); }
+.hazard-pane { flex: 1; min-height: 0; overflow-y: auto; padding: 0 5px 6px 0; }
+.hazard-pane h3 { margin: 0 0 8px; }
+.hazard-trigger-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 5px; }
+.hazard-trigger-grid label { display: flex; align-items: center; gap: 5px; }
+.hazard-actions, .hazard-finish, .hazard-effect { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.hazard-effect span { flex: 1; overflow-wrap: anywhere; }
+.hazard-finish .form-group { flex: 1; }
+.hazard-workflow footer { border-top: 1px solid var(--color-border-light-tertiary, #999); padding-top: 6px; }
+.hazard-workflow [role="alert"]:empty { display: none; }
+.hazard-workflow footer .notes { margin: 3px 0; }
+@media (max-width: 560px) { .hazard-trigger-grid { grid-template-columns: 1fr; } }
+
+@media (max-width: 760px) { .hazard-workflow { grid-template-columns: 160px minmax(0, 1fr); gap: 10px; } }
+
+.hazard-library-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.hazard-library-tabs button { flex: 1; }
+.hazard-library-tabs [aria-pressed="true"] { font-weight: bold; border: 2px solid var(--color-border-highlight, #7b3827); }
+.hazard-library-list small { display: block; margin-top: 4px; opacity: 0.8; }
+
+.hazard-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; margin-bottom: 10px; }
+.hazard-top .form-group { display: flex; flex-direction: column; align-items: stretch; gap: 3px; }
+.hazard-top .form-fields { width: 100%; }
+.hazard-preset-controls { border-left: 1px solid var(--color-border-light-tertiary, #999); padding-left: 16px; }
+
+.hazard-wide { grid-template-columns: 180px minmax(0,1fr); height: min(900px, 84vh); max-height: 84vh; }
+.hazard-wide .hazard-top { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 22px; margin-bottom: 6px; }
+.hazard-top-checks { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; }
+.hazard-wide .form-group { display: flex; flex-direction: column; align-items: stretch; gap: 3px; margin: 5px 0; }
+.hazard-wide .form-fields { min-width: 0; }
+.hazard-wide input:not([type=checkbox]), .hazard-wide select { width: 100%; min-width: 0; }
+.hazard-wide header textarea { min-height: 36px; height: 40px; }
+.hazard-panes { display: grid; grid-template-columns: 1.05fr .8fr 1.3fr; flex: 1; min-height: 0; gap: 12px; margin-top: 12px; }
+.hazard-panes > section { border: 1px solid var(--color-border-light-tertiary,#999); padding: 10px; overflow: auto; }
+.hazard-trigger-sides { display: grid; grid-template-columns: 1.25fr 1fr; gap: 6px; }
+.hazard-trigger-sides label, .hazard-statuses label { display: flex; align-items: center; gap: 4px; margin: 7px 0; }
+.hazard-statuses { max-height: 130px; overflow: auto; }
+.hazard-wide footer .form-group { flex: 1; }
+.hazard-wide footer details { margin: 3px 0; padding: 2px 6px; }
+.hazard-wide header { max-height: 40vh; overflow: auto; }
+
+/* Three horizontal sections; the effect editor shares a row with its list. */
+.hazard-sections .hazard-editor-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 8px; }
+.hazard-sections .hazard-top, .hazard-second { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.hazard-sections .hazard-top { max-height: none; overflow: visible; }
+.hazard-second, .hazard-third { border-top: 1px solid var(--color-border-light-tertiary,#999); padding-top: 12px; margin-top: 12px; }
+.hazard-third { display: grid; grid-template-columns: minmax(180px,.7fr) minmax(0,2fr); gap: 24px; }
+.hazard-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.hazard-effects-layout { display: grid; grid-template-columns: minmax(160px,.85fr) minmax(0,1.15fr); gap: 16px; }
+.hazard-effect-properties { border-left: 1px solid var(--color-border-light-tertiary,#999); padding-left: 16px; }
+.hazard-effect-properties h4 { margin: 4px 0 10px; }
+.hazard-effect-list { min-width: 0; }
+.hazard-effect-row { border-bottom: 1px solid var(--color-border-light-tertiary,#999); padding: 8px; overflow-wrap: anywhere; }
+.hazard-effect-row[aria-current=true] { background: rgba(120,100,40,.12); border-left: 3px solid var(--color-border-highlight,#7b3827); }
+.hazard-trigger-option { display: flex; align-items: center; gap: 5px; margin: 5px 0; }
+.hazard-incoming h3, [data-trigger-options] h3 { margin: 10px 0 5px; }
+.hazard-warning { color: #e9b500; text-shadow: 0 1px 1px #222; }
+.hazard-sections .form-group:has(input[type=checkbox]) { flex-direction: row; align-items: center; }
+.hazard-sections .form-group:has(input[type=checkbox]) .form-fields { flex: 0 0 24px; width: 24px; min-width: 24px; }
+.hazard-sections section { min-width: 0; }
+
+.hazard-sections footer .form-group { flex: 0 0 auto; margin-right: auto; }
+
+/* Match MookMaker's compact tinted sections and accent borders. */
+.hazard-sections { gap: 12px; height: min(900px, 84vh); font-size: 13px; }
+.hazard-sections .hazard-editor-scroll { padding-right: 4px; }
+.hazard-sections .hazard-top,
+.hazard-sections .hazard-second,
+.hazard-sections .hazard-third { gap: 10px; margin: 0 0 8px; padding: 0; border: 0; align-items: stretch; }
+.hazard-sections .hazard-top > div,
+.hazard-sections .hazard-second > section,
+.hazard-sections .hazard-third > section {
+  --hazard-accent: #267aa5;
+  --hazard-tint: rgba(38, 122, 165, .08);
+  min-width: 0; padding: 8px 10px; border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--hazard-accent) 30%, transparent);
+  border-left: 3px solid var(--hazard-accent); background: var(--hazard-tint);
+}
+.hazard-sections .hazard-top > div:last-child,
+.hazard-sections .hazard-third > section:last-child {
+  --hazard-accent: #9a6b18; --hazard-tint: rgba(154, 107, 24, .08);
+}
+.hazard-sections .hazard-second > section:last-child {
+  --hazard-accent: #2e8b45; --hazard-tint: rgba(46, 139, 69, .07);
+}
+.hazard-sections h2, .hazard-sections h3, .hazard-sections h4 { border: 0; padding: 0; }
+.hazard-sections h3 { color: var(--hazard-accent); font-size: 14px; font-weight: 700; margin: 0 0 6px; }
+.hazard-sections .form-group { margin: 3px 0; gap: 3px; }
+.hazard-sections .form-group > label { font-size: 13px; line-height: 1.3; }
+.hazard-sections input:not([type=checkbox]), .hazard-sections select { height: 26px; font-size: 13px; }
+.hazard-sections input[type=checkbox] { width: 16px; height: 16px; margin: 0; flex: 0 0 16px; }
+.hazard-sections header textarea { height: 38px; min-height: 38px; margin-top: 3px; }
+.hazard-sections button { font-size: 13px; line-height: 24px; padding: 0 7px; margin: 2px 0; min-height: 26px; }
+.hazard-sections .notes { margin: 4px 0; font-size: 12px; }
+.hazard-sections .hazard-checks { gap: 6px 14px; align-items: center; }
+.hazard-sections .form-group:has(input[type=number]),
+.hazard-sections .form-group:has(select[name=formula]) { flex-direction: row; align-items: center; gap: 8px; }
+.hazard-sections .form-group:has(input[type=number]) > label,
+.hazard-sections .form-group:has(select[name=formula]) > label { flex: 1; }
+.hazard-sections .form-group:has(input[type=number]) .form-fields,
+.hazard-sections .form-group:has(select[name=formula]) .form-fields { flex: 0 0 76px; width: 76px; }
+.hazard-sections input[type=number] { width: 76px; text-align: center; }
+.hazard-sections .hazard-trigger-option { margin: 4px 0; gap: 6px; line-height: 20px; }
+.hazard-sections [data-trigger-options] h3 { margin: 8px 0 4px; }
+.hazard-sections .hazard-incoming { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 8px; }
+.hazard-sections .hazard-incoming h3, .hazard-sections .hazard-incoming p { margin: 0; }
+.hazard-sections .hazard-effects-layout { grid-template-columns: minmax(150px,.75fr) minmax(0,1.25fr); gap: 10px; }
+.hazard-sections .hazard-effect-properties { padding: 8px; border: 1px solid #8885; border-radius: 4px; background: #8881; }
+.hazard-sections .hazard-effect-properties h4 { font-size: 13px; font-weight: 700; margin: 0 0 6px; }
+.hazard-sections .hazard-effect-row { padding: 5px 7px; margin: 4px 0; border: 1px solid #8884; border-radius: 4px; }
+.hazard-sections .hazard-effect-row[aria-current=true] { border-left: 3px solid #9a6b18; background: rgba(154,107,24,.12); }
+.hazard-sections .hazard-effect-row > div { display: flex; gap: 4px; }
+.hazard-sections .hazard-library { border: 0; padding-right: 0; }
+.hazard-sections .hazard-library h2 { font-size: 16px; margin: 4px 0; }
+.hazard-sections .hazard-library-list button { border-radius: 4px; padding: 6px 8px; line-height: 1.3; margin: 5px 0; }
+.hazard-sections .hazard-library-list [aria-current=true] { border: 1px solid #267aa5; border-left-width: 3px; background: rgba(38,122,165,.08); }
+.hazard-sections footer { border: 0; padding-top: 3px; }
+.hazard-sections footer details { border: 0; padding: 0; margin: 2px 0; }
+.hazard-sections footer summary { font-size: 12px; padding: 2px 0; }
+
+.hazard-sections .hazard-effect-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 3px 8px; }
+
+/* Fit the content instead of reserving an empty full-height canvas. */
+.hazard-sections { height: auto; max-height: calc(100vh - 150px); grid-template-columns: 170px minmax(0,1fr); }
+.hazard-sections .hazard-editor-scroll { flex: 0 1 auto; }
+.hazard-sections .hazard-save-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; padding: 0 0 6px; }
+.hazard-sections .hazard-save-bar .form-group { flex: 0 0 auto; margin: 0 auto 0 4px; }
+.hazard-sections .hazard-save-bar [data-action=save] { background: #267aa5; border: 1px solid #1c5c7d; color: #fff; font-weight: 700; padding: 0 16px; }
+.hazard-sections .hazard-save-bar [data-action=save]:hover { background: #1c5c7d; }
+
+.hazard-sections .hazard-save-bar { padding: 6px 0 2px; }
+.hazard-sections .hazard-skill-check { display: grid; grid-template-columns: minmax(0,1fr) 76px; gap: 8px; align-items: end; min-width: 0; }
+.hazard-sections .hazard-checks > .hazard-skill-check { grid-column: 1 / -1; }
+.hazard-sections .hazard-skill-check .form-group:has(input[type=number]) { flex-direction: column; align-items: stretch; gap: 3px; }
+.hazard-sections .hazard-skill-check .form-group:has(input[type=number]) .form-fields { flex: 0 0 auto; }
+
+/* Identity, checks and presets above triggers/targets, then controls/effects. */
+.hazard-sections .hazard-top { grid-template-columns: minmax(180px,1fr) minmax(360px,1.5fr) minmax(150px,.7fr); }
+.hazard-top-settings { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; gap: 0 12px; align-items: start; }
+.hazard-top-settings > section { display: grid; gap: 4px; align-content: start; }
+.hazard-sections .hazard-counter-checks .hazard-skill-check { display: contents; }
+.hazard-sections .hazard-top-settings .form-group,
+.hazard-sections .hazard-top-settings .form-group:has(input[type=number]),
+.hazard-sections .hazard-top-settings .hazard-skill-check .form-group:has(input[type=number]) { flex-direction: column; align-items: stretch; gap: 3px; margin: 3px 0; }
+.hazard-sections .hazard-top-settings .form-group .form-fields,
+.hazard-sections .hazard-top-settings .form-group:has(input[type=number]) .form-fields,
+.hazard-sections .hazard-top-settings .hazard-skill-check .form-group:has(input[type=number]) .form-fields { flex: 0 0 auto; }
+.hazard-sections .hazard-third { grid-template-columns: 180px minmax(0,1fr); }
+.hazard-sections .hazard-save-bar { flex-direction: column; align-items: stretch; gap: 5px; }
+.hazard-sections .hazard-save-bar .form-group { margin: 0; }
+.hazard-sections .hazard-top > .hazard-top-settings { --hazard-accent: #2e8b45; --hazard-tint: rgba(46,139,69,.07); }
+.hazard-sections .hazard-preset-files { flex: 0 0 auto; padding: 8px; border: 1px solid #8885; border-radius: 4px; background: #8881; }
+.hazard-preset-files[hidden] { display: none; }
+.hazard-preset-files input[type=file] { max-width: 100%; height: auto; font-size: 11px; }
+@media (max-width: 1100px) { .hazard-sections .hazard-top { grid-template-columns: 1fr 1fr; } .hazard-top-settings { grid-column: 1 / -1; grid-row: 2; } }
+
+.hazard-sections [aria-label="Hazard controls"] .hazard-actions { flex-direction: column; align-items: stretch; margin-top: 8px; }
+
+.hazard-top-settings > h3 { grid-column: 1 / -1; }
+.hazard-sections .hazard-third > [aria-label="Hazard controls"] { --hazard-accent: #a32d36; --hazard-tint: rgba(163,45,54,.09); }
+
+/* Two workflow rows, followed by the fixed controls/presets/save row. */
+.hazard-sections .hazard-top { grid-template-columns: minmax(260px,1fr) minmax(0,1.6fr); }
+.hazard-summary-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; margin-top: 6px; }
+.hazard-summary-fields > .form-group:last-child { grid-column: 1 / -1; }
+.hazard-sections .hazard-summary-fields .form-group:has(input[type=number]) { flex-direction: column; align-items: stretch; gap: 3px; }
+.hazard-sections .hazard-summary-fields .form-group:has(input[type=number]) .form-fields { flex: 0 0 auto; }
+.hazard-sections .hazard-top [aria-label="Hazard"] textarea { height: 48px; min-height: 48px; }
+.hazard-sections .hazard-third { grid-template-columns: minmax(180px,1fr) minmax(220px,1.3fr) minmax(180px,.8fr); flex: 0 0 auto; margin-bottom: 0; }
+.hazard-sections .hazard-third > [aria-label="Presets"] { --hazard-accent: #9a6b18; --hazard-tint: rgba(154,107,24,.08); }
+.hazard-sections .hazard-third > .hazard-save-panel { --hazard-accent: #267aa5; --hazard-tint: rgba(38,122,165,.08); display: flex; flex-direction: column; }
+.hazard-sections .hazard-third .hazard-save-bar { padding-top: 0; }
+.hazard-region-select { max-width: 240px; }
+.hazard-ap-row { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(100px,1fr) auto; gap: 6px; align-items: end; }
+.hazard-ap-row .form-group { min-width: 0; }
+.hazard-sections button.hazard-status-choice { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; }
+.hazard-sections .form-group .form-fields > button.hazard-status-choice { flex: 1 1 auto; min-width: 0; }
+.hazard-status-choice img { width: 20px; height: 20px; border: 0; flex: 0 0 20px; }
+.pneuma-hazard-status-picker { max-height: min(440px,60vh); overflow-y: auto; }
+.pneuma-hazard-status-picker .pneuma-damage-status-choice { display: flex; align-items: center; gap: 4px; padding: 4px 8px; min-height: 28px; }
+.pneuma-hazard-status-picker img { border: 0; flex: 0 0 20px; }
+.pneuma-hazard-status-picker input[type=radio] { flex: 0 0 16px; width: 16px; height: 16px; margin: 0; }
+.pneuma-hazard-status-picker .pneuma-effect-category { border-top: 1px solid #8885; margin-top: 4px; }
+.pneuma-hazard-status-picker summary { cursor: pointer; padding: 7px 4px; font-weight: bold; }
+.pneuma-hazard-status-picker summary > span { float: right; font-weight: normal; opacity: .65; }
+.pneuma-hazard-status-picker .pneuma-damage-status-choice:hover { background: #8882; }
+
+
+.hazard-required > label::after { content: " *"; color: #ad6b00; font-weight: bold; }
+.hazard-invalid { outline: 1px solid #ad6b00; border-radius: 3px; background: rgba(214,155,29,.12); }
+.hazard-requirements { font-size: 12px; color: #854f00; }
+.hazard-requirements ul { margin: 4px 0 8px; padding-left: 18px; }
+
+.hazard-required[data-action=add]::after { content: " *"; color: #ad6b00; font-weight: bold; }
+
+/* Narrow editor while retaining the two-column workflow and fixed footer. */
+.hazard-sections { grid-template-columns: 150px minmax(0,1fr); gap: 8px; }
+.hazard-sections .hazard-top { grid-template-columns: minmax(260px,.9fr) minmax(0,1.6fr); }
+.hazard-sections .hazard-effects-layout { grid-template-columns: 160px minmax(0,1fr); gap: 8px; }
+.hazard-sections .hazard-third { grid-template-columns: minmax(155px,1fr) minmax(190px,1.3fr) minmax(125px,.75fr); }
+.hazard-summary-fields { gap: 4px 8px; }
+.hazard-sections .hazard-effect-properties { padding: 6px; }
+.hazard-sections .hazard-effect-row { padding: 4px 5px; }
+.hazard-sections .hazard-top > div, .hazard-sections .hazard-second > section, .hazard-sections .hazard-third > section { padding: 7px 8px; }
+.hazard-sections .hazard-ap-row { grid-template-columns: minmax(0,1fr) auto; }
+.hazard-sections .hazard-ap-row [data-action=createAP] { max-width: 108px; white-space: normal; line-height: 16px; }
+
+.hazard-sections .hazard-effect-row > div { flex-wrap: wrap; }
+.hazard-sections .hazard-effect-row button { flex: 0 0 auto; white-space: nowrap; padding: 0 5px; }
+.hazard-sections .hazard-effect-list { max-height: 340px; overflow-y: auto; }
+
+.hazard-trigger-options { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 3px 10px; }
+.hazard-sections .hazard-trigger-options .hazard-trigger-option { align-items: flex-start; margin: 2px 0; line-height: 17px; }
+.hazard-trigger-options input { margin-top: 2px !important; }
+.hazard-token-icon > div { display: flex; gap: 6px; align-items: center; }
+.hazard-token-icon img { width: 30px; height: 30px; border: 0; object-fit: contain; }
+.hazard-token-icon > label { font-size: 13px; }
+
+/* Hazard across the top; triggers, targets and effects in the middle. */
+.hazard-sections .hazard-top { grid-template-columns: minmax(0,1fr); }
+.hazard-sections .hazard-top > div[aria-label="Hazard"] { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.35fr); gap: 0 14px; --hazard-accent: #267aa5; --hazard-tint: rgba(38,122,165,.08); }
+.hazard-sections .hazard-top > [aria-label="Hazard"] > h3 { grid-column: 1 / -1; }
+.hazard-sections .hazard-summary-fields { grid-template-columns: repeat(3,minmax(0,1fr)); margin: 0; align-items: start; }
+.hazard-sections .hazard-summary-fields .hazard-token-icon { grid-column: 3; grid-row: 1 / 3; }
+.hazard-sections .hazard-summary-fields .hazard-ap-row { grid-column: 1 / -1; }
+.hazard-sections .hazard-second { grid-template-columns: minmax(0,1fr) minmax(0,.85fr) minmax(0,1.75fr); }
+.hazard-sections .hazard-second > section[aria-label="Targets / Area"] { --hazard-accent: #2e8b45; --hazard-tint: rgba(46,139,69,.07); }
+.hazard-sections .hazard-second > section[aria-label="Effects"] { --hazard-accent: #9a6b18; --hazard-tint: rgba(154,107,24,.08); }
+.hazard-sections .hazard-effects-layout { grid-template-columns: minmax(0,1fr); gap: 6px; }
+.hazard-sections .hazard-effect-list { max-height: 120px; }
+.hazard-sections .hazard-effect-row { margin: 2px 0; }
+.hazard-sections .hazard-effect-row > span { flex: 1 1 140px; }
+.hazard-sections .hazard-effect-row > div { flex: 0 0 auto; }
+.hazard-sections .hazard-second .hazard-skill-check { gap: 5px; }
+
+/* Combined trigger/target options at left, full effect editor at right. */
+.hazard-sections .hazard-second { grid-template-columns: minmax(0,1fr) minmax(0,1.65fr); }
+.hazard-sections .hazard-trigger-targets { --hazard-accent: #267aa5; --hazard-tint: rgba(38,122,165,.08); }
+.hazard-target-options { margin-top: 12px; }
+.hazard-sections .hazard-target-options > h3 { color: #2e8b45; }
+.hazard-sections .hazard-effects-layout { grid-template-columns: 155px minmax(0,1fr); gap: 8px; }
+.hazard-sections .hazard-effect-list { max-height: 300px; }
+.hazard-sections .hazard-effect-row > span { flex-basis: 100%; }
+
+.hazard-sections .hazard-second { grid-template-columns: minmax(0,1fr) minmax(0,1.65fr); }
+.hazard-trigger-options { grid-template-columns: minmax(0,1fr) minmax(0,1.7fr) minmax(0,1.2fr) minmax(0,1.2fr); gap: 6px; align-items: start; }
+.hazard-trigger-entry { min-width: 0; }
+.hazard-move-trigger { display: flex; gap: 4px; align-items: flex-start; }
+.hazard-move-trigger .hazard-trigger-option { flex: 1; min-width: 0; }
+.hazard-sections .hazard-move-trigger input[name=distance] { flex: 0 0 46px; width: 46px; margin-top: 2px; }
+
+/* Identity, vertically stacked checks, and native token/AP artwork. */
+.hazard-sections .hazard-top > div[aria-label="Hazard"] { display: block; }
+.hazard-header-columns { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,.75fr) minmax(0,1fr); gap: 14px; align-items: start; }
+.hazard-check-column { display: flex; flex-direction: column; gap: 4px; }
+.hazard-sections .hazard-check-column .form-group:has(input[type=number]) { flex-direction: column; align-items: stretch; gap: 3px; }
+.hazard-sections .hazard-check-column .form-group .form-fields { flex: 0 0 auto; }
+.hazard-artwork-column { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.hazard-ap-artwork { display: flex; gap: 8px; align-items: center; }
+.hazard-ap-artwork img { width: 30px; height: 30px; object-fit: contain; border: 0; }
+.hazard-sections .hazard-effect-row button { min-width: 26px; }
+.hazard-sections .hazard-save-panel button { flex: 0 0 auto; min-height: 26px; width: 100%; }
+.hazard-sections .hazard-save-panel button + button { margin-top: 6px; }
+
+.hazard-sections .hazard-check-column .form-group:has(input[type=number]) .form-fields { flex: 0 0 auto; width: 76px; }
+
+/* Trigger choices stack vertically; movement distance stays beside its choice. */
+.hazard-trigger-options { grid-template-columns: minmax(0,1fr); gap: 4px; }
+.hazard-sections .hazard-trigger-options .hazard-trigger-option { margin: 0; }
+.hazard-move-trigger { justify-content: flex-start; }
+.hazard-move-trigger .hazard-trigger-option { flex: 0 1 auto; }
+/* Three summary panels; detailed configuration lives in native dialogs. */
+.hazard-summary-layout .hazard-second { grid-template-columns: minmax(150px,.9fr) minmax(140px,.8fr) minmax(0,2.3fr); }
+.hazard-summary-layout .hazard-second > section { min-width: 0; }
+.hazard-summary-layout .hazard-trigger-summary ul { margin: 6px 0 12px; padding-left: 17px; }
+.hazard-summary-layout .hazard-trigger-summary li { margin-bottom: 7px; }
+.hazard-summary-layout .hazard-effect-table-wrap { max-height: 350px; overflow: auto; }
+.hazard-summary-layout .hazard-effect-table { width: 100%; margin: 0 0 8px; table-layout: fixed; }
+.hazard-summary-layout .hazard-effect-table th { text-align: left; padding: 5px; font-size: 11px; }
+.hazard-summary-layout .hazard-effect-row { display: table-row; }
+.hazard-summary-layout .hazard-effect-row td { padding: 6px 5px; vertical-align: top; overflow-wrap: anywhere; font-size: 12px; }
+.hazard-summary-layout .hazard-effect-row small { display: block; margin-top: 4px; opacity: .8; }
+.hazard-summary-layout .hazard-effect-row td:last-child > div { display: flex; flex-wrap: wrap; gap: 2px; }
+.hazard-summary-layout .hazard-effect-table th:last-child { width: 66px; }
+.hazard-summary-layout .hazard-effect-table th:nth-child(3) { width: 65px; }
+.hazard-popup { padding: 4px; max-height: 70vh; overflow: auto; }
+.hazard-popup .form-group { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.hazard-popup .form-group > label { flex: 1; }
+.hazard-popup .form-fields { flex: 1.3; min-width: 0; }
+.hazard-popup .form-fields input:not([type=checkbox]), .hazard-popup select { width: 100%; }
+.hazard-popup .hazard-skill-check { display: grid; grid-template-columns: minmax(0,1fr) 80px; gap: 10px; }
+.hazard-popup .hazard-skill-check .form-group { flex-direction: column; align-items: stretch; }
+.hazard-popup footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.hazard-popup footer button { width: auto; min-width: 80px; }
+.hazard-popup [role=alert] { color: var(--color-level-error,#a21c1c); }
+.hazard-summary-layout .hazard-effect-table th:last-child { width: 90px; }
+.hazard-summary-layout .hazard-effect-row td:last-child > div { flex-wrap: nowrap; }
+.hazard-summary-layout .hazard-effect-row button { min-width: 24px; width: 24px; padding: 0; margin: 0; }
+.hazard-summary-layout .hazard-effect-row td { border-bottom: 1px solid #8883; }
+/* One shared progression, rather than three separate cards. */
+.hazard-summary-layout .hazard-second {
+  border: 1px solid var(--color-border-light-tertiary,#8886);
+  border-radius: 6px;
+  padding: 12px 10px;
+  gap: 22px;
+  background: #88808;
+  counter-reset: hazard-stage;
+}
+.hazard-summary-layout .hazard-second > section {
+  position: relative;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  counter-increment: hazard-stage;
+}
+.hazard-summary-layout .hazard-second > section > .hazard-stage-header > h3,
+.hazard-summary-layout .hazard-second > section > h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  margin: 0 0 12px;
+  color: inherit;
+}
+.hazard-summary-layout .hazard-second > section > .hazard-stage-header > h3::before,
+.hazard-summary-layout .hazard-second > section > h3::before {
+  content: counter(hazard-stage);
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border: 1px solid var(--color-border-light-tertiary,#8886);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+}
+.hazard-summary-layout .hazard-second > section:not(:last-child)::after {
+  content: "\2192";
+  position: absolute;
+  top: 0;
+  right: -19px;
+  line-height: 26px;
+  font-size: 20px;
+  opacity: .6;
+  pointer-events: none;
+}
+/* Hazard details at left; the shared progression runs downward at right. */
+.hazard-summary-layout .hazard-editor-scroll {
+  display: grid;
+  grid-template-columns: minmax(220px,.8fr) minmax(0,1.8fr);
+  gap: 10px;
+  align-items: stretch;
+}
+.hazard-summary-layout .hazard-top { min-width: 0; margin-bottom: 8px; }
+.hazard-summary-layout .hazard-header-columns { grid-template-columns: minmax(0,1fr); gap: 14px; }
+.hazard-summary-layout .hazard-check-column .form-group:has(input[type=number]) { flex-direction: row; align-items: center; gap: 8px; }
+.hazard-summary-layout .hazard-check-column .form-group > label { flex: 1; }
+.hazard-summary-layout .hazard-check-column .form-group:has(input[type=number]) .form-fields { flex: 0 0 64px; width: 64px; }
+.hazard-summary-layout .hazard-check-column input[type=number] { width: 64px; }
+.hazard-summary-layout .hazard-second {
+  grid-template-columns: minmax(0,1fr);
+  grid-template-rows: auto auto minmax(0,1fr);
+  gap: 26px;
+}
+.hazard-summary-layout .hazard-second > section:not(:last-child)::after {
+  content: "\2193";
+  top: auto;
+  bottom: -26px;
+  left: 2px;
+  right: auto;
+  width: 22px;
+  text-align: center;
+}
+.hazard-summary-layout .hazard-second > section > .hazard-stage-header > h3,
+.hazard-summary-layout .hazard-second > section > h3 { margin-bottom: 7px; }
+.hazard-summary-layout .hazard-trigger-summary ul { margin: 0 0 7px; }
+.hazard-summary-layout .hazard-trigger-summary li { margin-bottom: 3px; }
+.hazard-summary-layout .hazard-second [name=targetMode] { max-width: 300px; }
+
+/* Scene hazard controls stay attached to the selected entry. */
+.hazard-control-panel { grid-template-columns: 250px minmax(0,1fr); }
+.hazard-control-panel.hazard-editor-collapsed { grid-template-columns: minmax(0,1fr); }
+.hazard-editor-collapsed > .hazard-editor { display: none; }
+.hazard-control-panel .hazard-library-entry { margin: 5px 0; }
+.hazard-control-panel .hazard-library-entry > button { margin: 0; width: 100%; }
+.hazard-row-controls { padding: 7px; border: 1px solid #267aa566; border-top: 0; border-radius: 0 0 4px 4px; background: #267aa511; }
+.hazard-row-controls .form-group { flex-direction: row; align-items: center; }
+.hazard-row-actions { display: flex; gap: 4px; align-items: center; margin-top: 4px; }
+.hazard-sections .hazard-row-actions button { flex: 0 0 auto; width: auto; margin: 0; padding: 0 5px; min-width: 26px; }
+.hazard-row-controls .hazard-requirements { margin-top: 7px; }
+.hazard-control-panel .hazard-third { grid-template-columns: minmax(0,1fr) 160px; }
+.hazard-draft-requirements { flex: 0 0 auto; max-height: 100px; overflow-y: auto; padding: 5px; }
+.hazard-control-panel.hazard-editor-collapsed .hazard-library-list { flex: 0 1 auto; max-height: 65vh; }
+
+.hazard-preset-bar { --hazard-accent: #9a6b18; display: flex; align-items: center; gap: 8px; padding: 6px 8px; margin-bottom: 8px; border: 1px solid #9a6b1855; border-left: 3px solid #9a6b18; border-radius: 6px; background: rgba(154,107,24,.08); flex: 0 0 auto; }
+.hazard-sections .hazard-preset-bar h3 { margin: 0; flex: 0 0 auto; }
+.hazard-sections .hazard-preset-bar .form-group { flex: 1; min-width: 0; margin: 0; }
+.hazard-sections .hazard-preset-bar .form-fields { width: 100%; }
+.hazard-preset-bar .hazard-actions { flex: 0 0 auto; flex-wrap: nowrap; }
+.hazard-sections .hazard-preset-bar button { white-space: nowrap; margin: 0; }
+.hazard-control-panel .hazard-third { grid-template-columns: 160px; justify-content: end; }
+
+/* The blue Hazard pane spans the progression and its requirements/save footer. */
+.hazard-control-panel.hazard-editor-expanded { height: auto; max-height: calc(100vh - 150px); }
+.hazard-editor-expanded > .hazard-editor { display: grid; grid-template-columns: minmax(220px,.8fr) minmax(0,1.8fr); grid-template-rows: auto minmax(0,1fr) auto; gap: 8px 10px; }
+.hazard-editor-expanded .hazard-preset-bar { grid-column: 1 / -1; grid-row: 1; margin: 0; }
+.hazard-editor-expanded .hazard-editor-scroll { display: contents; }
+.hazard-editor-expanded .hazard-top { grid-column: 1; grid-row: 2 / 4; margin: 0; overflow-y: auto; }
+.hazard-editor-expanded .hazard-top > div[aria-label="Hazard"] { height: 100%; box-sizing: border-box; }
+.hazard-editor-expanded .hazard-second { grid-column: 2; grid-row: 2; min-height: 0; overflow-y: auto; margin: 0; }
+.hazard-control-panel.hazard-editor-expanded .hazard-third { grid-column: 2; grid-row: 3; grid-template-columns: minmax(0,1fr) 140px; justify-content: stretch; margin: 0; }
+.hazard-editor-expanded .hazard-third > .hazard-draft-requirements { --hazard-accent: #9a6b18; --hazard-tint: rgba(154,107,24,.08); max-height: 130px; overflow-y: auto; }
+
+.hazard-control-panel .hazard-library-entry > button { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hazard-card-title { min-width: 0; }
+.hazard-control-panel .hazard-library-entry .hazard-warning { flex: 0 0 auto; font-size: 26px; line-height: 1; }
+
+
+.hazard-sections .hazard-token-icon > .form-group { display: flex; flex-direction: column; align-items: stretch; }
+.hazard-sections .hazard-token-icon .hazard-token-preview { display: flex; gap: 8px; align-items: center; margin-top: 5px; }
+.hazard-token-icon .hazard-token-preview img { width: 64px; height: 64px; object-fit: contain; border: 1px solid var(--color-border-light-primary,#888); border-radius: 3px; padding: 3px; box-sizing: border-box; }
+
+.hazard-summary-layout .hazard-second > section[aria-label="Triggers"],
+.hazard-summary-layout .hazard-second > section[aria-label="Targets / Area"] { display: grid; grid-template-columns: 125px minmax(0,1fr); gap: 10px; align-items: start; }
+.hazard-summary-layout .hazard-second > section:not(:last-child) > h3 { margin: 0; }
+.hazard-stage-options { min-width: 0; }
+
+.hazard-stage-header { min-width: 0; }
+.hazard-summary-layout .hazard-stage-header > h3 { margin-bottom: 6px; }
+.hazard-summary-layout .hazard-stage-header > button { margin: 0; }
+.hazard-summary-layout .hazard-second > section:not(:last-child)::after { top: calc(100% + 13px); bottom: auto; height: 20px; line-height: 20px; transform: translateY(-50%); display: grid; place-items: center; }
+
+/* Foundry-style dark translucent chrome for the compact gameplay panel. */
+.window-app.hazard-native-panel { background: rgba(20,20,20,.82); color: var(--color-text-light-primary,#f0f0e0); border: 1px solid var(--color-border-dark,#111); box-shadow: 0 0 12px #0008; }
+.hazard-native-panel .window-content { background: transparent; color: var(--color-text-light-primary,#f0f0e0); }
+.hazard-native-panel .hazard-library h2, .hazard-native-panel .hazard-row-controls label { color: inherit; }
+.hazard-native-panel .hazard-library > .notes { color: var(--color-text-light-5,#bbb); }
+.hazard-native-panel .hazard-library-entry > button { background: #ffffff08; color: inherit; border: 1px solid var(--color-border-dark-4,#666); border-radius: 4px; }
+.hazard-native-panel .hazard-library-entry > button[aria-current=true] { background: #ffffff12; border-color: var(--color-border-highlight,#c48635); }
+.hazard-native-panel .hazard-row-controls { background: #0002; border-color: var(--color-border-dark-4,#666); color: inherit; }
+.hazard-native-panel .hazard-row-actions button, .hazard-native-panel .hazard-library > button, .hazard-native-panel .hazard-preset-files button { background: #ffffff12; color: inherit; border: 1px solid var(--color-border-dark-4,#666); }
+.hazard-native-panel .hazard-library button:hover { background: #ffffff20; border-color: var(--color-border-highlight,#c48635); box-shadow: 0 0 5px var(--color-shadow-highlight,#c48635); }
+.hazard-native-panel .hazard-library button:disabled { opacity: .45; box-shadow: none; }
+.hazard-native-panel .hazard-preset-files { background: #0002; border-color: var(--color-border-dark-4,#666); color: inherit; }
+
+.hazard-sections li.hazard-incoming { display: list-item; margin: 3px 0; }
+
+.hazard-summary-layout .hazard-second > section[aria-label="Targets / Area"] .form-group { align-items: flex-start; margin: 0; }
+.hazard-summary-layout .hazard-second > section[aria-label="Targets / Area"] .form-fields { flex: 0 0 auto; width: min(300px,100%); margin: 0; }
+.hazard-summary-layout .hazard-second > section[aria-label="Targets / Area"] select { display: block; margin: 0; }
+
+.hazard-library-heading { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.hazard-sections .hazard-library-heading h2 { margin: 0; }
+.hazard-native-panel .hazard-library-heading .notes { color: var(--color-text-light-5,#bbb); font-size: 11px; margin: 0; }
+.hazard-native-panel .hazard-editor { background: var(--color-bg-option,#e8e7e1); color: var(--color-text-dark-primary,#191813); padding: 8px; border-radius: 4px; box-sizing: border-box; }
+.hazard-native-panel .hazard-row-actions { flex-wrap: nowrap; gap: 3px; }
+.hazard-native-panel .hazard-row-actions [data-action=toggleActivated][aria-pressed=true] { color: #9be5a5; background: #277c3540; border-color: #6baf77; }
+
+/* Preserve card dimensions when the editor opens; Edit sits at the far right. */
+.hazard-control-panel { --hazard-sidebar-width: 280px; grid-template-columns: var(--hazard-sidebar-width) minmax(0,1fr); }
+.hazard-control-panel.hazard-editor-collapsed { grid-template-columns: var(--hazard-sidebar-width); }
+.hazard-control-panel .hazard-library-entry > button { height: 58px; box-sizing: border-box; }
+.hazard-card-title > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hazard-card-title small { white-space: nowrap; }
+.hazard-native-panel .hazard-row-actions { height: 28px; }
+.hazard-native-panel .hazard-row-actions button[data-action=toggleEditor] { margin-left: auto; }
+
+/* Cards inherit the native trigger Region color without changing readable text. */
+.hazard-native-panel .hazard-library-entry[style] > button { border-color: var(--hazard-region-color); background: color-mix(in srgb,var(--hazard-region-color) 16%,transparent); }
+.hazard-native-panel .hazard-library-entry[style] > button[aria-current=true] { border-color: var(--hazard-region-color); background: color-mix(in srgb,var(--hazard-region-color) 26%,transparent); }
+.hazard-native-panel .hazard-library-entry[style] > button:hover { border-color: var(--hazard-region-color); background: color-mix(in srgb,var(--hazard-region-color) 32%,transparent); box-shadow: 0 0 5px var(--hazard-region-color); }
+.hazard-native-panel .hazard-library-entry[style] .hazard-row-controls { border-color: color-mix(in srgb,var(--hazard-region-color) 65%,transparent); background: color-mix(in srgb,var(--hazard-region-color) 10%,transparent); }
+
+.hazard-native-panel .hazard-visibility-actions { margin-top: 5px; }
+.hazard-native-panel .hazard-visibility-actions button[aria-pressed=true] { color: #d3e9ff; background: #447da840; border-color: #82afd1; }

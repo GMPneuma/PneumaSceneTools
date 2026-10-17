@@ -2,7 +2,7 @@
 
 ## Scope
 
-Implement only user-authorized workflows. SceneTools includes Quick Scene Creator, MookMaker, and NetArch Scanner; importing their existing functionality does not authorize unrelated features.
+Implement only user-authorized workflows. SceneTools includes Quick Scene Importer, MookMaker, and NetArch Scanner; importing their existing functionality does not authorize unrelated features.
 
 ## In-world folders
 

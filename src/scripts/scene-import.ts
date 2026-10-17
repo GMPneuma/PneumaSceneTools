@@ -1,6 +1,7 @@
 import {MODULE_ID} from "./settings.js";
-import {basename, gridSuggestions, list, positive, record, resolveAsset, universalScene, type Data, type ImportFile} from "./scene-data.js";
-import {isVideo, matchingOverlays} from "./matching.js";
+import {assertStoredChanges} from "./persistence.js";
+import {basename, gridSuggestions, gridSizeMarker, list, positive, record, resolveAsset, universalScene, type Data, type ImportFile} from "./scene-data.js";
+import {isVideo, matchingOverlays, parentPath} from "./matching.js";
 
 export interface PreparedScene {
   map: string;
@@ -23,7 +24,7 @@ export interface PreparedScene {
 }
 
 /** Resolve exported asset paths when editing; leave native JSON imports intact. */
-function rematchAssets(data: Data, files: string[], edit: boolean): string[] {
+function rematchAssets(data: Data, files: string[], edit: boolean, map: string, sourcePath?: string): string[] {
   const unresolved: string[] = [];
   const fix = (path: unknown): unknown => {
     if (typeof path !== "string" || !path) return path;
@@ -31,7 +32,12 @@ function rematchAssets(data: Data, files: string[], edit: boolean): string[] {
     if (nearby) return edit ? nearby : path;
     unresolved.push(path); return path;
   };
-  if (data.foreground) data.foreground = fix(data.foreground);
+  if (typeof data.foreground === "string" && data.foreground) {
+    const path = data.foreground;
+    const nearby = resolveAsset(path,files.filter(file=>parentPath(file) === parentPath(map)))
+      ?? (sourcePath ? resolveAsset(path,files.filter(file=>parentPath(file) === parentPath(sourcePath))) : null);
+    data.foreground = nearby ? edit ? nearby : path : fix(path);
+  }
   for (const collection of ["tiles", "tokens"]) for (const item of list(data[collection])) {
     const texture = record(record(item).texture);
     if (texture.src) texture.src = fix(texture.src);
@@ -43,7 +49,7 @@ function rematchAssets(data: Data, files: string[], edit: boolean): string[] {
 export function enableSceneOverrides(scene: PreparedScene, files: string[]): void {
   if (scene.created) return;
   scene.useJson = false;
-  scene.unresolved = rematchAssets(scene.data, files, true);
+  scene.unresolved = rematchAssets(scene.data, files, true, scene.map, scene.sourcePath);
 }
 
 export async function prepareScene(map: string, selected: ImportFile | undefined, files: string[], paired: boolean, mode: "json" | "edit", signal = new AbortController().signal): Promise<PreparedScene> {
@@ -58,10 +64,13 @@ export async function prepareScene(map: string, selected: ImportFile | undefined
   const width = positive(data.width, dimensions.width), height = positive(data.height, dimensions.height);
   data = {...data, width, height};
   const grid = record(data.grid), environment = record(data.environment);
-  const suggestions = gridSuggestions(width, height, map, game.settings!.get(MODULE_ID, "defaultGrid"));
-  const size = positive(grid.size, suggestions[0]?.size ?? 100), type = typeof grid.type === "number" ? grid.type : 1;
-  const unresolved = rematchAssets(data, files, mode === "edit");
-  const types: [number,string][] = [[1,"Square"],[2,"Hex odd rows"],[3,"Hex even rows"],[4,"Hex odd columns"],[5,"Hex even columns"]];
+  const folderHints=[...new Set(files.filter(path=>parentPath(path)===parentPath(map)).map(gridSizeMarker).filter((size):size is number=>size!==undefined))];
+  const suggestions = gridSuggestions(width, height, map, game.settings!.get(MODULE_ID, "defaultGrid"),folderHints.length===1?folderHints[0]:0);
+  const size = positive(grid.size, suggestions[0]?.size ?? 100), type = grid.type === 0 ? 0 : 1;
+  const importedGrid = selected?.kind === "Foundry Scene" ? record(selected.data.grid) : {};
+  const importedSize = typeof importedGrid.size === "number" && importedGrid.size > 0;
+  const unresolved = rematchAssets(data, files, mode === "edit", map, selected?.path);
+  const types: [number,string][] = [[1,"Squares"],[0,"Gridless"]];
   return {map, data, source: selected?.kind === "Foundry Scene" ? structuredClone(selected.data) : undefined,
     imported: selected?.kind === "Foundry Scene", sourcePath: selected?.path, useJson: mode === "json" && selected?.kind === "Foundry Scene", gridless: type === 0,
     defaults: {
@@ -71,9 +80,9 @@ export async function prepareScene(map: string, selected: ImportFile | undefined
       globalLight: Boolean(record(environment.globalLight).enabled ?? game.settings!.get(MODULE_ID, "defaultGlobalLight")),
       tokenVision: Boolean(data.tokenVision ?? true), fogExploration: Boolean(record(data.fog).exploration ?? data.fogExploration ?? true)
     },
-    gridOptions: [...new Set([size, ...suggestions.map(s=>s.size)])].map(value=>({size: value, selected: value === size && type !== 0,
-      label: `${value} px - ${(width/value).toFixed(2)} x ${(height/value).toFixed(2)} squares${value === size ? selected ? " (imported)" : " (suggested)" : ""}`})),
-    gridTypes: types.map(([value,label])=>({value,label,selected: value === type})),
+    gridOptions: [...new Set([size, ...suggestions.map(s=>s.size)])].map(value=>({size: value, selected: value === size,
+      label: `${value} px - ${(width/value).toFixed(2)} x ${(height/value).toFixed(2)} squares${value === size ? importedSize ? " (Imported)" : " (Suggested)" : ""}${suggestions.find(s=>s.size===value)?.hintSource ? ` (${suggestions.find(s=>s.size===value)!.hintSource})` : ""}${Number.isInteger(width/value) && Number.isInteger(height/value) ? " (Exact fit)" : ""}`})),
+    gridTypes: types.map(([value,label])=>({value,label:label + (importedGrid.type === value ? " (Imported)" : ""),selected: value === type})),
     overlays: matchingOverlays(map, files).map((path,index)=>({index,path,label:basename(path),animated:isVideo(path)})),
     unresolved: [...new Set(unresolved)]
   };
@@ -97,12 +106,29 @@ export function buildScene(scene: PreparedScene, form: FormData, index: number):
   data.name = text("name"); data.width = number("width"); data.height = number("height");
   if (!data.name) throw new Error("Enter a Scene name.");
   if (!(Number(data.width) > 0) || !(Number(data.height) > 0)) throw new Error("Scene width and height must be positive.");
-  const size = choice === "custom" ? number("customGrid") : choice === "gridless" ? scene.defaults.gridSize : Number(choice);
+  const size = choice === "custom" ? number("customGrid") : Number(choice);
   if (!Number.isInteger(size) || size < 50) throw new Error("Grid size must be a whole number of at least 50 pixels.");
-  const distance = number("distance"), units = text("units");
-  if (distance <= 0 || !units) throw new Error("Enter a positive grid distance and distance units.");
-  data.grid = {...grid, type: choice === "gridless" ? 0 : number("gridType"), size, distance, units};
-  const shared = form.has("applyShared") && !checked("override");
+  const importedDistance = text("distance") === "imported";
+  const distance = importedDistance ? scene.defaults.distance : number("distance");
+  const units = importedDistance ? scene.defaults.units : "m";
+  if ((!importedDistance && ![1,2,4].includes(distance)) || distance <= 0 || !units) throw new Error("Choose a distance per square.");
+  const type = number("gridType");
+  if (type !== 0 && type !== 1) throw new Error("Choose Squares or Gridless.");
+  data.grid = {...grid, type, size, distance, units};
+  const shared = form.has("applyShared");
+  const setting = (key: string, fallback: unknown) => form.get(shared ? `shared${key}` : prefix + key) ?? fallback;
+  const padding = Number(setting("Padding", Number(data.padding ?? 0.25)*100))/100;
+  const thickness = Number(setting("Thickness", grid.thickness ?? 1));
+  const alpha = Number(setting("Opacity", grid.alpha ?? 0.2));
+  const color = String(setting("Color", grid.color ?? "#000000"));
+  const style = String(setting("Style", grid.style ?? "solidLines"));
+  if (!Number.isFinite(padding) || padding < 0 || padding > 0.5) throw new Error("Padding must be between 0% and 50%.");
+  if (!Number.isInteger(thickness) || thickness < 1) throw new Error("Grid thickness must be a positive whole number.");
+  if (!Number.isFinite(alpha) || alpha < 0 || alpha > 1) throw new Error("Grid opacity must be between 0 and 1.");
+  if (!/^#[0-9a-f]{6}$/i.test(color)) throw new Error("Choose a valid grid color.");
+  if (!style) throw new Error("Choose a grid style.");
+  data.padding = padding;
+  data.grid = {...record(data.grid),style,thickness,color,alpha};
   const darkness = shared ? number("sharedDarkness", true) : number("darkness");
   if (!Number.isFinite(darkness) || darkness < 0 || darkness > 1) throw new Error("Darkness must be between 0 and 1.");
   data.environment = {...environment, darknessLevel: darkness, globalLight: {...record(environment.globalLight), enabled: shared ? form.has("sharedGlobal") : checked("globalLight")}};
@@ -111,6 +137,11 @@ export function buildScene(scene: PreparedScene, form: FormData, index: number):
   delete data.fogExploration;
   data.active = false; data.navigation = false;
   data.background = {...record(data.background), src: scene.map}; delete data.img;
+  if (form.has(prefix + "foreground")) data.foreground = text("foreground") || null;
+  for (const collection of ["tiles", "tokens"]) list(data[collection]).forEach((item,index) => {
+    const field = prefix + `asset-${collection}-${index}`;
+    if (form.has(field)) record(record(item).texture).src = String(form.get(field));
+  });
   const tiles = list(data.tiles);
   let foregroundCount = 0;
   for (const overlay of scene.overlays) {
@@ -135,12 +166,16 @@ export function buildScene(scene: PreparedScene, form: FormData, index: number):
 export async function applySceneOverrides(scene: Scene, draft: PreparedScene, desired: Data) {
   const imported = scene.toObject() as unknown as Data, changes: Data = {};
   const fields = draft.useJson ? ["background.src"] : ["name","width","height","background.src","grid.type","grid.size","grid.distance","grid.units",
+    "grid.style","grid.thickness","grid.color","grid.alpha","padding",
     "environment.darknessLevel","environment.globalLight.enabled","tokenVision","fog.exploration","foreground"];
   for (const path of fields) {
     const value = foundry.utils.getProperty(desired,path);
     if (value !== undefined && value !== foundry.utils.getProperty(imported,path)) changes[path] = value;
   }
-  if (Object.keys(changes).length) await scene.update(changes);
+  if (Object.keys(changes).length) {
+    await scene.update(changes);
+    assertStoredChanges(scene, changes);
+  }
   if (draft.useJson) return;
   // Asset rematches update their own embedded documents; imported geometry stays intact.
   for (const [collection, type, path] of [["tiles","Tile","texture.src"],["tokens","Token","texture.src"],["sounds","AmbientSound","path"]] as const) {
@@ -152,10 +187,24 @@ export async function applySceneOverrides(scene: Scene, draft: PreparedScene, de
       const value = foundry.utils.getProperty(data,path);
       if (current && value !== undefined && value !== foundry.utils.getProperty(current,path)) updates.push({_id:data._id,[path]:value});
     }
-    if (updates.length) await scene.updateEmbeddedDocuments(type,updates);
+    if (updates.length) {
+      await scene.updateEmbeddedDocuments(type,updates);
+      const saved = scene.toObject() as unknown as Data;
+      for (const update of updates) assertStoredChanges(list(saved[collection]).find(item => record(item)._id === update._id) as object | undefined, update);
+    }
   }
   const addedTiles = list(desired.tiles).slice(list(draft.data.tiles).length);
-  if (addedTiles.length) await scene.createEmbeddedDocuments("Tile",addedTiles as TileDocument.CreateData[]);
+  if (addedTiles.length) {
+    const created = await scene.createEmbeddedDocuments("Tile",addedTiles as TileDocument.CreateData[]);
+    if (created?.length !== addedTiles.length) throw new Error("Scene overlay creation was cancelled or only partially saved.");
+    const saved = list((scene.toObject() as unknown as Data).tiles);
+    for (const [index, tile] of created.entries()) {
+      const stored = saved.find(item => record(item)._id === tile.id);
+      // Foundry may add defaults to texture and other nested fields.
+      const expected = foundry.utils.flattenObject(record(addedTiles[index]));
+      assertStoredChanges(stored as object | undefined, expected);
+    }
+  }
 }
 
 export function imageDimensions(path: string, signal = new AbortController().signal): Promise<{width: number; height: number}> {

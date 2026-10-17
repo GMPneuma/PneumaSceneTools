@@ -1,0 +1,7 @@
+<div class="hazard-ap-controls">
+  {{> "modules/pneuma-scenetools/templates/hazard-field.hbs" field}}
+  <div class="hazard-ap-artwork">
+    {{#if artwork}}<img src="{{artwork}}" alt="{{alt}}" title="{{title}}">{{/if}}
+    <button type="button" data-action="createAP" {{#if disabled}}disabled{{/if}}>Create NetArch AP</button>
+  </div>
+</div>

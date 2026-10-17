@@ -1,4 +1,5 @@
 import {withMookOperation} from "./operations.js";
+import {assertStoredChanges} from "../persistence.js";
 import { MODULE_ID } from "./constants.js";
 import type { HitPointStats } from "./stats.js";
 import { getBulletDodgingChoices, installCoprocessor, prepareCoprocessor, type BulletDodging } from "./bullet-dodging.js";
@@ -22,6 +23,7 @@ export interface ApplyMookChanges {
   weaponUpdates: object[];
   skillUpdates: object[];
   bulletDodging?: BulletDodging;
+  artwork?: string;
 }
 
 function getEmbeddedRollbackUpdates(actor: Actor, updates: object[]): object[] {
@@ -31,7 +33,7 @@ function getEmbeddedRollbackUpdates(actor: Actor, updates: object[]): object[] {
     if (!item) return [];
     const rollback: Record<string, unknown> = { _id: id };
     for (const key of Object.keys(update)) {
-      if (key !== "_id") rollback[key] = foundry.utils.getProperty(item, key);
+      if (key !== "_id") rollback[key] = foundry.utils.deepClone(foundry.utils.getProperty(item.toObject?.() ?? item, key));
     }
     return [rollback];
   });
@@ -68,17 +70,21 @@ async function applyMookChangesUnlocked(changes: ApplyMookChanges): Promise<bool
     const updatableDelta = delta as unknown as {
       update(data: object): Promise<unknown>;
     };
+    const updateDelta = async (data: object) => {
+      await updatableDelta.update(data);
+      assertStoredChanges(token.actor, data);
+    };
     const bulletDodging = changes.bulletDodging ?? "unchanged";
     if (!getBulletDodgingChoices().includes(bulletDodging)) throw new Error("Invalid bullet-dodging option.");
     const coprocessor = bulletDodging === "coprocessor" ? await prepareCoprocessor(actor) : undefined;
     if (bulletDodging === "reflex") {
-      const originalRef = foundry.utils.getProperty(actor, "system.stats.ref.value");
-      rollbackActions.push(() => updatableDelta.update({ "system.stats.ref.value": originalRef }));
-      await updatableDelta.update({ "system.stats.ref.value": 8 });
+      const originalRef = foundry.utils.getProperty(actor.toObject?.() ?? actor, "system.stats.ref.value");
+      rollbackActions.push(() => updateDelta({ "system.stats.ref.value": originalRef }));
+      await updateDelta({ "system.stats.ref.value": 8 });
     }
     if (coprocessor) await installCoprocessor(token, coprocessor, rollbackActions);
     const originalActiveRole = foundry.utils.getProperty(
-      actor,
+      actor.toObject?.() ?? actor,
       "system.roleInfo.activeRole",
     );
     const existingRole = roleName
@@ -99,13 +105,15 @@ async function applyMookChangesUnlocked(changes: ApplyMookChanges): Promise<bool
     ];
     if (embeddedUpdates.length > 0) {
       const rollbackUpdates = getEmbeddedRollbackUpdates(actor, embeddedUpdates);
-      await actor.updateEmbeddedDocuments("Item", embeddedUpdates);
       rollbackActions.push(async () => {
         const currentActor = token.actor;
         if (currentActor && rollbackUpdates.length > 0) {
           await currentActor.updateEmbeddedDocuments("Item", rollbackUpdates);
+          for (const update of rollbackUpdates) assertStoredChanges(token.actor?.items.get(String((update as {_id:string})._id)), update);
         }
       });
+      await actor.updateEmbeddedDocuments("Item", embeddedUpdates);
+      for (const update of embeddedUpdates) assertStoredChanges(token.actor?.items.get(String((update as {_id:string})._id)), update);
     }
 
     if (roleName && !existingRole) {
@@ -133,9 +141,11 @@ async function applyMookChangesUnlocked(changes: ApplyMookChanges): Promise<bool
         const currentActor = token.actor;
         if (currentActor) {
           await currentActor.deleteEmbeddedDocuments("Item", [createdRoleId]);
+          if (token.actor?.items.has(createdRoleId)) throw new Error("The created role could not be removed during rollback.");
         }
-        await updatableDelta.update({ "system.roleInfo.activeRole": originalActiveRole });
+        await updateDelta({ "system.roleInfo.activeRole": originalActiveRole });
       });
+      assertStoredChanges(token.actor?.items.get(createdRoleId), {"system.rank":roleLevel});
     }
 
     const deltaChanges: Record<string, unknown> = {
@@ -147,37 +157,48 @@ async function applyMookChangesUnlocked(changes: ApplyMookChanges): Promise<bool
       "system.roleInfo.activeRole": roleName,
     };
     if (nameChanged) deltaChanges.name = newName;
+    if (changes.artwork) deltaChanges.img = changes.artwork;
+    const actorSource = actor.toObject?.() ?? actor;
     const deltaRollback: Record<string, unknown> = {
-      "system.stats.move.value": foundry.utils.getProperty(actor, "system.stats.move.value"),
-      "system.stats.body.value": foundry.utils.getProperty(actor, "system.stats.body.value"),
-      "system.stats.will.value": foundry.utils.getProperty(actor, "system.stats.will.value"),
-      "system.derivedStats.hp.max": foundry.utils.getProperty(actor, "system.derivedStats.hp.max"),
-      "system.derivedStats.hp.value": foundry.utils.getProperty(actor, "system.derivedStats.hp.value"),
+      "system.stats.move.value": foundry.utils.getProperty(actorSource, "system.stats.move.value"),
+      "system.stats.body.value": foundry.utils.getProperty(actorSource, "system.stats.body.value"),
+      "system.stats.will.value": foundry.utils.getProperty(actorSource, "system.stats.will.value"),
+      "system.derivedStats.hp.max": foundry.utils.getProperty(actorSource, "system.derivedStats.hp.max"),
+      "system.derivedStats.hp.value": foundry.utils.getProperty(actorSource, "system.derivedStats.hp.value"),
       "system.roleInfo.activeRole": originalActiveRole,
     };
     if (nameChanged) deltaRollback.name = actor.name;
-    await updatableDelta.update(deltaChanges);
-    rollbackActions.push(() => updatableDelta.update(deltaRollback));
+    if (changes.artwork) deltaRollback.img = actor.img;
+    rollbackActions.push(() => updateDelta(deltaRollback));
+    await updateDelta(deltaChanges);
 
+    const savedPath = `flags.${MODULE_ID}.mookMakerSaved`;
     const oldTokenData = {
+      [savedPath]: foundry.utils.getProperty(token.document, savedPath) === true,
       name: token.document.name,
       displayName: token.document.displayName,
       disposition: token.document.disposition,
+      ...(changes.artwork ? {"texture.src": token.document.texture.src} : {}),
     };
     const updatableToken = token.document as unknown as {
       update(data: object): Promise<unknown>;
     };
-    await updatableToken.update({
+    const tokenChanges = {
+      [savedPath]: true,
       ...(nameChanged ? { name: newName } : {}),
       displayName,
       disposition: tokenDisposition,
-    });
-    rollbackActions.push(() => updatableToken.update(oldTokenData));
+      ...(changes.artwork ? {"texture.src": changes.artwork} : {}),
+    };
+    rollbackActions.push(async () => {await updatableToken.update(oldTokenData);assertStoredChanges(token.document, oldTokenData);});
+    await updatableToken.update(tokenChanges);
+    assertStoredChanges(token.document, tokenChanges);
     return nameChanged;
   } catch (error) {
     console.error(`${MODULE_ID} | Failed to apply mook changes`, error);
     if (!(await rollbackApply(rollbackActions))) {
       console.error(`${MODULE_ID} | Apply rollback was incomplete`);
+      throw new Error(`${String(error)} Some changes could not be restored. Check the Actor and token before retrying.`);
     }
     throw error;
   }

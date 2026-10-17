@@ -1,0 +1,7 @@
+<div class="form-group">
+  {{#if label}}<label>{{label}}</label>{{/if}}
+  <div class="form-fields">
+    {{#if select}}<select name="{{name}}" {{#if ariaLabel}}aria-label="{{ariaLabel}}"{{/if}}>{{#each options}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select>
+    {{else}}<input name="{{name}}" type="{{type}}" {{#if checkbox}}{{#if value}}checked{{/if}}{{else}}value="{{value}}"{{/if}} {{#if number}}step="any"{{/if}}>{{/if}}
+  </div>
+</div>

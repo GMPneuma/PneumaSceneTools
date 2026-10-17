@@ -14,7 +14,7 @@ export function controlState(doc: TokenDocument, now: number, runnerUuid: string
   const { discovery, pulse } = apData(doc);
   const active = discovery?.revealed && pulseProgress(pulse, now) !== null;
   return { runner: Boolean(discovery?.revealed && !discovery.public && (runnerUuid === undefined || (runnerUuid && discovery.runners?.includes(runnerUuid)))), all: Boolean(discovery?.revealed && discovery.public),
-    five: Boolean(active && !pulse?.loop), loop: Boolean(active && pulse?.loop), showName: Boolean(apData(doc).showName ?? setting("showLabels")) };
+    five: Boolean(active && !pulse?.loop), loop: Boolean(active && pulse?.loop), showName: Boolean(apData(doc).showName) };
 }
 export function bulkControls(documents: TokenDocument[], changes: APChanges, now: number, runnerUuid: string | null | undefined = undefined) {
   const states = documents.map((doc) => controlState(doc, now, runnerUuid));

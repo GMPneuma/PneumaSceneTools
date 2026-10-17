@@ -1,0 +1,7 @@
+<div data-trigger-options><h3>Possible triggers</h3><div class="hazard-trigger-options">
+  {{#each options}}<div class="hazard-trigger-entry {{#if movement}}hazard-move-trigger{{/if}}">
+    <label class="hazard-trigger-option"><input type="checkbox" name="hazardTrigger" value="{{id}}" {{#if checked}}checked{{/if}}> <span>{{label}}</span></label>
+    {{#if movement}}<input name="distance" type="number" min="0" step="any" value="{{../distance}}" aria-label="Movement distance (scene units)" title="Movement distance in scene units; 0 triggers on any movement.">{{/if}}
+  </div>{{/each}}
+</div></div>
+{{#if incoming}}<ul>{{#each incoming}}<li class="hazard-incoming">{{this}}</li>{{/each}}</ul>{{/if}}

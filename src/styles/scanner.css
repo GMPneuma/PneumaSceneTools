@@ -84,14 +84,20 @@
 
 .pneuma-scanner .ap-player-owned { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 12px; }
 
-.pneuma-scanner .ap-types-list { max-height: 420px; overflow: auto; }
-.pneuma-scanner .ap-type-row { display: grid; grid-template-columns: 90px 1fr 1.5fr; gap: 10px; align-items: end; padding: 8px 0; }
-.pneuma-scanner .ap-type-row label { display: flex; flex-direction: column; gap: 4px; }
-.pneuma-scanner .ap-type-row .ap-type-enabled { flex-direction: row; align-items: center; }
-.pneuma-scanner .ap-type-image, .pneuma-scanner .ap-type-footer { display: flex; gap: 6px; }
-.pneuma-scanner .ap-type-image input { min-width: 0; flex: 1; }
-.pneuma-scanner .ap-type-image button { width: 30px; flex: 0 0 30px; }
-.pneuma-scanner .ap-type-footer { margin-top: 12px; }
+.pneuma-type-manager .ap-types-form { display: flex; flex-direction: column; max-height: 78vh; }
+.pneuma-type-manager .ap-types-form > .notes, .pneuma-type-manager .ap-type-head { flex: 0 0 auto; }
+.pneuma-type-manager .ap-types-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; max-height: 480px; scrollbar-gutter: stable; }
+.pneuma-type-manager .ap-type-head, .pneuma-type-manager .ap-type-row { display: grid; grid-template-columns: 30px 48px minmax(130px, 1fr) minmax(180px, 1.5fr); gap: 10px; align-items: center; padding: 8px 4px; }
+.pneuma-type-manager .ap-type-head { font-weight: bold; padding-right: 20px; }
+.pneuma-type-manager .ap-type-row { border-top: 1px solid var(--color-border-light-tertiary, #bbb); }
+.pneuma-type-manager .ap-type-row > input { min-width: 0; }
+.pneuma-type-manager .ap-type-preview { width: 44px; height: 44px; object-fit: contain; padding: 4px; border: 1px solid #777; border-radius: 4px; background: #333; box-sizing: border-box; }
+.pneuma-type-manager .ap-type-image, .pneuma-type-manager .ap-type-footer { display: flex; gap: 6px; align-items: center; }
+.pneuma-type-manager .ap-type-image input { min-width: 0; flex: 1; }
+.pneuma-type-manager .ap-type-image button { width: 32px; flex: 0 0 32px; }
+.pneuma-type-manager .ap-type-footer { margin-top: 12px; flex-shrink: 0; }
+.pneuma-type-manager .ap-type-footer button { flex: 1; }
+
 
 .pneuma-scanner .ap-scene-color { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; }
 .pneuma-scanner .ap-scene-color input { width: 48px; height: 26px; }

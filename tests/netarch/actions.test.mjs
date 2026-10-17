@@ -113,3 +113,18 @@ test("speed changes retime active pulses without restarting their count or reviv
   assert.equal(apData(finite).pulse.duration, 500);
   assert.equal(apData(loop).pulse.duration, 2000);
 });
+ test("cancelled and partial AP batches reject instead of reporting success", async () => {
+  environment(); const scene=makeScene(),a=makeToken(scene,"a"),b=makeToken(scene,"b");
+  await revealAPs([a,b],{pulse:false});
+  scene.updateEmbeddedDocuments=async()=>[];
+  await assert.rejects(hideAPs([a,b]),/did not save/);assert.equal(apData(a).discovery.revealed,true);
+  scene.updateEmbeddedDocuments=async(_type,rows)=>[await a.update(rows[0])];
+  await assert.rejects(hideAPs([a,b]),/did not save/);assert.equal(apData(a).discovery.revealed,false);assert.equal(apData(b).discovery.revealed,true);
+  // An unchanged, already stored value remains a valid success.
+  await hideAPs([a]);
+ });
+ test("cancelled AP detail saves reject before changing shared colors",async()=>{
+  const {values}=environment();const scene=makeScene(),ap=makeToken(scene);ap.update=async()=>undefined;
+  await assert.rejects(saveAP(ap,{name:"Renamed",type:apData(ap).type,netarch:"",color:"#ffffff"}),/did not save/);
+  assert.deepEqual(values.get("netarchColors"),{entries:[]});
+ });

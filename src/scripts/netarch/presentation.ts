@@ -60,7 +60,7 @@ export class APPresentation {
         this.entries.set(doc.id!, entry);
       }
       entry.token = token;
-      const path = Boolean(apData(doc).showName ?? setting("showLabels")) ? doc.texture.src : iconPath("generic");
+      const path = Boolean(apData(doc).showName) ? doc.texture.src : iconPath("generic");
       if (!game.user!.isGM && entry.texturePath !== path) {
         entry.texturePath = path;
         entry.sprite.texture = PIXI.Texture.EMPTY;
@@ -109,7 +109,7 @@ export class APPresentation {
     label.text = doc.name;
     label.style.fontSize = Math.max(10, Math.min(20, canvas.grid!.size * 0.13));
     label.position.set(0, height / 2 + 6);
-    label.visible = game.user!.isGM || Boolean(apData(doc).showName ?? setting("showLabels"));
+    label.visible = game.user!.isGM || Boolean(apData(doc).showName);
   }
 
   tick() {

@@ -1,8 +1,8 @@
-import {basename, record, type ImportFile} from "./scene-data.js";
+import {basename, gridSizeMarker, record, type ImportFile} from "./scene-data.js";
 
 export const isVideo = (path: string) => /\.(mp4|webm|m4v|ogv)(?:[?#].*)?$/i.test(path);
 export const isImage = (path: string) => /\.(png|jpe?g|webp|gif|avif|svg)(?:[?#].*)?$/i.test(path);
-export const isMedia = (path: string) => isImage(path) || isVideo(path);
+export const isMedia = (path: string) => gridSizeMarker(path)===undefined && (isImage(path) || isVideo(path));
 export const isOverlay = (path: string) => /overlay|foreground/i.test(basename(path));
 export const isFoundryFolder = (path: string) => /^foundry(?:[ _-]*(?:walls|scenes))?$/i.test(basename(path.replace(/\/$/, "")));
 export const parentPath = (path: string) => {
@@ -16,6 +16,7 @@ export function mapIdentity(path: string): string {
   return basename(path)
     .replace(/-[a-z\d]{16}\.json$/i, ".json")
     .replace(/\.[^.]+$/, "")
+    .replace(/[ _-]+(?:720|1080|1440|2160|4320)p?$/i, "")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .toLowerCase()
     .replace(/^(?:fvtt[ _-]+(?:scene[ _-]+)?|cybermaps[ _-]+|sol[ _-]+)/, "")

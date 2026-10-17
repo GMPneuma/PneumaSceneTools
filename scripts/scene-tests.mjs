@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
-import {gridSuggestions, identifyImport, universalScene, resolveAsset, basename} from "../dist/scripts/scene-data.js";
+import {gridSuggestions, gridSizeMarker, identifyImport, universalScene, resolveAsset, basename} from "../dist/scripts/scene-data.js";
 import {scanFolders} from "../dist/scripts/creator.js";
 assert.equal(gridSuggestions(4000,3000,"map.webp",200)[0].size,200);
 assert.equal(gridSuggestions(4000,3000,"map-70px.webp")[0].size,70);
 assert.equal(gridSuggestions(5600,4200,"map-40x30.webp")[0].size,140);
 assert.equal(gridSuggestions(4000,3000,"map-40x40.webp")[0].hint,false);
+const exactGrids = gridSuggestions(3840,2160,"Megabuilding Apartments 4K - Gridless.jpg");
+assert.equal(exactGrids.find(grid=>grid.size===120)?.score,0);
+assert.equal(exactGrids.find(grid=>grid.size===120)?.columns,32);
+assert.equal(exactGrids.find(grid=>grid.size===120)?.rows,18);
+for (const size of [50,70,100,140,150,200,256,300]) assert.ok(exactGrids.some(grid=>grid.size===size));
+assert.equal(new Set(exactGrids.map(grid=>grid.size)).size,exactGrids.length);
+assert.ok(gridSuggestions(3839,2159,"map.jpg").every(grid=>grid.score>0));
 assert.equal(basename("maps/map%20one.webp?token=a"),"map one.webp");
 assert.equal(identifyImport({name:"Settings",width:1,height:1},"a.json"),null);
 const native = {name:"Map",width:4000,height:3000,background:{src:"old/map.webp"},grid:{size:100},walls:[{c:[1,2,3,4]}],lights:[{x:40}],_id:"old",folder:"old",journal:"old"};
@@ -25,3 +32,13 @@ const scanned = await scanFolders("maps",async path=> {
 });
 assert.deepEqual(scanned.files,["maps/a.webp","sub/a.json"]); assert.equal(scanned.warnings.length,1);
 console.log("Grid inference, import conversion, asset matching, and recursive scan checks passed.");
+
+assert.equal(gridSuggestions(4000,3000,'map-140ppi.webp')[0].size,140);
+assert.equal(gridSuggestions(4000,3000,'map_(140_PPI).webp')[0].size,140);
+assert.equal(gridSuggestions(4000,3000,'map-108pixels.webp')[0].size,108);
+assert.equal(gridSizeMarker('maps/Grid%20Offset%20108.txt'),108);
+assert.equal(gridSizeMarker('maps/Grid Offset 108'),108);
+assert.equal(gridSizeMarker('maps/Grid-Offset-108px.png'),108);
+assert.equal(gridSizeMarker('maps/Grid Offset 108 216.txt'),undefined);
+assert.equal(gridSuggestions(4000,3000,'map.webp',100,108)[0].size,108);
+assert.equal(gridSuggestions(4000,3000,'map-140ppi.webp',100,108)[0].size,140);

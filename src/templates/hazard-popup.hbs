@@ -1,0 +1,9 @@
+<form class="hazard-popup hazard-sections">
+  {{#if effectEditor}}{{> "modules/pneuma-scenetools/templates/hazard-effect-editor.hbs" effectEditor}}{{/if}}
+  {{#if triggerEditor}}{{> "modules/pneuma-scenetools/templates/hazard-trigger-editor.hbs" triggerEditor}}{{/if}}
+  <p role="alert"></p>
+  <footer>
+    <button type="submit" data-action="popupSave">Save</button>
+    <button type="button" data-action="popupCancel">Cancel</button>
+  </footer>
+</form>
