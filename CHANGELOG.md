@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.1 - 2026-10-18
+
+- Move Promote to actor onto the Role/Level row so the Mook name field has more space.
+- Fix GitHub browser validation by installing a pinned, checksum-verified CombatTools dependency.
+
+
+
 ## 0.7.0 - 2026-10-18
 
 - Advise duplicating starter name tables before building personal name lists.

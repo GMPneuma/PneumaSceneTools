@@ -50,7 +50,7 @@ try {
   wrap.querySelectorAll('form > fieldset:not(:first-child),form > footer').forEach(el=>el.remove());
  });
  const positions=await page.evaluate(()=>{const bounds=s=>document.querySelector(s).getBoundingClientRect();return {name:bounds('[name=name]').top,role:bounds('[name=role]').top,display:bounds('[name=displayName]').top,promote:bounds('[data-action=promote]').top,overflow:document.querySelector('.pneuma-mook-name-row').scrollWidth>document.querySelector('.pneuma-mook-name-row').clientWidth};});
- assert.ok(positions.name<positions.role&&positions.role<positions.display);assert.ok(Math.abs(positions.name-positions.promote)<15);assert.equal(positions.overflow,false);
+ assert.ok(positions.name<positions.role&&positions.role<positions.display);assert.ok(Math.abs(positions.role-positions.promote)<15);assert.equal(positions.overflow,false);
  await page.screenshot({path:'docs/mook-name-layout-preview.png'});
  await page.evaluate(async()=>{
   const ID='pneuma-scenetools';const stored=new Map([['mookNameRecipe',names.blankNameRecipe()]]);

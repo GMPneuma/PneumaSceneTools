@@ -491,8 +491,8 @@
 .pneuma-mook-name-row .pneuma-mook-maker-identity-name {display:grid;flex:1;min-width:70px;gap:3px;}
 .pneuma-mook-name-row button {width:auto;flex:0 0 auto;margin:0;padding:0 6px;}
 .pneuma-mook-name-row [data-action="generate-name"],.pneuma-mook-name-row [data-action="manual-name"] {width:28px;min-height:28px;}
-.pneuma-mook-name-row .pneuma-mook-maker-promote {margin-left:12px;font-size:12px;}
-.pneuma-mook-compact .pneuma-mook-maker-identity-row {grid-template-columns:minmax(0,1fr) 50px;}
+.pneuma-mook-maker-identity-row .pneuma-mook-maker-promote {align-self:end;width:auto;margin:0 0 0 12px;padding:0 6px;font-size:12px;white-space:nowrap;}
+.pneuma-mook-compact .pneuma-mook-maker-identity-row {grid-template-columns:minmax(0,1fr) 50px auto;}
 .pneuma-mook-compact .pneuma-mook-maker-secondary-actions {display:flex;justify-content:flex-start;margin-top:auto;padding-top:8px;gap:6px;}
 .pneuma-mook-compact .pneuma-mook-categories select {flex:1;height:0;min-height:130px;}
 .pneuma-mook-compact .pneuma-mook-categories option[value="manual"] {font-weight:bold;}

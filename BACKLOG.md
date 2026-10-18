@@ -12,7 +12,7 @@
 
 - Mook Name RollTables appears in the MookMaker settings section; shared HUD settings use the Scene Tools HUD heading.
 
-- Mook Maker has ordered three-part RollTable names, per-artwork-category overrides, instant rerolls, and a manual dialog with three table choices, Generate, editable name, and Save. The left Mook section uses Name/generation/Promote, Role/Level, and Display Name/Disposition rows. Names remain drafts until Apply.
+- Mook Maker has ordered three-part RollTable names, per-artwork-category overrides, instant rerolls, and a manual dialog with three table choices, Generate, editable name, and Save. The left Mook section uses Name/generation, Role/Level/Promote, and Display Name/Disposition rows. Names remain drafts until Apply.
 
 - Scene Tools HUD icon sizing now samples native icon buttons instead of larger numeric controls such as elevation.
 

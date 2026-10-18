@@ -197,7 +197,7 @@ if (process.env.PNEUMA_PLAYWRIGHT_MODULE) {
     assert.equal(await page.locator('.pneuma-mook-maker-section-stats input[name="bulletDodging"]').count(), 3);
     assert.deepEqual((await page.locator('input[name="bulletDodging"]').evaluateAll(nodes=>nodes.map(node=>node.parentElement.textContent.trim()))), ["Unchanged", "REF 8", "Reflex Co-Processor"]);
     assert.equal(await page.locator('.pneuma-mook-weapon-row [data-action="purge-gear"]').count(), 1);
-    assert.equal(await page.locator('.pneuma-mook-name-row [data-action="promote"]').count(), 1);
+    assert.equal(await page.locator('.pneuma-mook-maker-identity-row [data-action="promote"]').count(), 1);
     assert.equal(await page.locator('.pneuma-mook-maker-mook-fields > .pneuma-mook-name-row').count(), 1);
     const fields = await page.locator('.pneuma-mook-maker-mook-fields').boundingBox();
     const actions = await page.locator('.pneuma-mook-name-row').boundingBox();
