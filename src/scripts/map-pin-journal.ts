@@ -4,6 +4,16 @@ import {pinningEnabled} from "./map-pins-data.js";
 function linkedNotes(page:JournalEntryPage):NoteDocument[] {
   return ((game.scenes?.contents??[]) as Scene[]).filter(scene=>pinningEnabled(scene)).flatMap(scene=>scene.notes.contents.filter(note=>note.entryId===page.parent?.id && note.pageId===page.id));
 }
+let linkedPages:Set<string>|undefined;
+function hasLinkedNote(page:JournalEntryPage):boolean {
+  if(!linkedPages){
+    linkedPages=new Set();
+    for(const scene of game.scenes??[])if(pinningEnabled(scene))for(const note of scene.notes){
+      if(note.entryId&&note.pageId)linkedPages.add(`${note.entryId}.${note.pageId}`);
+    }
+  }
+  return linkedPages.has(`${page.parent?.id}.${page.id}`);
+}
 
 export async function panToPin(page:JournalEntryPage):Promise<void> {
   if(!game.user || !page.testUserPermission(game.user,"OBSERVER"))return;
@@ -24,7 +34,7 @@ export function addPinJournalButton(page:JournalEntryPage,root:HTMLElement):void
   root=root.closest<HTMLElement>('.journal-entry-page')??root;
   root.querySelectorAll('.pneuma-pin-journal-action').forEach(node=>node.remove());
   if(!game.user || !page.testUserPermission(game.user,"OBSERVER"))return;
-  if(!foundry.utils.getProperty(page,`flags.${MODULE_ID}.poi`) && !linkedNotes(page).length)return;
+  if(!foundry.utils.getProperty(page,`flags.${MODULE_ID}.poi`) && !hasLinkedNote(page))return;
   const bar=document.createElement('div');bar.className='pneuma-pin-journal-action';
   const button=document.createElement('button');button.type='button';button.innerHTML='<i class="fas fa-map-marker-alt" aria-hidden="true"></i> Pan to Note';
   button.addEventListener('click',event=>{
@@ -35,6 +45,7 @@ export function addPinJournalButton(page:JournalEntryPage,root:HTMLElement):void
 }
 
 export function registerPinJournal():void {
+  for(const hook of ['createNote','updateNote','deleteNote','createScene','updateScene','deleteScene'])Hooks.on(hook,()=>{linkedPages=undefined;});
   Hooks.on('renderJournalPageSheet',(app:{object:JournalEntryPage},html:JQuery)=>{
     if(html[0])addPinJournalButton(app.object,html[0]);
   });

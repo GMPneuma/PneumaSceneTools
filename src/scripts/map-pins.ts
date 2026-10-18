@@ -1,12 +1,11 @@
 import {installPinScaling} from "./map-pins-scale.js";
 import {registerPinJournal} from "./map-pin-journal.js";
-import {exportPins,importPins,parsePinBundle} from "./map-pin-transfer.js";
-import {cleanExistingPinTemplates} from "./map-pin-template-cleanup.js";
+import {openPinTransfer} from "./map-pin-transfer-ui.js";
 import {compactIconPicker,bindIconPicker} from "./map-pin-icons.js";
 import {openPinStyleEditor} from "./map-pins-bulk.js";
 import {installPinContextMenu,openPinJournal,pinPermissionDocument,pinPermissionLabel,playersCanReadPin,setPinPlayerRead} from "./map-pin-permissions.js";
 import {MODULE_ID} from "./settings.js";
-import {syncPinImage} from "./map-pins-image.js";
+import {syncPinImage,pinImagePath,managedPinPage} from "./map-pins-image.js";
 import {installPinVisibility} from "./map-pins-visibility.js";
 import {createMapPin,DEFAULT_PIN,getPinDefaults,pinVisualDefaults,validatePinDefaults,EMPTY_TEMPLATE,ensurePinTemplate,getPinTemplate,poiPageContent,pinInfo,pinningEnabled,validateTemplate} from "./map-pins-data.js";
 import {parseHoverPage,selectedHoverFields,registerPinHover} from "./map-pins-hover.js";
@@ -29,7 +28,7 @@ function pageOptions(journal:JournalEntry|undefined,type:string,selected:string)
 function sectionChoices(container:HTMLElement,page:JournalEntryPage|undefined,input:HTMLInputElement,value:string):void {
   container.replaceChildren();
   const selected=selectedHoverFields(value)?.map(name=>name.toLocaleLowerCase());
-  const sections=parseHoverPage(page?.text.content??"",true);
+  const sections=parseHoverPage(page?.text.content??"");
   const description=document.createElement("p");description.className="notes";
   description.textContent="Image and description are always displayed. Choose any additional hover fields below.";container.append(description);
   const fields=[...new Set(sections.map(section=>section.name).filter(name=>!["description","image"].includes(name.trim().toLocaleLowerCase())))];
@@ -173,7 +172,7 @@ function renderPinConfig(app:NoteConfig,html:JQuery):void {
   basic.insertAdjacentHTML("afterbegin","<legend>Location</legend>");
   const special=document.createElement("div");special.className="pneuma-map-pins";
   special.innerHTML=`<fieldset class="pin-icon-config"><legend>Icon</legend>${compactIconPicker(note.texture.src??"",true)}</fieldset>
-  <fieldset class="pneuma-pin-hover-config"><legend>Journal hover preview</legend><div class="form-group"><label>Show preview</label><input type="checkbox" name="${prefix}.hover" ${info.hover?"checked":""}></div><div class="form-group"><label>Image page</label><div class="form-fields"><select name="${prefix}.imagePageId"></select></div></div><div class="form-group"><label>Description page</label><div class="form-fields"><select name="${prefix}.descriptionPageId"></select></div></div><h4>Hover fields</h4><input type="hidden" name="${prefix}.sections"><div class="pin-section-list"></div><p class="notes">Journal permissions and unrevealed secrets still apply.</p><input type="hidden" name="${prefix}.category" value="${escape(info.category)}"></fieldset>`;
+  <fieldset class="pneuma-pin-hover-config"><legend>Journal hover preview</legend><div class="form-group"><label>Show preview</label><input type="checkbox" name="${prefix}.hover" ${info.hover?"checked":""}></div><div class="form-group"><label>Image page</label><div class="form-fields"><select name="${prefix}.imagePageId"></select></div></div><div class="form-group"><label>Description page</label><div class="form-fields"><select name="${prefix}.descriptionPageId"></select></div></div><h4>Hover fields</h4><input type="hidden" name="${prefix}.sections"><div class="pin-section-list"></div><p class="notes">Player visibility follows journal/page permissions.</p><input type="hidden" name="${prefix}.category" value="${escape(info.category)}"></fieldset>`;
   content.append(basic,special);form.prepend(content);
   visualPanel(form,special,note,()=>requestAnimationFrame(()=>{if(form.isConnected)app.setPosition({height:"auto"});}));
   // Keep native fields and listeners for submission; appearance mirrors are the
@@ -186,7 +185,7 @@ function renderPinConfig(app:NoteConfig,html:JQuery):void {
 
   const image=special.querySelector<HTMLSelectElement>(`[name="${prefix}.imagePageId"]`)!;
   const imageRow=document.createElement("div");imageRow.className="form-group";
-  imageRow.innerHTML=`<label>POI image</label><div class="form-fields"><input type="text" name="${prefix}.imageSrc" value="${escape(info.imageSrc??"")}" placeholder="Image for this POI"><button type="button" title="Choose this POI's image" aria-label="Choose this POI's image"><i class="fas fa-file-import"></i></button></div>`;
+  imageRow.innerHTML=`<label>POI image</label><div class="form-fields"><input type="text" name="${prefix}.imageSrc" value="${escape(pinImagePath(note))}" placeholder="Image for this POI"><button type="button" title="Choose this POI's image" aria-label="Choose this POI's image"><i class="fas fa-file-import"></i></button></div>`;
   image.closest(".form-group")!.before(imageRow);
   imageRow.querySelector("button")!.addEventListener("click",()=>{
     const field=imageRow.querySelector("input")!;
@@ -296,20 +295,11 @@ export async function openMapPins(scene:Scene,editing?:NoteDocument,position?:{x
   const dialog=new Dialog({title:"Scene Tools Map POI",content,buttons:{},render:html=>{
     const root=html[0]!,message=root.querySelector(".pin-error")!;
     const transfer=document.createElement('div');transfer.className='pin-options';
-    transfer.innerHTML='<button type="button" data-action="export-pins">Export JSON</button><button type="button" data-action="import-pins">Import JSON</button><input type="file" accept=".json,application/json" hidden>';
+    transfer.innerHTML='<button type="button" data-action="transfer-pins"><i class="fas fa-file-arrow-up"></i> Import / Export</button>';
     root.querySelector('.pin-options')!.after(transfer);
-    const file=transfer.querySelector<HTMLInputElement>('input')!;
-    transfer.querySelector('[data-action="export-pins"]')!.addEventListener('click',()=>{
-      try{saveDataToFile(JSON.stringify(exportPins(scene),null,2),'application/json',`${scene.name.replace(/[^a-z0-9_-]/gi,'_')}-pins.json`);}catch(cause){message.textContent=error(cause);}
+    transfer.querySelector('button')!.addEventListener('click',()=>{
+      void openPinTransfer(scene,async()=>{await dialog.close();await openMapPins(scene);}).catch(cause=>{message.textContent=error(cause);});
     });
-    transfer.querySelector('[data-action="import-pins"]')!.addEventListener('click',()=>file.click());
-    file.addEventListener('change',()=>{void (async()=>{
-      const selected=file.files?.[0];if(!selected)return;
-      const text=await selected.text(),bundle=parsePinBundle(text);
-      if(!await Dialog.confirm({title:'Import Map Pins',content:`<p>Add ${bundle.notes.length} pins and ${bundle.journals.length} journals to this scene? Existing documents are kept. Importing the same file again creates additional copies. Image files are not included.</p>`,defaultYes:false}))return;
-      transfer.querySelectorAll<HTMLButtonElement>('button').forEach(button=>{button.disabled=true;});
-      await importPins(scene,text);await dialog.close();await openMapPins(scene);
-    })().catch(cause=>{message.textContent=error(cause);}).finally(()=>{file.value='';transfer.querySelectorAll<HTMLButtonElement>('button').forEach(button=>{button.disabled=false;});});});
     const selections=Array.from(root.querySelectorAll<HTMLInputElement>(".pin-select"));
     const all=root.querySelector<HTMLInputElement>("[data-select-all]")!,bulk=root.querySelector<HTMLButtonElement>('[data-action="bulk-style"]')!;
     const selectedIds=()=>selections.filter(input=>input.checked).map(input=>input.closest<HTMLElement>(".pin-row")!.dataset.id!);
@@ -480,12 +470,20 @@ export function installPinPlacement():void {
 
 export function registerMapPins():void {
   registerPinJournal();
-  Hooks.on("ready",()=>{void cleanExistingPinTemplates().catch(cause=>ui.notifications?.error(String(cause)));});
-  Hooks.on("updateNote",(note:NoteDocument,change:Record<string,unknown>,_options:unknown,userId:string)=>{
-    if(userId!==game.user?.id || !game.user?.isGM)return;
-    const path=`flags.${MODULE_ID}.mapPin.imageSrc`;
-    if(!(path in change) && foundry.utils.getProperty(change,path)===undefined && !("entryId" in change) && !("pageId" in change))return;
-    void syncPinImage(note).catch(cause=>ui.notifications?.error(`POI journal image: ${error(cause)}`));
+  Hooks.on('setup',()=>{
+    libWrapper.register(MODULE_ID,'NoteConfig.prototype._updateObject',async function(this:NoteConfig,wrapped:(event:Event,data:Record<string,unknown>)=>Promise<unknown>,event:Event,data:Record<string,unknown>){
+      const note=this.object,path=`flags.${MODULE_ID}.mapPin.imageSrc`;
+      if(!game.user?.isGM||!pinningEnabled(note.parent)||!managedPinPage(note)||!(path in data))return wrapped(event,data);
+      const src=data[path];if(typeof src!=='string'||/^\s*(javascript|vbscript):/i.test(src))throw Error('Choose a valid POI image path.');
+      const entryId=note.entryId,pageId=note.pageId;
+      const imageChanged=src.trim()!==pinImagePath(note);
+      const relinking=('entryId' in data&&data.entryId!==entryId)||('pageId' in data&&data.pageId!==pageId);
+      const changes={...data};delete changes[path];
+      if(pinInfo(note)?.imageSrc!==undefined)changes[`flags.${MODULE_ID}.mapPin.-=imageSrc`]=null;
+      const result=await wrapped(event,changes);
+      if(imageChanged&&!relinking&&note.entryId===entryId&&note.pageId===pageId)await syncPinImage(note,src);
+      return result;
+    },'WRAPPER');
   });
   Hooks.on("setup",installPinPlacement);
   Hooks.on("setup",installPinContextMenu);

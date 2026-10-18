@@ -1,5 +1,15 @@
 # Master roadmap
 
+- POI import confirmation displays the requested world-backup warning before importing.
+
+- POI JSON section values are strings containing either plain text or HTML. Removed the separate HTML object format; export, import, and dialog guidance use the same string layout.
+
+- POI manager now has one Import / Export button. Its dialog explains the custom SceneTools POI JSON format, editable named journal sections, rich formatting, image paths, and copy-on-import behavior before offering Import JSON and Export JSON.
+
+- POI audit fixes: journal pages own managed images; relinking never copies an old pin image into the destination. Native image edits are awaited and custom images on ordinary Notes survive import. All heading levels and rich section bodies export separately. Import validates Note settings before writing, batches document creation with stable fresh-ID mapping and partial-failure cleanup, and indexes source pages. Template page choices are derived from current pages. Journal Pan button eligibility caches links with Note/Scene invalidation. Local regression and browser coverage added.
+
+- POIs use journal/page player visibility only. Removed section hiding and old-template cleanup. JSON export handles line breaks and both image layouts; Note hover fields export as comma-separated names.
+
 - Automatic hazard validation, detection, and maintenance now process only the currently viewed scene. Queued work checks the scene again before running; opening a scene performs deferred destroyed-body and effect cleanup. Local regression coverage added; live Foundry verification pending.
 
 - Fixed named-section JSON export falling back to HTML for ordinary POIs with managed images. Export images separately as src/alt; preserve editable text sections and remap the Note image path on import.

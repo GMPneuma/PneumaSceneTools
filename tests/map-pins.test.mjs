@@ -60,8 +60,9 @@ test('concurrent creation shares one scene journal',async()=>{
   assert.equal(created.length,1);assert.equal(notes[0].entryId,notes[1].entryId);
   assert.notEqual(notes[0].pageId,notes[1].pageId);
 });
-test('missing template page fails before writing journal',async()=>{
-  template.pages.splice(0,1);await assert.rejects(()=>createMapPin(scene,input),/image or text page/);assert.equal(created.length,0);
+test('obsolete template page references do not block creation',async()=>{
+  template.pages.splice(0,1);game.settings.value.descriptionPageId='deleted';
+  const note=await createMapPin(scene,input);assert.ok(note.pageId);assert.equal(created.length,1);
 });
 test('deleted template is recreated and selected, with only one Image heading at the bottom',async()=>{
   game.journal.length=0;
@@ -131,7 +132,7 @@ test('shared creation saves image, hover selections, elevation and sort at creat
   scene.createEmbeddedDocuments=async(_type,rows)=>{saved=rows[0];return [{...saved,id:'pin'}];};
   const note=await createMapPin(scene,{...input,imageSrc:'image.png',sections:'["Factions"]',elevation:4,sort:7});
   assert.equal(saved.elevation,4);assert.equal(saved.sort,7);
-  assert.equal(saved.flags[ID].mapPin.sections,'["Factions"]');assert.equal(saved.flags[ID].mapPin.imageSrc,'image.png');
+  assert.equal(saved.flags[ID].mapPin.sections,'["Factions"]');assert.equal(saved.flags[ID].mapPin.imageSrc,undefined);
   const page=game.journal.get(note.entryId).pages[0];
   assert.match(page.text.content,/data-poi-image="true"/);assert.match(page.text.content,/src="image.png"/);
 });

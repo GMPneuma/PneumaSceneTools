@@ -1,6 +1,6 @@
 # Map pin JSON export/import
 
-Open **Scene Tools Map POI** on an enabled scene. **Export JSON** downloads all scene Notes and the complete journals they link to, including all pages and GM/secret content. **Import JSON** adds copies to the manager's scene and creates journals under **SceneTools/Imported POIs**. Existing documents are never overwritten. Importing twice adds two copies.
+Open **Scene Tools Map POI** on an enabled scene, then click **Import / Export**. The dialog explains the custom SceneTools POI format and offers both actions. **Export JSON** downloads all scene Notes and the complete journals they link to, including all pages. **Import JSON** adds copies to the manager's scene and creates journals under **SceneTools/Imported POIs**. Existing documents are never overwritten. Importing twice adds two copies.
 
 The file is ordinary, indented JSON. Edit it with a text editor. JSON requires double quotes and does not support comments or trailing commas. Keep `format` and `version` unchanged. `scene.name` is informational; it does not select the import destination or scale coordinates.
 
@@ -8,7 +8,7 @@ Journal and page `key` values are file-local identifiers. Each journal key must 
 
 `data` contains native Foundry document fields. Common edits:
 
-- Journal/page `name` and page `sections`, an object mapping heading names to plain text. Headings are created in the order written. Use `\n` within a string for additional paragraphs. HTML characters in section text are escaped rather than executed.
+- Journal/page `name` and page `sections`, an object mapping heading names to strings containing plain text or HTML. Headings are created in the order written. Use `\n` within a string for additional paragraphs. Plain text becomes paragraphs; strings containing HTML retain their formatting.
 - Note `text`, `x`, `y`, `iconSize`, `texture.src`, and `texture.tint`.
 - Page `ownership.default`: `0` hides it from players; `2` grants read access; `-1` inherits the journal. Export omits world-specific user grants.
 
@@ -54,7 +54,7 @@ Minimal editable example:
 
 Named `sections` belongs to each journal page, beside `key` and `data`. It is distinct from the Note's `flags.pneuma-scenetools.mapPin.sections`, which selects fields for hover previews.
 
-Exports use named sections for pages containing simple headings and paragraphs, including POIs with a managed image. The image is a separate field on the page, beside `sections`:
+Exports recognize heading levels 1–6, including headings with editor attributes. Plain paragraphs become text strings. Formatted content stays inside its named section, for example `"Details": "<p>Some <strong>bold</strong> text</p>". The image is a separate field on the page, beside `sections`:
 
 ```json
 "image": {
@@ -63,4 +63,8 @@ Exports use named sections for pages containing simple headings and paragraphs, 
 }
 ```
 
-Import recreates the bottom Image section and synchronizes the linked Note's POI image path. Rich formatting, unmanaged inline images, secret blocks, duplicate headings, and other complex HTML retain `data.text.content` to avoid losing content or secrecy. Existing HTML-format files still import. A page must use either `sections` or `data.text`, never both.
+Import recreates the bottom Image section. Managed POI images belong to the journal page; Note flags do not store a second image path. Ordinary Notes can retain their custom image override. Duplicate heading names retain `data.text.content` because an object cannot contain repeated keys without losing content. Existing HTML-format files still import. A page must use either `sections` or `data.text`, never both.
+
+Section containers do not add visibility rules. Named sections import as ordinary journal text; player visibility is controlled by journal/page permissions only. Note hover fields export as comma-separated names, for example `"sections": "Factions, NPCs, Services"`. An empty array selects no extra fields; an empty string selects all. Headings containing commas use a JSON array to preserve their names.
+
+Import validates hover selections and POI settings before creating documents. Pages are created in one batch per journal and Notes in one scene batch. Fresh IDs are assigned before writing, so returned order and partial cancellation cannot mislink pins or evade cleanup.

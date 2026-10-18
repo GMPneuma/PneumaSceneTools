@@ -1,16 +1,24 @@
 import {MODULE_ID} from "./settings.js";
 import {pinInfo} from "./map-pins-data.js";
 
+export function managedPinPage(note:NoteDocument):JournalEntryPage|undefined {
+  const page=note.entry?.pages.get(note.pageId??'');
+  return page?.type==='text'&&foundry.utils.getProperty(page,`flags.${MODULE_ID}.poi`)?page:undefined;
+}
+export function pinImagePath(note:NoteDocument):string {
+  const page=managedPinPage(note);
+  if(!page)return pinInfo(note)?.imageSrc??'';
+  const doc=new DOMParser().parseFromString(page.text.content??'','text/html');
+  return (doc.querySelector('[data-poi-image] img')??doc.querySelector('img'))?.getAttribute('src')??'';
+}
 const pending=new Map<string,Promise<void>>();
 /** Keep the pin's selected image at the bottom of its own POI page. */
-export async function syncPinImage(note:NoteDocument):Promise<void> {
+export async function syncPinImage(note:NoteDocument,src:string):Promise<void> {
   if(!game.user?.isGM)return;
-  const page=note.entry?.pages.get(note.pageId??"");
-  if(page?.type!=="text" || !foundry.utils.getProperty(page,`flags.${MODULE_ID}.poi`))return;
+  const page=managedPinPage(note);
+  if(!page)return;
   const key=page.uuid;
   const task=(pending.get(key)??Promise.resolve()).catch(()=>{}).then(async()=>{
-    const src=pinInfo(note)?.imageSrc;
-    if(src===undefined)return;
     const path=src.trim();
     if(/^\s*(javascript|vbscript):/i.test(path))throw new Error("Choose a valid POI image path.");
     const original=page.text.content??"";

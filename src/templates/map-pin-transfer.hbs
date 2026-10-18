@@ -1,0 +1,18 @@
+<section class="pneuma-map-pins pin-transfer">
+  <p><strong>SceneTools POI uses its own JSON format.</strong> This is not a standard Foundry Scene or Journal export. Import these files here in SceneTools POI.</p>
+  <p>Journal headings and content are organized into named, human-readable sections that you can edit in a text editor, instead of one long HTML block:</p>
+  <pre><code>"sections": {
+  "Description": "Describe this location.",
+  "Factions": "Local fixers",
+  "NPCs": "Add your characters here."
+}</code></pre>
+  <p>You can add headings or change their text. Each section is a string: use plain text or include HTML directly for formatting such as bold text and links.</p>
+  <p><strong>Scene: {{sceneName}}</strong><br>Export includes this scene’s pins and their linked journals. Import adds copies to this scene without replacing existing content.</p>
+  <p>Images are referenced by file path; image files are not included. Keep the files at those paths or edit the paths before importing.</p>
+  <div class="pin-options">
+    <button type="button" data-action="import-pins"><i class="fas fa-file-import"></i> Import JSON</button>
+    <button type="button" data-action="export-pins"><i class="fas fa-file-export"></i> Export JSON</button>
+  </div>
+  <input type="file" accept=".json,application/json" hidden>
+  <p class="pin-error" role="alert"></p>
+</section>

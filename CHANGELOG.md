@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.6 - 2026-10-18
+
+- Replace separate POI import/export buttons with one Import / Export dialog explaining the custom SceneTools POI JSON format. Add the requested world-backup warning before import.
+- Export journal headings as readable named sections, with plain text or HTML directly in string values. Support all heading levels, editor attributes, line breaks, and both managed image layouts.
+- Export Note hover selections as comma-separated names, preserving empty selections and headings containing commas with arrays.
+- Remove POI section-hiding rules and old-template cleanup. Player visibility uses journal/page permissions.
+- Make journal pages authoritative for managed POI images. Relinking Notes no longer overwrites destination images; ordinary Note custom image paths survive import.
+- Validate imported POI settings before creating documents, supply defaults for handwritten files, batch page and Note creation, and clean partial imports using fresh IDs.
+- Resolve template page references from current pages and cache journal-button link lookups until Notes or Scenes change.
+- Expand automated import/export and browser regressions. Live Foundry and multiplayer verification remains separate.
+
 ## 0.6.5 - 2026-10-18
 
 - Add vehicle promotion to permanent Actors while preserving functioning vehicle prototype tokens and seat layouts.

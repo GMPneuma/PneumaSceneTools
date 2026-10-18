@@ -1,4 +1,4 @@
-/** Plain-text sections are the editable format; complex rich text keeps its original HTML. */
+/** Section strings contain plain text or HTML, without a second content schema. */
 const escape=(text:string)=>text.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 function decode(text:string):string {
   return text.replace(/&(#\d+|#x[0-9a-f]+|amp|lt|gt|quot|apos|nbsp);/gi,(entity,code:string)=>{
@@ -6,26 +6,35 @@ function decode(text:string):string {
     return ({amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:'\u00a0'} as Record<string,string>)[code.toLowerCase()]??entity;
   });
 }
+const hasHTML=(text:string)=>/<\/?[a-z][\w:-]*(?:\s[^<>]*|\s*\/?)>/i.test(text);
 export function exportSections(html:string):Record<string,string>|undefined {
-  if(/&(?!(?:amp|lt|gt|quot|apos|nbsp);)[a-z][a-z0-9]+;/i.test(html))return;
+  html=html.replace(/<\/?section\b[^>]*>/gi,'');
   const sections:Record<string,string>=Object.create(null);
-  const pattern=/<h2>([^<]+)<\/h2>((?:\s*<p>[^<]*<\/p>)*)\s*/g;
-  let end=0;
-  for(const match of html.matchAll(pattern)){
-    if(html.slice(end,match.index).trim())return;
-    const name=decode(match[1]!).trim();
+  const headings=[...html.matchAll(/<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi)];
+  const content=(body:string):string=>{
+    const plain=body.replace(/<br\s*\/?\s*>/gi,'\n');
+    if(/^(?:\s*<p>[^<]*<\/p>)*\s*$/.test(plain)&&!/&(?!(?:amp|lt|gt|quot|apos|nbsp);)[a-z][a-z0-9]+;/i.test(plain)){
+      const text=[...plain.matchAll(/<p>([^<]*)<\/p>/g)].map(p=>decode(p[1]!)).join('\n');
+      if(!hasHTML(text))return text;
+    }
+    return body.trim();
+  };
+  if(!headings.length)return {Description:content(html)};
+  if(html.slice(0,headings[0]!.index).trim())sections.Description=content(html.slice(0,headings[0]!.index));
+  for(const [index,heading] of headings.entries()){
+    const name=decode(heading[2]!.replace(/<[^>]*>/g,'')).trim();
     if(!name||Object.hasOwn(sections,name))return;
-    sections[name]=[...match[2]!.matchAll(/<p>([^<]*)<\/p>/g)].map(p=>decode(p[1]!)).join('\n');
-    end=match.index!+match[0].length;
+    sections[name]=content(html.slice(heading.index!+heading[0].length,headings[index+1]?.index??html.length));
   }
-  if(!Object.keys(sections).length||html.slice(end).trim())return;
   return sections;
 }
 export function sectionsHTML(value:unknown):string {
   if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Page sections must be an object of heading names and text strings.');
   return Object.entries(value).map(([name,text])=>{
-    if(!name.trim()||typeof text!=='string')throw Error('Each section needs a nonempty heading and a text string.');
-    return `<h2>${escape(name)}</h2>${text.split(/\r?\n/).map(line=>`<p>${escape(line)}</p>`).join('')}`;
+    if(!name.trim())throw Error('Each section needs a nonempty heading.');
+    if(typeof text!=='string')throw Error('Each section needs a text string.');
+    const body=hasHTML(text)?text:text.split(/\r?\n/).map(line=>`<p>${escape(line)}</p>`).join('');
+    return `<h2>${escape(name)}</h2>${body}`;
   }).join('');
 }
 
@@ -33,16 +42,17 @@ export interface SectionImage {src:string;alt:string}
 export function exportPageSections(html:string):{sections:Record<string,string>;image?:SectionImage}|undefined {
   // SceneTools appends this managed image block to ordinary POI pages.
   // Extract it before checking text sections so an image does not force HTML export.
-  const block=/<section\s+data-poi-image=["']true["']\s*>\s*<h2>Image<\/h2>\s*<img\s+([^>]+)>\s*<\/section>\s*$/i.exec(html);
+  const block=/(?:<h2>Image<\/h2>\s*)?<section\s+data-poi-image=["']true["']\s*>\s*(?:<h2>Image<\/h2>\s*)?<img\s+([^>]+)>\s*<\/section>\s*$/i.exec(html);
   let image:SectionImage|undefined;
   if(block){
     const attributes=block[1]!;
     const src=/\bsrc\s*=\s*(["'])(.*?)\1/i.exec(attributes);
     const alt=/\balt\s*=\s*(["'])(.*?)\1/i.exec(attributes);
     const other=attributes.replace(/\b(?:src|alt)\s*=\s*(["'])(.*?)\1/gi,'').replace(/\//g,'').trim();
-    if(!src||other)return;
-    image={src:decode(src[2]!),alt:decode(alt?.[2]??'')};
-    html=html.slice(0,block.index);
+    if(src&&!other){
+      image={src:decode(src[2]!),alt:decode(alt?.[2]??'')};
+      html=html.slice(0,block.index);
+    }
   }
   const sections=exportSections(html);
   return sections?{sections,...(image?{image}:{})}:undefined;

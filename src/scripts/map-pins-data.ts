@@ -1,6 +1,5 @@
 import {MODULE_ID} from "./settings.js";
 import {ensureSceneToolsFolder} from "./world-folders.js";
-import {cleanDefaultPinTemplate} from "./map-pin-template-cleanup.js";
 
 export type PinTemplate = {journalId: string; imagePageId: string; descriptionPageId: string; sections: string;}
 export interface PinInfo {imagePageId: string; descriptionPageId: string; imageSrc?:string; sections: string; hover: boolean; category: string;}
@@ -38,7 +37,7 @@ export async function ensurePinTemplate(): Promise<JournalEntry> {
   if (defaultPending) return defaultPending;
   defaultPending = (async () => {
     const existing = game.journal?.find(journal => foundry.utils.getProperty(journal,`flags.${MODULE_ID}.pinTemplate`) === true);
-    if (existing) {await cleanDefaultPinTemplate(existing);return existing;}
+    if (existing) {return existing;}
     const folder = await ensureSceneToolsFolder("JournalEntry");
     const created = await JournalEntry.create({name:"Map POI Template",folder:folder.id,ownership:{default:CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE},
       flags:{[MODULE_ID]:{pinTemplate:true}},pages:[
@@ -54,7 +53,7 @@ export async function getPinTemplate(): Promise<{journal:JournalEntry; config:Pi
   let config=game.settings!.get(MODULE_ID,"pinTemplate");
   if(config.journalId) {
     const journal=game.journal?.find(j=>j.id===config.journalId);
-    if(journal){await cleanDefaultPinTemplate(journal);return {journal,config};}
+    if(journal){return {journal,config:{...config,imagePageId:journal.pages.find(p=>p.type==="image")?.id??journal.pages.find(p=>p.type==="text")?.id??"",descriptionPageId:journal.pages.find(p=>p.type==="text")?.id??""}};}
   }
   const journal=await ensurePinTemplate();
   const replacedMissing=!!config.journalId;
@@ -83,7 +82,7 @@ export async function pinSceneJournal(scene:Scene):Promise<JournalEntry> {
   try{return await task;}finally{journalPending.delete(key);}
 }
 const escapeHTML=(value:string)=>value.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]!));
-/** Preserve editable HTML and secret sections; other media retain native page links. */
+/** Preserve editable HTML; other media retain native page links. */
 export function poiPageContent(journal:JournalEntry):string {
   return [...journal.pages.contents].sort((a,b)=>a.sort-b.sort).map(page=>{
     const data=page.toObject();
@@ -104,7 +103,7 @@ export async function createMapPin(scene:Scene,input:NewPin):Promise<NoteDocumen
   const visual={...getPinDefaults(),...input};
   validatePinDefaults(visual);
   const {journal:template,config}=await getPinTemplate();
-  validateTemplate(template,config);
+
   if(!input.icon.trim())throw new Error("Choose an icon or enter a custom icon path.");
   if(input.elevation!==undefined&&!Number.isFinite(input.elevation) || input.sort!==undefined&&!Number.isFinite(input.sort))throw new Error("Use valid elevation and sort values.");
   const image=input.imageSrc?.trim();
@@ -115,7 +114,7 @@ export async function createMapPin(scene:Scene,input:NewPin):Promise<NoteDocumen
   if(!page || !journal.pages.get(page.id!))throw new Error("Foundry did not create the POI page.");
   try {
     requireGM(scene);
-    const info:PinInfo={imagePageId:page.id!,descriptionPageId:page.id!,sections:input.sections??config.sections,hover:input.hover,category:input.category,...(input.imageSrc!==undefined?{imageSrc:input.imageSrc}:{})};
+    const info:PinInfo={imagePageId:page.id!,descriptionPageId:page.id!,sections:input.sections??config.sections,hover:input.hover,category:input.category};
     const [note]=(await scene.createEmbeddedDocuments("Note",[{entryId:journal.id,pageId:info.descriptionPageId||null,x:Math.round(input.x),y:Math.round(input.y),
       text:input.name.trim(),...(input.elevation!==undefined?{elevation:input.elevation}:{}),...(input.sort!==undefined?{sort:input.sort}:{}),iconSize:input.size,fontFamily:visual.fontFamily,fontSize:visual.fontSize,textColor:visual.textColor,textAnchor:visual.textAnchor as typeof CONST.TEXT_ANCHOR_POINTS.BOTTOM,texture:{src:input.icon,tint:input.tint},global:input.global,flags:{[MODULE_ID]:{mapPin:info}}} as NoteDocument.CreateData]))??[];
     if(!note) throw new Error("Foundry did not create the pin.");

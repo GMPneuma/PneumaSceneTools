@@ -43,7 +43,7 @@ export async function openPinStyleEditor(scene:Scene,ids:string[]):Promise<void>
     const ownPage=note.entry?.pages.get(note.pageId??"");
     const managed=ownPage && foundry.utils.getProperty(ownPage,`flags.${MODULE_ID}.poi`);
     const page=managed?ownPage:note.entry?.pages.get(pinInfo(note)?.descriptionPageId??"");
-    for(const section of parseHoverPage(page?.text.content??"",true))if(!["description","image"].includes(section.name.toLocaleLowerCase()))headings.add(section.name);
+    for(const section of parseHoverPage(page?.text.content??""))if(!["description","image"].includes(section.name.toLocaleLowerCase()))headings.add(section.name);
   }
   const content=await renderTemplate("modules/pneuma-scenetools/templates/map-pins-bulk.hbs",{
     count:ids.length,pins:ids.map(id=>{const note=scene.notes.get(id);return {name:note?.text||note?.entry?.name||"Map pin"};}),headings:[...headings],fonts:Object.entries(FontConfig.getAvailableFontChoices()).map(([value,label])=>({value,label}))

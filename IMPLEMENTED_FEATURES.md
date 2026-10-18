@@ -1,5 +1,15 @@
 # Implemented features
 
+- POI import confirmation displays the requested world-backup warning before importing.
+
+- POI JSON section values are strings containing either plain text or HTML. Removed the separate HTML object format; export, import, and dialog guidance use the same string layout.
+
+- POI manager now has one Import / Export button. Its dialog explains the custom SceneTools POI JSON format, editable named journal sections, rich formatting, image paths, and copy-on-import behavior before offering Import JSON and Export JSON.
+
+- POI audit fixes: journal pages own managed images; relinking never copies an old pin image into the destination. Native image edits are awaited and custom images on ordinary Notes survive import. All heading levels and rich section bodies export separately. Import validates Note settings before writing, batches document creation with stable fresh-ID mapping and partial-failure cleanup, and indexes source pages. Template page choices are derived from current pages. Journal Pan button eligibility caches links with Note/Scene invalidation. Local regression and browser coverage added.
+
+- POIs use journal/page player visibility only. Removed section hiding and old-template cleanup. JSON export handles line breaks and both image layouts; Note hover fields export as comma-separated names.
+
 - Automatic hazard validation, detection, and maintenance are scoped to the currently viewed scene, including startup, time updates, Actor/Token changes, combat turns, and Region events. Queued work skips scenes that are no longer viewed. Opening a scene checks destroyed bodies and expired effects; malformed records on other scenes no longer cause unrelated notifications. Local regression coverage added; live Foundry verification pending.
 
 - Modular tile dimension checks update existing thumbnail controls in place rather than re-rendering the whole picker per file. Preview media, focus and loaded thumbnail nodes remain intact during scanning. Metadata is cached across picker reopenings for the current session; Refresh clears it. Images remain original map assets displayed at thumbnail size, not separately generated thumbnail files.

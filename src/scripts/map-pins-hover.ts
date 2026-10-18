@@ -1,3 +1,4 @@
+import {managedPinPage,pinImagePath} from './map-pins-image.js';
 import {pinInfo,pinningEnabled} from "./map-pins-data.js";
 import {MODULE_ID} from "./settings.js";
 
@@ -9,9 +10,8 @@ export function selectedHoverFields(value:string):string[]|undefined {
   return [];
 }
 /** Every heading defines a section through the next heading, regardless of heading level. */
-export function parseHoverPage(html:string,gm:boolean):HoverSection[] {
+export function parseHoverPage(html:string):HoverSection[] {
   const doc=new DOMParser().parseFromString(html,"text/html");
-  if(!gm)doc.querySelectorAll(".secret:not(.revealed)").forEach(node=>node.remove());
   doc.querySelectorAll("script,style,iframe,object,embed,form,input,button").forEach(node=>node.remove());
   doc.querySelectorAll("*").forEach(node=>{
     for(const attr of [...node.attributes])if(attr.name.startsWith("on")||(["href","src","xlink:href"].includes(attr.name)&&/^\s*(javascript|vbscript):/i.test(attr.value)))node.removeAttribute(attr.name);
@@ -24,7 +24,7 @@ export function parseHoverPage(html:string,gm:boolean):HoverSection[] {
     const next=sections[index+1];if(next)range.setEndBefore(next);else range.setEnd(doc.body,doc.body.childNodes.length);
     const content=doc.createElement("div");content.append(range.cloneContents());
     return {name:heading.textContent?.trim()??"",html:content.innerHTML};
-  }).filter(section=>Boolean(section.name) && !/^gm\s+notes$/i.test(section.name));
+  }).filter(section=>Boolean(section.name));
 }
 let hideTimer:ReturnType<typeof setTimeout>|undefined;
 const cancelHide=()=>{if(hideTimer)clearTimeout(hideTimer);hideTimer=undefined;};
@@ -55,7 +55,7 @@ export async function showPinHover(note:Note):Promise<void> {
   };
   const image=permitted(imagePageId,"image"),description=permitted(descriptionPageId,"text");
   if(!image && !description) return;
-  const content=description ? await TextEditor.enrichHTML(description.text.content??"",{secrets:Boolean(game.user.isGM)}) : "";
+  const content=description ? await TextEditor.enrichHTML(description.text.content??"",{secrets:true}) : "";
   if(request!==generation || !pinningEnabled(note.document.parent) || !access.testUserPermission(game.user,"OBSERVER")) return;
   // Permissions may have changed while enrichment was pending.
   const allowedDescription=permitted(descriptionPageId,"text"),allowedImage=permitted(imagePageId,"image");
@@ -66,17 +66,17 @@ export async function showPinHover(note:Note):Promise<void> {
   const top=document.createElement("div");top.className="pin-hover-top";
   let imagePath=allowedImage?.src;
   if(allowedImage?.type==="text") {
-    const safe=parseHoverPage(allowedImage.text.content??"",Boolean(game.user.isGM)).map(section=>section.html).join("");
+    const safe=parseHoverPage(allowedImage.text.content??"").map(section=>section.html).join("");
     imagePath=new DOMParser().parseFromString(safe,"text/html").querySelector("img")?.getAttribute("src")??undefined;
   }
-  if(info.imageSrc?.trim() && (allowedDescription || allowedImage))imagePath=info.imageSrc.trim();
+  if(allowedDescription || allowedImage){const path=pinImagePath(note.document);if(managedPinPage(note.document))imagePath=path||undefined;else if(path.trim())imagePath=path.trim();}
   if(imagePath && !/^\s*(javascript|vbscript):/i.test(imagePath)) {
     const img=document.createElement("img");img.src=imagePath;img.alt=allowedImage?.name??"";img.addEventListener("load",position);top.append(img);top.classList.add("has-image");
   }
   if(allowedDescription) {
     const descriptionDoc=new DOMParser().parseFromString(content,"text/html");
     descriptionDoc.querySelectorAll('[data-poi-image]').forEach(element=>element.remove());
-    const sections=parseHoverPage(descriptionDoc.body.innerHTML,Boolean(game.user.isGM));
+    const sections=parseHoverPage(descriptionDoc.body.innerHTML);
     const selected=selectedHoverFields(info.sections)?.map(name=>name.toLocaleLowerCase());
     const fields=document.createElement("dl");fields.className="pin-hover-fields";
     for(const section of sections) {

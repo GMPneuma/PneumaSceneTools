@@ -497,21 +497,7 @@ try {
     addPinJournalButton(journalPage,journalRoot);addPinJournalButton(journalPage,journalRoot.querySelector('.journal-page-content'));
     if(journalRoot.querySelectorAll('.pneuma-pin-journal-action').length!==1||!journalRoot.firstElementChild.classList.contains('pneuma-pin-journal-action'))throw Error('Journal pan button must appear once at the top');
     if(journalRoot.querySelector('button').textContent.trim()!=='Pan to Note')throw Error('Journal pan label mismatch');
-    const cleanup=await import('/modules/pneuma-scenetools/scripts/map-pin-template-cleanup.js');
-    const oldTemplate='<h2>Description</h2><p>Custom description</p><section class="secret"><h2>GM notes</h2><p>Old note</p></section><h2>Services</h2><p>Custom services</p>';
-    const expected='<h2>Description</h2><p>Custom description</p><h2>Services</h2><p>Custom services</p>';
-    if(cleanup.removeTemplateGMNotes(oldTemplate)!==expected)throw Error('Template cleanup lost unrelated edits');
-    if(cleanup.removeTemplateGMNotes(expected)!==expected)throw Error('Template cleanup is not idempotent');
-    if(cleanup.removeTemplateGMNotes('<h2>GM Notes</h2><p>Remove</p><h2>Services</h2><p>Keep</p>')!=='<h2>Services</h2><p>Keep</p>')throw Error('Unwrapped GM Notes cleanup failed');
-    let writes=0;
-    const legacyPage={type:'text',text:{content:oldTemplate},async update(data){writes++;this.text=data.text;return this;}};
-    const legacy={id:'legacy-template',flags:{'pneuma-scenetools':{pinTemplate:true}},pages:[legacyPage]};
-    game.user.isGM=false;await cleanup.cleanDefaultPinTemplate(legacy);
-    if(writes)throw Error('Player migrated a template');
-    game.user.isGM=true;await cleanup.cleanDefaultPinTemplate({...legacy,flags:{}});
-    if(writes)throw Error('Custom journal migrated');
-    await cleanup.cleanDefaultPinTemplate(legacy);await cleanup.cleanDefaultPinTemplate(legacy);
-    if(writes!==1||legacyPage.text.content!==expected)throw Error('Default template migration failed');
+
     for(const gm of [true,false]){
       game.user.isGM=gm;scene.flags['pneuma-scenetools'].mapPinning=!gm;
       const form=document.createElement('form');form.innerHTML='<input name="text"><button type="submit">Save</button>';
@@ -539,14 +525,14 @@ try {
     scene.flags[ID].mapPinning=false;await hover.showPinHover(note);const disabled=!document.querySelector('.pneuma-pin-hover');
     return {publicText,noJournal,noPages,noLate,gmText,disabled};
   });
-  assert.match(states.publicText,/Public faction/);assert.match(states.publicText,/Public location/);assert.doesNotMatch(states.publicText,/Hidden faction/);
+  assert.match(states.publicText,/Public faction/);assert.match(states.publicText,/Public location/);assert.match(states.publicText,/Hidden faction/);
   assert.match(states.gmText,/Hidden faction/);
   assert.ok(states.noJournal&&states.noPages&&states.noLate&&states.disabled);
   const layout=await page.evaluate(async()=>{
     for(const gm of [true,false]){
       const fields=hover.parseHoverPage('<h2>Description</h2><p>Main</p><h2>GM notes</h2><p>Private</p><h2>Services</h2><p>Shop</p>',gm);
-      if(fields.some(field=>field.name==='GM notes'||field.html.includes('Private')))throw Error('GM notes remains in hover fields');
-      if(fields.length!==2)throw Error('Removing GM notes affected other fields');
+      if(!fields.some(field=>field.name==='GM notes'&&field.html.includes('Private')))throw Error('Heading content was hidden');
+      if(fields.length!==3)throw Error('Heading content was removed');
     }
     const parsed=hover.parseHoverPage('<h2>Description</h2><p>Main</p><h3>Details</h3><p>Nested detail</p><h2>NPC, Contact</h2><p>Rogue</p>',false);
     if(parsed.length!==3||parsed[1].name!=='Details'||!parsed[1].html.includes('Nested detail')||parsed[2].name!=='NPC, Contact')throw Error('Mixed heading levels lost fields');
@@ -593,7 +579,7 @@ try {
     game.user.isGM=false;
     const info=layoutNote.document.flags['pneuma-scenetools'].mapPin;
     info.imagePageId='description';info.descriptionPageId='description';info.sections='';
-    template.pages.get('description').text.content='<section class="secret"><h2>GM notes</h2><img src="/private.svg"><p>Hidden detail</p></section><h2>Description</h2><p><img src="/original.svg">Public location</p><h2>Factions</h2><p>Public faction</p>';
+    template.pages.get('description').text.content='<h2>Description</h2><p><img src="/original.svg">Public location</p><h2>Factions</h2><p>Public faction</p>';
     await hover.showPinHover(layoutNote);
     const card=document.querySelector('.pneuma-pin-hover');
     return {image:card.querySelector('.pin-hover-top > img')?.getAttribute('src'),images:card.querySelectorAll('img').length,text:card.textContent};
@@ -602,10 +588,10 @@ try {
   assert.ok(inline.text.includes('Public faction'));assert.ok(!inline.text.includes('Hidden detail'));
   const separate=await page.evaluate(async()=>{
     const ID='pneuma-scenetools';
-    const first=template.pages.get('description');first.flags={[ID]:{poi:true}};
-    const second={...first,id:'second-poi',name:'Second POI',text:{content:'<h2>Description</h2><p>Second location</p>'},allowed:true};template.pages.push(second);
-    const firstNote={document:{parent:scene,entry:template,pageId:first.id,text:'First',flags:{[ID]:{mapPin:{hover:true,imagePageId:second.id,descriptionPageId:second.id,imageSrc:'/first.svg',sections:''}}}}};
-    const secondNote={document:{parent:scene,entry:template,pageId:second.id,text:'Second',flags:{[ID]:{mapPin:{hover:true,imagePageId:first.id,descriptionPageId:first.id,imageSrc:'/second.svg',sections:''}}}}};
+    const first=template.pages.get('description');first.flags={[ID]:{poi:true}};first.text.content+='<section data-poi-image="true"><h2>Image</h2><img src="/first.svg"></section>';
+    const second={...first,id:'second-poi',name:'Second POI',text:{content:'<h2>Description</h2><p>Second location</p><section data-poi-image="true"><h2>Image</h2><img src="/second.svg"></section>'},allowed:true};template.pages.push(second);
+    const firstNote={document:{parent:scene,entry:template,pageId:first.id,text:'First',flags:{[ID]:{mapPin:{hover:true,imagePageId:second.id,descriptionPageId:second.id,imageSrc:'/stale.svg',sections:''}}}}};
+    const secondNote={document:{parent:scene,entry:template,pageId:second.id,text:'Second',flags:{[ID]:{mapPin:{hover:true,imagePageId:first.id,descriptionPageId:first.id,imageSrc:'/stale.svg',sections:''}}}}};
     await hover.showPinHover(firstNote);
     const firstImage=document.querySelector('.pneuma-pin-hover img')?.getAttribute('src');
     const firstText=document.querySelector('.pneuma-pin-hover')?.textContent;
@@ -627,22 +613,50 @@ try {
     const info={imageSrc:'/first.svg'};
     const note={entry:template,pageId:page.id,text:'First POI',flags:{'pneuma-scenetools':{mapPin:info}}};
     const parse=()=>new DOMParser().parseFromString(page.text.content,'text/html');
-    await syncPinImage(note);await syncPinImage(note);
+    await syncPinImage(note,info.imageSrc);await syncPinImage(note,info.imageSrc);
     const first=parse();
     const result={heading:first.querySelector('[data-poi-image] > h2')?.textContent,bottom:first.body.lastElementChild?.hasAttribute('data-poi-image'),count:first.querySelectorAll('[data-poi-image]').length,outsideSecret:!first.querySelector('[data-poi-image]').closest('.secret')};
-    info.imageSrc='/second.svg';await syncPinImage(note);
+    info.imageSrc='/second.svg';await syncPinImage(note,info.imageSrc);
     result.replaced=parse().querySelector('[data-poi-image] img')?.getAttribute('src')==='/second.svg';
-    info.imageSrc='';await syncPinImage(note);
+    info.imageSrc='';await syncPinImage(note,info.imageSrc);
     result.cleared=!parse().querySelector('[data-poi-image]');
     result.text=parse().body.textContent;
     page.update=async()=>{};info.imageSrc='/first.svg';
-    try{await syncPinImage(note);result.rejected=false;}catch{result.rejected=true;}
+    try{await syncPinImage(note,info.imageSrc);result.rejected=false;}catch{result.rejected=true;}
     return result;
   });
   assert.ok(journalImage.bottom&&journalImage.outsideSecret&&journalImage.replaced&&journalImage.cleared&&journalImage.rejected);
   assert.equal(journalImage.count,1);
   assert.equal(journalImage.heading,'Image');
   for(const text of ['Keep description','Keep factions','Keep NPC','Keep secret'])assert.ok(journalImage.text.includes(text));
+  await page.evaluate(async()=>{
+    const ID='pneuma-scenetools',path=`flags.${ID}.mapPin.imageSrc`;
+    const wrappers=new Map();libWrapper.register=(_id,name,fn)=>wrappers.set(name,fn);
+    Hooks.events.get('setup')[0]();
+    const save=wrappers.get('NoteConfig.prototype._updateObject');
+    if(!save)throw Error('Missing managed image editor');
+    const make=(id,src)=>({id,uuid:`JournalEntry.j.JournalEntryPage.${id}`,type:'text',flags:{[ID]:{poi:true}},text:{content:`<h2>Description</h2><p>Location</p><section data-poi-image="true"><h2>Image</h2><img src="${src}"></section>`},async update(data){this.text=data.text;return this;}});
+    const first=make('first','first.png'),second=make('second','destination.png');
+    const note={parent:scene,entryId:'j',pageId:'first',entry:{pages:new Map([['first',first],['second',second]])},text:'Pin',flags:{[ID]:{mapPin:{imageSrc:'old.png'}}}};
+    await save.call({object:note},async(_event,data)=>{if(path in data)throw Error('Image path persisted in Note');note.pageId=data.pageId;},new Event('submit'),{pageId:'second',[path]:'old.png'});
+    if(!second.text.content.includes('destination.png')||second.text.content.includes('old.png'))throw Error('Relinking overwrote destination image');
+    await save.call({object:note},async()=>{},new Event('submit'),{[path]:'edited.png'});
+    if(!second.text.content.includes('edited.png'))throw Error('Explicit image edit did not save');
+    const {pinImagePath}=await import('/modules/pneuma-scenetools/scripts/map-pins-image.js');
+    second.text.content=second.text.content.replace('edited.png','journal-edit.png');
+    if(pinImagePath(note)!=='journal-edit.png')throw Error('Journal image edit is not authoritative');
+
+    const {addPinJournalButton}=await import('/modules/pneuma-scenetools/scripts/map-pin-journal.js');
+    const iterator=game.scenes[Symbol.iterator];let scans=0;
+    game.scenes[Symbol.iterator]=function(){scans++;return iterator.call(this);};
+    scene.notes.push({id:'audit-link',entryId:'audit',pageId:'one'});Hooks.fire('createNote');
+    const page={id:'one',parent:{id:'audit'},testUserPermission:()=>true};
+    const root=document.createElement('section');addPinJournalButton(page,root);addPinJournalButton(page,root);
+    if(scans!==1||!root.querySelector('button'))throw Error('Journal renders rescanned Notes');
+    scene.notes.pop();Hooks.fire('deleteNote');addPinJournalButton(page,root);
+    if(scans!==2||root.querySelector('button'))throw Error('Deleted Note left a stale journal link');
+    game.scenes[Symbol.iterator]=iterator;
+  });
   assert.deepEqual(errors,[]);
-  console.log('Map pin browser checks passed: manager/default persistence, native note tabs and listeners, journal remapping, scene scope, placement cancellation, categories/search, creation rollback, template settings, permissions, secret sections, heading checklists, crafted hover layout, full-description scrolling, hover cancellation.');
+  console.log('Map pin browser checks passed: manager/default persistence, native note tabs and listeners, journal remapping, scene scope, placement cancellation, categories/search, creation rollback, template settings, page permissions, heading checklists, crafted hover layout, full-description scrolling, hover cancellation.');
 }finally{await browser.close();}
