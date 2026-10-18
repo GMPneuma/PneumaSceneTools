@@ -1,6 +1,7 @@
 <section class="mook-name-config pneuma-mook-names pneuma-mook-compact">
   <fieldset class="pneuma-mook-maker-section"><legend>Name RollTables</legend>
   <p>Parts are joined from left to right. Leave a table blank to skip that part.</p>
+  <p class="notes">For your own name lists, duplicate a starter table and select the copy here.</p>
   <div class="mook-name-parts">{{#each parts}}<label>Part {{number}}<select name="{{index}}.tableId"><option value="">Skip this part</option>{{#if missing}}<option value="{{tableId}}" selected>Unavailable table</option>{{/if}}{{#each tables}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></label>{{/each}}</div>
   </fieldset>
   <p role="alert"></p><footer class="pneuma-mook-maker-form-actions"><button type="button" data-save>Save</button><button type="button" data-cancel>Cancel</button></footer>

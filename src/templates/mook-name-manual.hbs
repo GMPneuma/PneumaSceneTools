@@ -1,5 +1,6 @@
 <section class="pneuma-mook-names pneuma-mook-compact">
   <fieldset class="pneuma-mook-maker-section"><legend>Name RollTables</legend>
+  <p class="notes">For your own name lists, duplicate a starter table and select the copy here.</p>
   <div class="mook-name-parts">{{#each parts}}<label>Part {{number}}<select name="table{{index}}"><option value="">Skip this part</option>{{#each tables}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></label>{{/each}}</div>
   <div class="mook-name-generate"><button type="button" data-generate><i class="fas fa-dice"></i> Generate Name</button></div>
   </fieldset>

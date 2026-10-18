@@ -1,5 +1,7 @@
 # Master roadmap
 
+- Name dialogs advise duplicating starter tables for personal name lists.
+
 - Bundled Mook name RollTables use a custom name-badge/dice icon. Existing starter tables with the default icon receive it automatically; custom artwork is preserved.
 
 - Artwork name overrides are separated by a horizontal rule, with an inline checkbox and left-aligned label and guidance.

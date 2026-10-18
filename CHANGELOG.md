@@ -2,6 +2,8 @@
 
 ## 0.7.0 - 2026-10-18
 
+- Advise duplicating starter name tables before building personal name lists.
+
 - Add three-part Mook name generation with horizontal RollTable selectors, artwork-category overrides, instant rerolls, and a manual generator with editable names. Bundle three five-entry starter tables and a custom name-generator icon.
 - Reorganize Mook Maker into Name/generation/Promote, Role/Level, and Display Name/Disposition rows. Match name dialogs to Mook Maker styling and separate artwork name overrides clearly.
 - Move Mook Maker to the left Scene Tools HUD, add Purge Unequipped Gear to the HUD and Promote dialog, and visibly disable purge until the mook has been saved.
