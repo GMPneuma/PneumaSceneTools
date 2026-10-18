@@ -1,5 +1,33 @@
 # Master roadmap
 
+- Bundled Mook name RollTables use a custom name-badge/dice icon. Existing starter tables with the default icon receive it automatically; custom artwork is preserved.
+
+- Artwork name overrides are separated by a horizontal rule, with an inline checkbox and left-aligned label and guidance.
+
+- Name generator and name-table configuration dialogs use Mook Maker section styling, horizontal table choices, compact Generate controls, and a full-width editable name.
+
+- Name generation uses three horizontal RollTable dropdowns, without prefix/suffix fields. Bundled first-name, last-name, and handle tables each contain five editable entries and are provisioned once under RollTables → SceneTools → Mook Names.
+
+- Mook Name RollTables appears in the MookMaker settings section; shared HUD settings use the Scene Tools HUD heading.
+
+- Mook Maker has ordered three-part RollTable names, per-artwork-category overrides, instant rerolls, and a manual dialog with three table choices, Generate, editable name, and Save. The left Mook section uses Name/generation/Promote, Role/Level, and Display Name/Disposition rows. Names remain drafts until Apply.
+
+- Scene Tools HUD icon sizing now samples native icon buttons instead of larger numeric controls such as elevation.
+
+- Scene Tools HUD settings cover shared controls; configured patrol tokens have Edit Patrol and Start/Stop Patrol controls in the left HUD.
+
+- Mook Maker uses the left Scene Tools HUD group and shared HUD colors. Purge Unequipped Gear is available from the token HUD and Promote dialog; unsaved mooks have visibly greyed-out purge controls.
+
+- Square-to-square patrols offer a per-square pause in seconds with one decimal place; 0 disables it. The pause begins after the step animation finishes.
+
+- Regular token patrols offer Square-to-square movement: full grid steps, a preference for horizontal/vertical routes, and exact 45-degree diagonals when needed. Available for routes and roaming on square grids; vehicle steering is unchanged.
+
+- POI right-click menus dismiss the hover preview and suppress it until the menu closes.
+
+- Hazard Actor displays the current actor and template names. Replace Hazard Actor opens a template picker; selection is applied when saving the hazard.
+
+- Modular Place Tile/Edit Tile selection highlights the full target cell with a contrasting outline and translucent fill. The highlight follows canvas pan/zoom and is removed when building ends or the scene closes.
+
 - POI import confirmation displays the requested world-backup warning before importing.
 
 - POI JSON section values are strings containing either plain text or HTML. Removed the separate HTML object format; export, import, and dialog guidance use the same string layout.

@@ -40,6 +40,7 @@ function position():void {
 }
 export async function showPinHover(note:Note):Promise<void> {
   hidePinHover();
+  if(document.querySelector(".pneuma-pin-context"))return;
   const request=generation,info=pinInfo(note.document);
   const journal=note.document.entry;
   if(!pinningEnabled(note.document.parent) || !info?.hover || !game.user || !journal) return;
@@ -56,7 +57,7 @@ export async function showPinHover(note:Note):Promise<void> {
   const image=permitted(imagePageId,"image"),description=permitted(descriptionPageId,"text");
   if(!image && !description) return;
   const content=description ? await TextEditor.enrichHTML(description.text.content??"",{secrets:true}) : "";
-  if(request!==generation || !pinningEnabled(note.document.parent) || !access.testUserPermission(game.user,"OBSERVER")) return;
+  if(request!==generation || document.querySelector(".pneuma-pin-context") || !pinningEnabled(note.document.parent) || !access.testUserPermission(game.user,"OBSERVER")) return;
   // Permissions may have changed while enrichment was pending.
   const allowedDescription=permitted(descriptionPageId,"text"),allowedImage=permitted(imagePageId,"image");
   if(!allowedDescription && !allowedImage) return;

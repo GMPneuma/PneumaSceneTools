@@ -1,4 +1,5 @@
 import {withMookOperation} from "./operations.js";
+import {confirmPurgeGear,hasSavedMook} from "./purge.js";
 import {
   CREATED_BY_MOOK_MAKER_FLAG,
   DEFAULT_MOOK_TEMPLATE_FLAG,
@@ -91,7 +92,19 @@ async function promoteTokenUnlocked(token: Token): Promise<boolean> {
 export function confirmPromotion(token: Token, sourceDialog: Dialog): void {
   new Dialog({
     title: game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PromoteConfirmTitle"),
-    content: `<p>${game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PromoteWarning")}</p>`,
+    content: `<p>${game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PromoteWarning")}</p><button type="button" class="pneuma-mook-maker-purge" data-action="purge-gear" ${hasSavedMook(token)?'':'disabled'}><i class="fas fa-trash"></i> ${game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PurgeGear")}</button>`,
+    render: html=>{
+      const button=html.find('[data-action="purge-gear"]');
+      if(!hasSavedMook(token))button.attr('title',game.i18n!.localize('PNEUMA_MOOK_MAKER.Form.SaveBeforePurge'));
+      button.on('click',async event=>{
+        event.preventDefault();
+        if(!hasSavedMook(token))return;
+        html.find('button').prop('disabled',true);
+        try {await confirmPurgeGear(token);}
+        catch(error){ui.notifications?.error(String(error));}
+        finally {html.find('button').prop('disabled',false);button.prop('disabled',!hasSavedMook(token));}
+      });
+    },
     buttons: {
       confirm: {
         icon: '<i class="fas fa-user-graduate"></i>',

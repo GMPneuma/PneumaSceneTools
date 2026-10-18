@@ -36,16 +36,17 @@ try {
       const ui={scenes:{element:[document.querySelector('#scenes')]},notifications:{info(){},warn(){},error(message){notices.push(message)}}};
       const canvas={ready:false};
       const CONFIG={RegionBehavior:{dataModels:{}}};
-      const CONST={REGION_VISIBILITY:{GAMEMASTER:1},REGION_EVENTS:{TOKEN_ENTER:"tokenEnter",TOKEN_EXIT:"tokenExit",TOKEN_MOVE:"tokenMove",TOKEN_TURN_START:"tokenTurnStart",TOKEN_TURN_END:"tokenTurnEnd"},TOKEN_DISPLAY_MODES:{OWNER_HOVER:20,NONE:0}};
+      const CONST={TABLE_RESULT_TYPES:{TEXT:0},REGION_VISIBILITY:{GAMEMASTER:1},REGION_EVENTS:{TOKEN_ENTER:"tokenEnter",TOKEN_EXIT:"tokenExit",TOKEN_MOVE:"tokenMove",TOKEN_TURN_START:"tokenTurnStart",TOKEN_TURN_END:"tokenTurnEnd"},TOKEN_DISPLAY_MODES:{OWNER_HOVER:20,NONE:0}};
       const values=new Map();
-      const game={system:{id:'cyberpunk-red-core'},release:{generation:12},user:{id:'gm',isGM:true},users:{activeGM:{id:'gm'}},documentTypes:{Actor:['character','container']},folders:new Collection(),actors:new Collection(),modules:new Map([['pneuma-scenetools',{}]]),i18n:{localize:key=>key},settings:{
-        register:(scope,key,config)=>values.set(key,config.default),get:(scope,key)=>values.get(key),
+      const game={system:{id:'cyberpunk-red-core'},release:{generation:12},user:{id:'gm',isGM:true},users:{activeGM:{id:'gm'}},documentTypes:{Actor:['character','container']},tables:new Collection(),folders:new Collection(),actors:new Collection(),modules:new Map([['pneuma-scenetools',{}]]),i18n:{localize:key=>key},settings:{
+        set:async(scope,key,value)=>values.set(key,value),register:(scope,key,config)=>values.set(key,config.default),get:(scope,key)=>values.get(key),
         registerMenu(scope,key,config){if(!(config.type.prototype instanceof FormApplication))throw Error('Invalid native menu class')}
       }};
       class Folder {
         static async create(data){const folder=new this();Object.assign(folder,data,{id:'folder-'+game.folders.size,folder:game.folders.get(data.folder)??null});game.folders.set(folder.id,folder);return folder}
         async setFlag(scope,key,value){this.flags??={};this.flags[scope]??={};this.flags[scope][key]=value}
       }
+      class RollTable {static async create(data){const table={...data,id:"table-"+game.tables.size};game.tables.set(table.id,table);return table;}}
       class Actor {
         constructor(data){Object.assign(this,data);this.id='actor-'+game.actors.size;this.folder=game.folders.get(data.folder);this.items=new Collection((data.items??[]).map((item,i)=>['item-'+i,item]));game.actors.set(this.id,this)}
         static async create(data){return new this(data)}
@@ -81,7 +82,8 @@ try {
   assert.deepEqual(buttonStyles[2],buttonStyles[0]);assert.deepEqual(buttonStyles[3],buttonStyles[1]);
   await page.evaluate(()=>Hooks.fire('renderSceneDirectory',{},[document.querySelector('#scenes')]));
   assert.equal(await page.locator('.pneuma-scene-tools-row').count(),1);
-  assert.deepEqual(new Set(state.folders),new Set(['SceneTools','Imported Scenes','MookMaker Templates','MookMaker Promoted Actors','Vehicle Templates','NetArchAPs','Hazard Actor Templates']));
+  assert.deepEqual(new Set(state.folders),new Set(['SceneTools','Imported Scenes','MookMaker Templates','MookMaker Promoted Actors','Vehicle Templates','NetArchAPs','Hazard Actor Templates','Mook Names']));
+  assert.equal(await page.evaluate(()=>game.tables.size),3);
   assert.equal(state.sceneFolders.length,2);
   assert.equal(state.sceneFolders[1].name,"Imported Scenes");
   assert.equal(state.sceneFolders[1].parent,state.sceneFolders[0].id);

@@ -4,8 +4,8 @@ const FEATURES = [
   {title:"Quick Scene Importer", keys:["defaultGrid","defaultDarkness","defaultGlobalLight"]},
   {title:"Map POI", keys:["mapPinDefaultsMenu"]},
   {title:"Artwork", keys:["mookArtworkMenu","vehicleArtworkMenu"]},
-  {title:"Vehicle HUD", keys:["vehicleHudColorMode","vehicleHudColor"]},
-  {title:"MookMaker", keys:["skillClassificationsMenu","confirmPurgeGear","retainWeaponAmmunition"]},
+  {title:"Scene Tools HUD", keys:["vehicleHudColorMode","vehicleHudColor"]},
+  {title:"MookMaker", keys:["mookNameSettings","skillClassificationsMenu","confirmPurgeGear","retainWeaponAmmunition"]},
   {title:"NetArch Scanner", keys:["manageTypes","revealStyle","visionRadius","scannerRadius","showRevealAll","autoPulse","pulseCount","pulseDuration","autoScanner"]},
 ] as const;
 

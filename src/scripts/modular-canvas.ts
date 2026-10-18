@@ -27,6 +27,15 @@ export function refreshModularCanvas() {
   // session may not have loaded a newly added manifest stylesheet yet. A normal
   // body child becomes a flex item and pushes the native sidebar to the left.
   Object.assign(root.style, {position:'fixed', inset:'0', margin:'0', pointerEvents:'none', zIndex:'60'});
+  const highlight=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  highlight.classList.add('modular-live-highlight');highlight.setAttribute('aria-hidden','true');
+  Object.assign(highlight.style,{position:'absolute',inset:'0',width:'100%',height:'100%',pointerEvents:'none'});
+  for(const [stroke,width,fill] of [['#000','8','none'],['var(--color-border-highlight, #ff6400)','4','rgba(255, 180, 0, 0.14)']]){
+    const outline=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    outline.setAttribute('stroke',stroke!);outline.setAttribute('stroke-width',width!);outline.setAttribute('fill',fill!);
+    outline.setAttribute('stroke-linejoin','round');highlight.append(outline);
+  }
+  root.append(highlight);
   const button = (label: string, text: string, action: () => void) => {
     const element = document.createElement('button');element.type = 'button';element.title = label;element.setAttribute('aria-label',label);element.textContent = text;element.disabled = busy;
     Object.assign(element.style, {pointerEvents:'auto', width:'auto', minHeight:'30px', whiteSpace:'nowrap'});
@@ -39,6 +48,7 @@ export function refreshModularCanvas() {
       state.column = column;state.row = row; refreshModularCanvas();state.picker(state.scene, column, row);
     });
     element.className = 'modular-live-cell';element.dataset.column = String(column);element.dataset.row = String(row);
+    element.setAttribute('aria-pressed',String(column===state.column&&row===state.row));
     element.dataset.worldX = String(origin.x + (column + 0.5) * layout.width);element.dataset.worldY = String(origin.y + (row + 0.5) * layout.height);root.append(element);
   }
   const tile = cellTile(state.scene, state.column, state.row);
@@ -111,6 +121,13 @@ function positionControls() {
   if (!root || !editing || !canvas.stage) return;
   const bounds = document.getElementById('board')?.getBoundingClientRect();
   const matrix = canvas.stage.worldTransform;
+  const layout=modularLayout(editing.scene);
+  if(layout){
+    const origin=modularOrigin(editing.scene),x=origin.x+editing.column*layout.width,y=origin.y+editing.row*layout.height;
+    const points=[[x,y],[x+layout.width,y],[x+layout.width,y+layout.height],[x,y+layout.height]]
+      .map(([wx,wy])=>`${matrix.a*wx!+matrix.c*wy!+matrix.tx+(bounds?.left??0)},${matrix.b*wx!+matrix.d*wy!+matrix.ty+(bounds?.top??0)}`).join(' ');
+    root.querySelectorAll('.modular-live-highlight polygon').forEach(outline=>outline.setAttribute('points',points));
+  }
   const sidebar = document.getElementById('sidebar')?.getBoundingClientRect();
   const right = sidebar && sidebar.width > 50 ? sidebar.left - 24 : window.innerWidth - 40;
   root.querySelectorAll<HTMLElement>('[data-world-x]').forEach(element => {

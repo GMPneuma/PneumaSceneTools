@@ -2,6 +2,8 @@
 export interface Point {x: number; y: number}
 export interface Stop extends Point {wait: number}
 export interface PatrolConfig {
+  squareSteps: boolean;
+  squarePause: number;
   mode: "route" | "roam";
   traversal: "loop" | "reverse";
   regionId: string;
@@ -22,8 +24,9 @@ export interface PatrolConfig {
   enabled: boolean;
 }
 export interface Rect extends Point {width: number; height: number}
-export const defaults = (): PatrolConfig => ({mode: "route", traversal: "loop", regionId: "", speed: 1, pauseMin: 2, pauseMax: 6, waypointPauses:true,pathPauses:false,pathPauseMin:2,pathPauseMax:6,pathPauseEvery:10,sideTracks:false,sideTrackDistance:1,favorDistance:true,maxMovementTime:0,frontOffset:0,stops: [], enabled: false});
+export const defaults = (): PatrolConfig => ({squareSteps:false,squarePause:0,mode: "route", traversal: "loop", regionId: "", speed: 1, pauseMin: 2, pauseMax: 6, waypointPauses:true,pathPauses:false,pathPauseMin:2,pathPauseMax:6,pathPauseEvery:10,sideTracks:false,sideTrackDistance:1,favorDistance:true,maxMovementTime:0,frontOffset:0,stops: [], enabled: false});
 export function validateConfig(value: PatrolConfig): PatrolConfig {
+  if (!Number.isFinite(value.squarePause)||value.squarePause<0||value.squarePause>3600||Math.abs(value.squarePause*10-Math.round(value.squarePause*10))>1e-8)throw new Error("Square pause must be between 0 and 3600 seconds with at most one decimal place.");
   if (!["route", "roam"].includes(value.mode) || !["loop", "reverse"].includes(value.traversal)) throw new Error("Choose a valid patrol mode.");
   if (!Number.isFinite(value.speed) || value.speed < 0.1 || value.speed > 5) throw new Error("Speed must be between 0.1 and 5 grid spaces per second.");
   if (![value.pauseMin, value.pauseMax].every(n => Number.isFinite(n) && n >= 0 && n <= 3600) || value.pauseMax < value.pauseMin) throw new Error("Pause range must be between 0 and 3600 seconds, with maximum at least minimum.");
@@ -32,7 +35,7 @@ export function validateConfig(value: PatrolConfig): PatrolConfig {
   if (!Number.isFinite(value.sideTrackDistance)||value.sideTrackDistance<0||value.sideTrackDistance>20)throw new Error("Side track distance must be between 0 and 20 grid spaces.");
   if (!Number.isFinite(value.maxMovementTime)||value.maxMovementTime<0||value.maxMovementTime>3600)throw new Error("Maximum movement time must be between 0 and 3600 seconds (0 means unlimited).");
   if (![0,90,180,270].includes(value.frontOffset))throw new Error("Choose an artwork front direction in 90-degree increments.");
-  if (![value.waypointPauses,value.pathPauses,value.sideTracks,value.favorDistance].every(v=>typeof v==="boolean"))throw new Error("Choose valid patrol options.");
+  if (![value.squareSteps,value.waypointPauses,value.pathPauses,value.sideTracks,value.favorDistance].every(v=>typeof v==="boolean"))throw new Error("Choose valid patrol options.");
   if (!Array.isArray(value.stops) || value.stops.length > 100 || value.stops.some(p => ![p.x, p.y, p.wait].every(Number.isFinite) || p.wait < 0 || p.wait > 3600)) throw new Error("Use at most 100 stops with valid coordinates and pauses from 0 to 3600 seconds.");
   if (value.enabled && value.mode === "roam" && !value.regionId) throw new Error("Choose a roaming Region.");
   if (value.enabled && value.mode !== "roam" && value.stops.length < 2) throw new Error("Place at least two stops.");
@@ -67,11 +70,11 @@ export function regionContainsSweep(hull: Point[], contains: (p: Point)=>boolean
   // Also reject holes and concave notches entirely between the footprint corners.
   return !boundaries.some(poly => poly.some((p,i)=>segmentInsideHull(p,poly[(i+1)%poly.length]!,hull)));
 }
-export interface RoutingWorld {bounds: Rect; step: number; canMove(a: Point,b: Point): boolean}
+export interface RoutingWorld {bounds: Rect; step: number; squareSteps?: boolean; canMove(a: Point,b: Point): boolean}
 /** Bounded A* with 8 neighbours. No path means wait/retry, never teleport through an obstacle. */
 export function findPath(start: Point, goal: Point, world: RoutingWorld, limit=2500, approach=false,canStop:(p:Point)=>boolean=()=>true): Point[] | undefined {
   if (!world.canMove(start,start) || (!approach&&!world.canMove(goal,goal))) return;
-  if (canStop(goal)&&world.canMove(start,goal)) return [goal];
+  if (!world.squareSteps && canStop(goal)&&world.canMove(start,goal)) return [goal];
   type Node = {p: Point; g: number; f: number; parent?: Node};
   const key=(p:Point)=>`${Math.round((p.x-start.x)/world.step)},${Math.round((p.y-start.y)/world.step)}`;
   const first:Node={p:start,g:0,f:distance(start,goal)};
@@ -82,7 +85,7 @@ export function findPath(start: Point, goal: Point, world: RoutingWorld, limit=2
     let best=0;for(let i=1;i<open.length;i++)if(open[i]!.f<open[best]!.f)best=i;
     const current=open.splice(best,1)[0]!;
     if(current.g>costs.get(key(current.p))!)continue;
-    if(distance(current.p,goal)<=world.step*1.5 && canStop(goal)&&world.canMove(current.p,goal)) {
+    if((world.squareSteps ? distance(current.p,goal)<0.01 : distance(current.p,goal)<=world.step*1.5) && canStop(goal)&&world.canMove(current.p,goal)) {
       const route=[goal];let node:Node|undefined=current;
       while(node?.parent){route.unshift(node.p);node=node.parent;}return route;
     }
@@ -90,7 +93,9 @@ export function findPath(start: Point, goal: Point, world: RoutingWorld, limit=2
       if(!dx&&!dy)continue;
       const p={x:current.p.x+dx*world.step,y:current.p.y+dy*world.step};
       if(p.x<world.bounds.x||p.y<world.bounds.y||p.x>world.bounds.x+world.bounds.width||p.y>world.bounds.y+world.bounds.height)continue;
-      const g=current.g+distance(current.p,p), k=key(p);
+      // Prefer cardinal steps; diagonals remain available for tighter routes.
+      const cost=world.squareSteps && dx && dy ? world.step*2.05 : distance(current.p,p);
+      const g=current.g+cost, k=key(p);
       if(g>=(costs.get(k)??Infinity)||!world.canMove(current.p,p))continue;
       const node={p,g,f:g+distance(p,goal),parent:current};
       if(approach&&canStop(p)&&distance(p,goal)<distance(closest?.p??start,goal)-0.01)closest=node;

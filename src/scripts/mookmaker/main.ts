@@ -1,4 +1,6 @@
 import {registerArtworkSettings} from "../token-artwork.js";
+import {registerNameSettings} from './names.js';
+import {ensureNameTables} from './name-tables.js';
 import {ensureVehicleTemplate} from "../template-spawning.js";
 import {registerVehicleRotation} from "../vehicle-rotation.js";
 import {registerVehicleSeats} from "../vehicle-seats.js";
@@ -14,6 +16,7 @@ export function registerMookMaker(): void {
   console.info(`${MODULE_ID} | Initializing`);
 
   registerArtworkSettings();
+  registerNameSettings();
   registerSkillClassificationSettings();
   registerTemplateTokenTagging();
   registerVehicleRotation();
@@ -25,4 +28,5 @@ export async function readyMookMaker(): Promise<void> {
   console.info(`${MODULE_ID} | Ready`);
   await ensureMookMakerFolders();
   await ensureVehicleTemplate();
+  await ensureNameTables();
 }

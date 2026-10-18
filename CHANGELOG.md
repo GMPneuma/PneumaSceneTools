@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0 - 2026-10-18
+
+- Add three-part Mook name generation with horizontal RollTable selectors, artwork-category overrides, instant rerolls, and a manual generator with editable names. Bundle three five-entry starter tables and a custom name-generator icon.
+- Reorganize Mook Maker into Name/generation/Promote, Role/Level, and Display Name/Disposition rows. Match name dialogs to Mook Maker styling and separate artwork name overrides clearly.
+- Move Mook Maker to the left Scene Tools HUD, add Purge Unequipped Gear to the HUD and Promote dialog, and visibly disable purge until the mook has been saved.
+- Rename shared HUD settings to Scene Tools HUD and match icon sizing to native icon buttons rather than elevation controls. Add Edit Patrol and Start/Stop Patrol controls for configured tokens.
+- Add square-to-square patrol movement for regular tokens, preferring horizontal/vertical steps while allowing exact 45-degree diagonals. Add optional per-square pauses with one decimal place. Vehicle routing is unchanged.
+- Replace the Hazard Actor dropdown with current actor/template details and a separate replacement picker.
+- Suppress POI hover previews while the right-click menu is open.
+- Highlight the active modular tile area during Place Tile and Edit Tile, following canvas pan and zoom.
+- Expand automated runtime and browser coverage. Live Foundry and multiplayer verification remains separate.
+
 ## 0.6.6 - 2026-10-18
 
 - Replace separate POI import/export buttons with one Import / Export dialog explaining the custom SceneTools POI JSON format. Add the requested world-backup warning before import.

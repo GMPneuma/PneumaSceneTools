@@ -1,5 +1,6 @@
 import {MODULE_ID} from "./settings.js";
 import {pinningEnabled} from "./map-pins-data.js";
+import {hidePinHover} from "./map-pins-hover.js";
 
 export function pinPermissionDocument(note:NoteDocument):JournalEntryPage|JournalEntry|undefined {
   return note.pageId ? note.entry?.pages.get(note.pageId) : note.entry??undefined;
@@ -58,6 +59,7 @@ export function installPinContextMenu():void {
       const target=document.createElement("div");anchor=target;target.className="pneuma-pin-context";
       Object.assign(target.style,{position:"fixed",left:`${Math.max(0,Math.min(clientX,innerWidth-240))}px`,top:`${clientY}px`,width:"240px",height:"1px",zIndex:"10000"});
       document.body.append(target);
+      hidePinHover();
       const allowed=playersCanReadPin(note);
       menu=new ContextMenu($(target),".pneuma-pin-context",[
         {name:"Open Journal",icon:'<i class="fas fa-book-open"></i>',condition:canOpenPinJournal(note),callback:()=>openPinJournal(note)},

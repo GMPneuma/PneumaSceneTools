@@ -73,12 +73,16 @@ try {
   assert.equal(await page.evaluate(()=>canvas.scene.tiles.length),0,'New scene must be blank');
   assert.equal(await page.evaluate(()=>canvas.scene.padding),.15);
   assert.equal(await page.locator('.modular-live-cell').first().getAttribute('data-world-x'),'700');
+  assert.equal(await page.locator('.modular-live-highlight polygon').last().getAttribute('points'),'210,190 510,190 510,490 210,490');
+  assert.equal(await page.locator('.modular-live-highlight').evaluate(e=>getComputedStyle(e).pointerEvents),'none');
   assert.equal(await page.locator('[data-direction=west]').getAttribute('data-world-x'),'200');
   assert.equal(await page.locator('.modular-live-shrink:disabled').count(),4,'Minimum scene cannot shrink');
   assert.equal(await page.locator('.modular-live-cell').first().evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0.5)');
   assert.equal(await page.locator('.pneuma-modular-creator').count(),0,'Creation window closes');
   const place=async(column,row,path)=>{
     await page.locator(`.modular-live-cell[data-column="${column}"][data-row="${row}"]`).click();
+    assert.equal(await page.locator(`.modular-live-cell[data-column="${column}"][data-row="${row}"]`).getAttribute('aria-pressed'),'true');
+    assert.equal(await page.locator('.modular-live-cell[aria-pressed="true"]').count(),1);
     await page.waitForSelector('.modular-image:not(:disabled)');
     assert.equal(await page.locator('[name=scene], [data-action=view]').count(),0,'Live tile picker omits scene switching and Build on Scene');
     await page.locator('[name=collection]').selectOption(path.startsWith('residential')?'b':'a');
@@ -115,8 +119,10 @@ try {
   await page.evaluate(()=>latestApp.close());
   await page.screenshot({path:'docs/modular-creator-preview.png'});
   const before=await page.locator('.modular-live-cell[data-column="0"][data-row="0"]').evaluate(e=>e.style.left);
+  const outlineBefore=await page.locator('.modular-live-highlight polygon').last().getAttribute('points');
   await page.evaluate(()=>{canvas.stage.worldTransform.tx+=50;Hooks.callAll('canvasPan');});
   await page.waitForFunction(old=>document.querySelector('.modular-live-cell[data-column="0"][data-row="0"]').style.left!==old,before);
+  assert.equal(await page.locator('.modular-live-highlight polygon').last().getAttribute('points'),outlineBefore.split(' ').map(point=>{const [x,y]=point.split(',').map(Number);return `${x+50},${y}`;}).join(' '));
   await page.getByRole('button',{name:'Remove selected tile',exact:true}).click();await page.waitForFunction(()=>canvas.scene.tiles.length===1);
   await page.evaluate(()=>{canvas.scene.failThumbnail=true;});
   await page.getByRole('button',{name:'Finish modular scene editing'}).click();

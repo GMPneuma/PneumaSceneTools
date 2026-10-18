@@ -112,7 +112,7 @@ export function registerSeatHud(): void {
   const mount = (hud: TokenHUD, html: JQuery): void => {
     const token = hud.object?.document;
     if (!token || (!isVehicleToken(token) && !isPassenger(token))) return;
-    if (html.find(".pneuma-vehicle-controls").length) return;
+    if (html.find(".pneuma-vehicle-seats-control").length) return;
     ++menuRequest;closeSeatMenu?.();
     const vehicle = isVehicleToken(token);
     const selected = canvas.tokens?.controlled.find(value => isPassenger(value.document) && value.document.isOwner)?.document;
@@ -130,7 +130,8 @@ export function registerSeatHud(): void {
       const task = currentVehicle ? openVehicleSeats(currentVehicle, vehicle ? selected : token, html[0]!) : requestSeatAction(token, {action: "exit"});
       void task.catch(error => ui.notifications?.error(String(error)));
     });
-    const controls = $('<div class="pneuma-vehicle-controls" role="group" aria-label="Vehicle controls"></div>');
+    const existingControls=html.find('.pneuma-vehicle-controls');
+    const controls = existingControls.length?existingControls:$('<div class="pneuma-vehicle-controls" role="group" aria-label="Scene Tools controls"></div>');
     if (isVehicleToken(token) && game.user?.isGM) {
       const configure = $('<div class="control-icon" role="button" tabindex="0" data-tooltip="Configure" aria-label="Configure"><span class="pneuma-car-gear"><i class="fas fa-car"></i><i class="fas fa-gear"></i></span></div>');
       configure.on("click keydown", event => {

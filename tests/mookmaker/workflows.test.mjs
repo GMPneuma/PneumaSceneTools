@@ -6,6 +6,7 @@ const {withMookOperation}=await import("../../dist/scripts/mookmaker/operations.
 const {applyMookChanges}=await import("../../dist/scripts/mookmaker/apply-mook.js");
 const {purgeGear,confirmPurgeGear}=await import("../../dist/scripts/mookmaker/purge.js");
 const {promoteToken}=await import("../../dist/scripts/mookmaker/promotion.js");
+const {confirmPromotion}=await import("../../dist/scripts/mookmaker/promotion.js");
 const {ensureSceneToolsFolder,WORLD_FOLDERS}=await import("../../dist/scripts/world-folders.js");
 function setup(){
  const env=environment();foundry.utils.deepClone=structuredClone;
@@ -14,6 +15,20 @@ function setup(){
  const token={actor,document:{uuid:"Scene.test.Token.mook",actorId:"original",flags:{"pneuma-scenetools":{mookMakerSaved:true}},actorLink:false,texture:{src:"portrait"},async update(changes){applyChanges(this,changes)}}};
  return {...env,actor,token};
 }
+
+test('Promote dialog disables purge until the mook has been saved',()=>{
+ const {token}=setup(),original=globalThis.Dialog;let dialog;
+ globalThis.Dialog=class {constructor(data){dialog=data;}render(){return this;}};
+ try {
+  token.document.flags['pneuma-scenetools'].mookMakerSaved=false;
+  confirmPromotion(token,{close(){}});
+  assert.match(dialog.content,/data-action="purge-gear" disabled/);
+  token.document.flags['pneuma-scenetools'].mookMakerSaved=true;
+  confirmPromotion(token,{close(){}});
+  assert.match(dialog.content,/data-action="purge-gear"/);
+  assert.doesNotMatch(dialog.content,/disabled/);
+ } finally {globalThis.Dialog=original;}
+});
 test("Apply, Purge and Promote reject overlapping actions and release the guard after failure",async()=>{
  const {token}=setup();let finish;
  const running=withMookOperation(token,()=>new Promise(resolve=>finish=resolve));

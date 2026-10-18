@@ -88,7 +88,7 @@ try {
   const armor={type:'armor',flags:{'pneuma-scenetools':{armoredChassis:true}},system:{bodyLocation:{sp:13,ablation:2}}};armor.update=async changes=>{apply(armor,changes);return armor;};vehicle.actor.items=[armor,{type:"vehicle",system:{seats:2}}];
   window.$=input=>{
    let nodes;if(typeof input==='string'){const holder=document.createElement('div');holder.innerHTML=input;nodes=[holder.firstElementChild];}else nodes=Array.isArray(input)?input:[input];
-   const wrap={length:nodes.length,first(){return $([nodes[0]]);},find(selector){return $(nodes.flatMap(node=>[...node.querySelectorAll(selector)]));},append(child){for(const node of nodes)for(let i=0;i<child.length;i++)node.append(child[i]);return wrap;},on(names,fn){for(const node of nodes)for(const name of names.split(' '))node.addEventListener(name,fn);return wrap;}};nodes.forEach((node,i)=>wrap[i]=node);return wrap;
+   const wrap={length:nodes.length,prop(key,value){for(const node of nodes)node[key]=value;return wrap;},attr(key,value){for(const node of nodes)node.setAttribute(key,value);return wrap;},first(){return $([nodes[0]]);},find(selector){return $(nodes.flatMap(node=>[...node.querySelectorAll(selector)]));},append(child){for(const node of nodes)for(let i=0;i<child.length;i++)node.append(child[i]);return wrap;},on(names,fn){for(const node of nodes)for(const name of names.split(' '))node.addEventListener(name,fn);return wrap;}};nodes.forEach((node,i)=>wrap[i]=node);return wrap;
   };
   canvas.tokens={controlled:[{document:rider}]};
   const hud=document.createElement('div');hud.id='token-hud';hud.innerHTML='<div class="col left"></div><div class="col middle"></div><div class="col right"></div>';document.body.append(hud);Hooks.fire('renderTokenHUD',{object:{document:vehicle}},$(hud));
@@ -160,6 +160,9 @@ try {
    const native=document.createElement('div');
    native.className='control-icon';native.style.cssText='width:32px;height:32px;padding:2px;margin:3px;box-sizing:border-box;font-size:20px';native.innerHTML='<i style="font-size:20px"></i>';
    root.querySelector('.col.left').prepend(native);
+   const elevation=document.createElement('div');elevation.className='control-icon attribute';
+   elevation.style.cssText='width:48px;height:48px;font-size:36px';elevation.innerHTML='<input value="0"><i style="font-size:36px"></i>';
+   root.querySelector('.col.left').prepend(elevation);
    let mode='native';const registered=new Map();
    game.settings={get:(_id,key)=>key==='vehicleHudColorMode'?mode:'#123456',register:(_id,key,value)=>registered.set(key,value)};
    game.modules=new Map();foundry.data={fields:{ColorField:class{}}};
@@ -299,6 +302,40 @@ try {
  await page.locator('.pneuma-vehicle-seat-menu [data-action="exit"]').click();
  await page.waitForFunction(()=>!rider.flags['pneuma-scenetools'].vehicleSeat);
  await page.mouse.click(5,5);assert.equal(await page.locator('.pneuma-vehicle-seat-menu').count(),0);
+ await page.evaluate(async()=>{
+  game.user.isGM=true;game.i18n={localize:key=>key};
+  const m=await import('/modules/pneuma-scenetools/scripts/mookmaker/tokens.js');m.registerTokenHudAction();
+  rider.flags['pneuma-scenetools'].CreatedByMookMaker=true;
+  window.showMookHUD=()=>{const root=document.querySelector('#token-hud');root.innerHTML='<div class="col left"><div class="control-icon"><i></i></div></div><div class="col right"></div>';Hooks.fire('renderTokenHUD',{object:{document:rider,actor:rider.actor}},$(root));};showMookHUD();
+ });
+ assert.equal(await page.locator('.col.left .pneuma-mook-maker-control').count(),1);
+ assert.equal(await page.locator('.pneuma-mook-purge-hud').isDisabled(),true);
+ assert.equal(await page.locator('.pneuma-mook-purge-hud').evaluate(el=>getComputedStyle(el).opacity),'0.5');
+ await page.evaluate(()=>{rider.flags['pneuma-scenetools'].mookMakerSaved=true;showMookHUD();});
+ assert.equal(await page.locator('.pneuma-mook-purge-hud').isEnabled(),true);
+ await page.evaluate(()=>{game.settings.get=(_id,key)=>key==='vehicleHudColorMode'?'custom':key==='vehicleHudColor'?'#12ab34':false;showMookHUD();});
+ await page.waitForFunction(()=>getComputedStyle(document.querySelector('.pneuma-mook-maker-control i')).color==='rgb(18, 171, 52)');
+ await page.evaluate(async()=>{
+  const {registerPatrolHud}=await import('/modules/pneuma-scenetools/scripts/patrol-hud.js');
+  registerPatrolHud(async token=>{window.editedPatrol=token.id;});
+  showMookHUD();
+ });
+ assert.equal(await page.locator('[data-patrol-hud]').count(),0);
+ await page.evaluate(async()=>{
+  const {defaults}=await import('/modules/pneuma-scenetools/scripts/patrol-model.js');
+  rider.flags['pneuma-scenetools'].patrol={...defaults(),stops:[{x:50,y:50,wait:0},{x:250,y:50,wait:0}]};showMookHUD();
+ });
+ assert.equal(await page.locator('.col.left [aria-label="Edit Patrol"]').count(),1);
+ await page.locator('[aria-label="Edit Patrol"]').click();assert.equal(await page.evaluate(()=>editedPatrol),'Passenger');
+ await page.locator('[aria-label="Start Patrol"]').click();await page.waitForSelector('[aria-label="Stop Patrol"]');
+ assert.equal(await page.evaluate(()=>rider.flags['pneuma-scenetools'].patrol.enabled),true);
+ await page.locator('[aria-label="Stop Patrol"]').click();await page.waitForSelector('[aria-label="Start Patrol"]');
+ assert.equal(await page.evaluate(()=>rider.flags['pneuma-scenetools'].patrol.enabled),false);
+ await page.evaluate(()=>{rider.flags['pneuma-scenetools'].patrol.enabled=true;Hooks.fire('updateToken',rider,{'flags.pneuma-scenetools.patrol.enabled':true},{});});
+ assert.equal(await page.locator('[aria-label="Stop Patrol"]').count(),1);
+ assert.equal(await page.locator('[data-patrol-hud]').count(),2);
+ await page.evaluate(()=>{game.user.isGM=false;showMookHUD();});
+ assert.equal(await page.locator('[data-patrol-hud]').count(),0);
  assert.deepEqual(errors,[]);
  console.log("Vehicle seats browser fixture passed: editor, inline HUD, seat switching, exiting, and dismissal.");
 } finally {await browser.close();}

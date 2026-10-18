@@ -1,6 +1,14 @@
 .pneuma-mook-maker {
   box-sizing: border-box;
 }
+.mook-name-parts {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.mook-name-parts > label {display:flex;flex-direction:column;gap:5px;min-width:0;}
+.mook-name-parts select {width:100%;min-width:0;}
+.pneuma-mook-names .pneuma-mook-maker-section {margin-top:6px;padding:8px 10px 10px;}
+.pneuma-mook-names .mook-name-generate {display:flex;justify-content:flex-end;margin-top:8px;}
+.pneuma-mook-names .mook-name-generate button {width:auto;flex:0 0 auto;margin:0;padding:0 10px;}
+.pneuma-mook-names .mook-generated-name {display:block;width:100%;box-sizing:border-box;}
+.pneuma-mook-names [role="alert"]:empty {display:none;}
 
 /* The form owns its footer. Let its content determine the dialog height. */
 .pneuma-mook-maker-dialog .window-content {
@@ -14,10 +22,6 @@
 
 .pneuma-mook-maker-dialog .dialog-buttons {
   display: none;
-}
-
-#token-hud .pneuma-mook-maker-control {
-  color: #f0c040;
 }
 
 .pneuma-mook-maker-form .form-group > label {
@@ -345,6 +349,18 @@
   color: #fff;
 }
 
+#token-hud .pneuma-mook-purge-hud:disabled,
+.pneuma-mook-maker-purge:disabled,
+.pneuma-mook-maker-purge:disabled:hover {
+  background: #555;
+  border-color: #777;
+  color: #aaa;
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+
 .pneuma-mook-maker-promote {
   background: #8a6510;
   border-color: #b98b21;
@@ -471,6 +487,12 @@
 .pneuma-mook-image-choices span {display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;}
 .pneuma-mook-compact .pneuma-mook-maker-mook-layout {align-items:stretch;}
 .pneuma-mook-compact .pneuma-mook-maker-mook-fields {display:flex;flex-direction:column;}
+.pneuma-mook-compact .pneuma-mook-name-row {display:flex;align-items:end;gap:4px;margin-bottom:8px;}
+.pneuma-mook-name-row .pneuma-mook-maker-identity-name {display:grid;flex:1;min-width:70px;gap:3px;}
+.pneuma-mook-name-row button {width:auto;flex:0 0 auto;margin:0;padding:0 6px;}
+.pneuma-mook-name-row [data-action="generate-name"],.pneuma-mook-name-row [data-action="manual-name"] {width:28px;min-height:28px;}
+.pneuma-mook-name-row .pneuma-mook-maker-promote {margin-left:12px;font-size:12px;}
+.pneuma-mook-compact .pneuma-mook-maker-identity-row {grid-template-columns:minmax(0,1fr) 50px;}
 .pneuma-mook-compact .pneuma-mook-maker-secondary-actions {display:flex;justify-content:flex-start;margin-top:auto;padding-top:8px;gap:6px;}
 .pneuma-mook-compact .pneuma-mook-categories select {flex:1;height:0;min-height:130px;}
 .pneuma-mook-compact .pneuma-mook-categories option[value="manual"] {font-weight:bold;}

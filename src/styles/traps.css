@@ -235,6 +235,7 @@
 .hazard-sections .hazard-trigger-options .hazard-trigger-option { align-items: flex-start; margin: 2px 0; line-height: 17px; }
 .hazard-trigger-options input { margin-top: 2px !important; }
 .hazard-token-icon > div { display: flex; gap: 6px; align-items: center; }
+.hazard-token-icon > .hazard-current-actor { display: block; overflow-wrap: anywhere; }
 .hazard-token-icon img { width: 30px; height: 30px; border: 0; object-fit: contain; }
 .hazard-token-icon > label { font-size: 13px; }
 

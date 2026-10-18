@@ -4,6 +4,7 @@ import {MODULE_ID} from "./constants.js";
 import {applyMookChanges} from "./apply-mook.js";
 import {confirmPurgeGear, hasSavedMook} from "./purge.js";
 import {confirmPromotion} from "./promotion.js";
+import {defaultNameRecipe,generateName,manualName} from './names.js';
 import {getAvailableSystemRoles, type AvailableRole} from "./roles.js";
 import {mookFormData} from "./form-data.js";
 import {readMookForm} from "./form-input.js";
@@ -27,6 +28,23 @@ export async function showMookMakerMenu(token: Token): Promise<void> {
       buttons: {},
       render: (html) => {
       const root = html[0]!;
+      let naming=false;
+      for(const action of ['generate-name','manual-name'])root.querySelector(`[data-action="${action}"]`)!.addEventListener('click',async()=>{
+        if(naming)return;
+        naming=true;
+        const buttons=root.querySelectorAll<HTMLButtonElement>('[data-action="generate-name"],[data-action="manual-name"]');
+        buttons.forEach(button=>button.disabled=true);
+        try {
+          const selected=root.querySelector<HTMLSelectElement>('[name="artworkCategory"]')!.value;
+          const current=token.document.texture.src??'';
+          const category=selected!==''&&selected!=='manual'?categories[Number(selected)]:selected===''?[...categories].sort((a,b)=>b.folder.length-a.folder.length).find(row=>current.startsWith(`${row.folder}/`)):undefined;
+          const recipe=category?.nameRecipe??defaultNameRecipe();
+          const input=root.querySelector<HTMLInputElement>('[name="name"]')!;
+          const value=action==='generate-name'?await generateName(recipe):await manualName(recipe,input.value);
+          if(value!==null&&root.isConnected){input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));}
+        }catch(error){ui.notifications?.error(String(error));}
+        finally {naming=false;buttons.forEach(button=>button.disabled=false);}
+      });
       const preview = root.querySelector<HTMLElement>('[data-artwork-preview]')!;
       const status = root.querySelector<HTMLElement>('[data-artwork-status]')!;
       let artwork: string | undefined, previewRequest = 0;

@@ -1,0 +1,11 @@
+<section class="pneuma-mook-names pneuma-mook-compact">
+  <fieldset class="pneuma-mook-maker-section"><legend>Name RollTables</legend>
+  <div class="mook-name-parts">{{#each parts}}<label>Part {{number}}<select name="table{{index}}"><option value="">Skip this part</option>{{#each tables}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></label>{{/each}}</div>
+  <div class="mook-name-generate"><button type="button" data-generate><i class="fas fa-dice"></i> Generate Name</button></div>
+  </fieldset>
+  <fieldset class="pneuma-mook-maker-section pneuma-mook-maker-section-stats"><legend>Name</legend>
+  <input class="mook-generated-name" name="generatedName" aria-label="Name" value="{{current}}">
+  <p class="notes">Generate again or edit the name before saving.</p>
+  </fieldset>
+  <p role="alert"></p><footer class="pneuma-mook-maker-form-actions"><button type="button" data-save>Save</button><button type="button" data-cancel>Cancel</button></footer>
+</section>

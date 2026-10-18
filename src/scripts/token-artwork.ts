@@ -1,9 +1,10 @@
 import {MODULE_ID} from "./settings.js";
+import {defaultNameRecipe,editNameRecipe,validateNameRecipe,type NameRecipe} from './mookmaker/names.js';
 import {snapSeatPosition, validateSeatLayout, type SeatLayout} from "./vehicle-seats-model.js";
 import {listCategoryArtwork, artworkPreview} from "./artwork-media.js";
 
 export type SpawnKind = "mook" | "vehicle";
-export interface ArtworkCategory {name: string; folder: string; kind: SpawnKind; width?: number; height?: number; scale?: number; seatLayout?: SeatLayout}
+export interface ArtworkCategory {name: string; folder: string; kind: SpawnKind; width?: number; height?: number; scale?: number; seatLayout?: SeatLayout; nameRecipe?:NameRecipe}
 
 export function normalizeCategories(rows: ArtworkCategory[]): ArtworkCategory[] {
   const names = new Set<string>();
@@ -15,6 +16,7 @@ export function normalizeCategories(rows: ArtworkCategory[]): ArtworkCategory[] 
     if (names.has(key)) throw new Error(`Duplicate category: ${name}`);
     names.add(key);
     const result: ArtworkCategory = {name, folder, kind: row.kind};
+    if(row.kind==='mook'&&row.nameRecipe)result.nameRecipe=validateNameRecipe(row.nameRecipe);
     if (row.kind === "vehicle") {
       for (const key of ["width", "height", "scale"] as const) {
         if (row[key] === undefined) continue;
@@ -142,6 +144,9 @@ class ArtworkCategoriesForm extends FormApplication {
         for (const key of ["name", "folder"] as const) field(key).value = row[key];
         for (const key of ["width", "height", "scale"] as const) field(key).value = String(row[key] ?? (key === "width" ? 2 : key === "height" ? 3 : 1));
         root.querySelector<HTMLElement>(".artwork-vehicle")!.hidden = row.kind !== "vehicle";
+        root.querySelector<HTMLElement>('[data-name-override]')!.hidden=row.kind!=='mook';
+        root.querySelector<HTMLInputElement>('[data-name-enabled]')!.checked=!!row.nameRecipe;
+        root.querySelector<HTMLButtonElement>('[data-name-config]')!.disabled=!row.nameRecipe;
         syncSlider();
       }
       drawList();void loadPreview();
@@ -155,6 +160,16 @@ class ArtworkCategoriesForm extends FormApplication {
       if (key === "scale") syncSlider();
       if (key === "folder") void loadPreview();
     }));
+    root.querySelector('[data-name-enabled]')!.addEventListener('change',event=>{
+      const row=this.rows[this.selected];if(!row)return;
+      if((event.target as HTMLInputElement).checked)row.nameRecipe=defaultNameRecipe();else delete row.nameRecipe;
+      root.querySelector<HTMLButtonElement>('[data-name-config]')!.disabled=!row.nameRecipe;
+    });
+    root.querySelector('[data-name-config]')!.addEventListener('click',async()=>{
+      const row=this.rows[this.selected];if(!row?.nameRecipe)return;
+      try {const recipe=await editNameRecipe(row.nameRecipe,`${row.name} — Name RollTables`);if(recipe&&this.rows.includes(row)&&row.nameRecipe)row.nameRecipe=recipe;}
+      catch(error){root.querySelector('[role=alert]')!.textContent=String(error);}
+    });
     search.addEventListener("input", drawList);
     root.querySelector('[data-action="add"]')!.addEventListener("click", () => {
       this.rows.push({kind: this.kind, name: "", folder: ""});this.selected = this.rows.length - 1;search.value = "";refresh();field("name").focus();

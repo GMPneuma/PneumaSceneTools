@@ -75,6 +75,51 @@ test('draft edits do not mutate saved token flags',()=>{
   const {token}=setup();const a=token('a',0,0,{stops:[{x:50,y:50,wait:3}]});patrolConfig(a).stops[0].x=500;assert.equal(patrolConfig(a).stops[0].x,50);
 });
 const route={enabled:true,pauseMin:1,pauseMax:1,stops:[{x:350,y:150,wait:1},{x:150,y:150,wait:1}]};
+
+test('per-square pauses begin after movement and are optional',async()=>{
+  const {token}=setup();
+  const a=token('a',100,100,{...route,squareSteps:true,squarePause:0.7});
+  await tickPatrols(0);assert.equal(a.x,200);
+  await tickPatrols(1000);assert.equal(a.x,200);
+  await tickPatrols(1600);assert.equal(a.x,200);assert.equal(patrolStatus(a),'Pausing');
+  await tickPatrols(1800);assert.equal(a.x,300);
+  for(const squarePause of [-0.1,0.15,Infinity,3601])assert.throws(()=>validateConfig({...defaults(),squarePause}));
+  assert.equal(validateConfig({...defaults(),squarePause:0.7}).squarePause,0.7);
+  await savePatrol(a,{...patrolConfig(a),squarePause:0,stops:[{x:650,y:150,wait:0},{x:150,y:150,wait:0}]});
+  await tickPatrols(2000);assert.equal(a.x,400);
+  await tickPatrols(3000);assert.equal(a.x,500);
+});
+
+test('square-step routing favors cardinal moves and retains exact diagonals when required',()=>{
+  const world={bounds:{x:0,y:0,width:1000,height:1000},step:100,squareSteps:true,canMove:()=>true};
+  const start=p(150,150),goal=p(450,550),path=findPath(start,goal,world);
+  let previous=start;
+  for(const point of path){const dx=Math.abs(point.x-previous.x),dy=Math.abs(point.y-previous.y);assert.ok(dx+dy===100||dx+dy===0);previous=point;}
+  assert.deepEqual(path.at(-1),goal);
+  const diagonal=findPath(start,p(250,250),{...world,canMove:(a,b)=>a.x===a.y&&b.x===b.y});
+  assert.deepEqual(diagonal[0],p(250,250));
+  assert.equal(findPath(start,goal,{...world,canMove:(a,b)=>a.x===b.x&&a.y===b.y}),undefined);
+});
+
+test('square-step patrol writes full-square steps, snaps destinations, and keeps animation speed',async()=>{
+  const {token,scene}=setup();
+  const a=token('a',100,100,{...route,squareSteps:true,stops:[{x:462,y:548,wait:0},{x:150,y:150,wait:0}]});
+  let previous={x:a.x,y:a.y};
+  for(let time=0;time<=14000;time+=2000){
+    await tickPatrols(time);
+    for(const write of a.writes.splice(0)){
+      if(!write.options.patrolMove)continue;
+      const dx=Math.abs(write.changes.x-previous.x),dy=Math.abs(write.changes.y-previous.y);
+      assert.ok((dx===100&&dy===0)||(dx===0&&dy===100)||(dx===100&&dy===100));
+      assert.equal(write.options.animation.duration,Math.hypot(dx,dy)/100*1000);
+      previous={x:write.changes.x,y:write.changes.y};
+    }
+    if(a.x===400&&a.y===500)break;
+  }
+  assert.deepEqual({x:a.x,y:a.y},{x:400,y:500});
+  scene.grid.type=0;
+  await assert.rejects(()=>savePatrol(a,patrolConfig(a)),/square grid/);
+});
 test('only active GM writes movement, with combat and pause gating',async()=>{
   const {token,scene}=setup();const a=token('a',100,100,route);
   game.user.isGM=false;await tickPatrols(0);assert.equal(a.writes.length,0);

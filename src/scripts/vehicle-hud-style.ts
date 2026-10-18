@@ -8,7 +8,10 @@ declare global {interface SettingConfig {
 export function styleVehicleHud(root:HTMLElement):void {
   const controls=root.querySelector<HTMLElement>('.pneuma-vehicle-controls');
   if(!controls)return;
-  const native=root.querySelector<HTMLElement>(':scope > .col .control-icon:not(.pneuma-vehicle-controls .control-icon)');
+  // Attribute controls (such as elevation) use larger numeric text than HUD icons.
+  // Match an actual native icon button, not the first control in the column.
+  const native=[...root.querySelectorAll<HTMLElement>(':scope > .col > .control-icon')]
+    .find(button=>!button.matches('.attribute')&&!button.querySelector('input')&&button.querySelector(':scope > i'));
   if(native){
     const style=getComputedStyle(native);
     if(native.parentElement)controls.style.rowGap=getComputedStyle(native.parentElement).rowGap;
@@ -29,11 +32,11 @@ export function styleVehicleHud(root:HTMLElement):void {
 export function registerVehicleHudStyle():void {
   const refresh=()=>{const root=document.getElementById('token-hud');if(root)styleVehicleHud(root);};
   game.settings!.register(MODULE_ID,'vehicleHudColorMode',{
-    name:'Vehicle HUD icon color',hint:'Use native colors, a custom color, or match Combat Tools when active.',scope:'world',config:true,type:String,default:'native',
+    name:'Scene Tools HUD icon color',hint:'Use native colors, a custom color, or match Combat Tools when active.',scope:'world',config:true,type:String,default:'native',
     choices:{native:'Native',custom:'Custom',...(game.modules?.get('pneuma-combattools')?.active?{combat:'Match to Combat Tools'}:{})},onChange:refresh,
   });
   game.settings!.register(MODULE_ID,'vehicleHudColor',{
-    name:'Vehicle HUD custom color',hint:'Used when Vehicle HUD icon color is Custom.',scope:'world',config:true,default:'#ffffff',
+    name:'Scene Tools HUD custom color',hint:'Used when Scene Tools HUD icon color is Custom.',scope:'world',config:true,default:'#ffffff',
     // Foundry v12 supports DataField settings, omitted by the pinned typings.
     // @ts-expect-error Native ColorField renders the color picker.
     type:new foundry.data.fields.ColorField(),onChange:refresh,

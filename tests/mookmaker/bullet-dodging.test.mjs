@@ -197,10 +197,10 @@ if (process.env.PNEUMA_PLAYWRIGHT_MODULE) {
     assert.equal(await page.locator('.pneuma-mook-maker-section-stats input[name="bulletDodging"]').count(), 3);
     assert.deepEqual((await page.locator('input[name="bulletDodging"]').evaluateAll(nodes=>nodes.map(node=>node.parentElement.textContent.trim()))), ["Unchanged", "REF 8", "Reflex Co-Processor"]);
     assert.equal(await page.locator('.pneuma-mook-weapon-row [data-action="purge-gear"]').count(), 1);
-    assert.equal(await page.locator('.pneuma-mook-maker-secondary-actions [data-action="promote"]').count(), 1);
-    assert.equal(await page.locator('.pneuma-mook-maker-mook-fields > .pneuma-mook-maker-secondary-actions').count(), 1);
+    assert.equal(await page.locator('.pneuma-mook-name-row [data-action="promote"]').count(), 1);
+    assert.equal(await page.locator('.pneuma-mook-maker-mook-fields > .pneuma-mook-name-row').count(), 1);
     const fields = await page.locator('.pneuma-mook-maker-mook-fields').boundingBox();
-    const actions = await page.locator('.pneuma-mook-maker-secondary-actions').boundingBox();
+    const actions = await page.locator('.pneuma-mook-name-row').boundingBox();
     const preview=await page.locator('[data-artwork-preview]').boundingBox();assert(actions.x<preview.x,'utility actions sit at left');
     assert((await page.locator(".pneuma-mook-maker-form").boundingBox()).height < 700, "MookMaker keeps its compact layout");
     console.log(`Rendered form height: ${Math.round((await page.locator('.pneuma-mook-maker-form').boundingBox()).height)}px`);

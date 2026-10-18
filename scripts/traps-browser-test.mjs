@@ -145,7 +145,8 @@ try{
  for(const field of ['spotDV','disarmDV','disarmSeconds','apType'])assert.equal(await page.locator(`.hazard-top [name=${field}]`).isVisible(),true);
  assert.equal(await page.locator('fieldset[data-trigger-options]').count(),0);
  assert.equal(await page.locator('.hazard-third [data-action=save]').count(),1);
- assert.equal(await page.locator('[name=hazardActorTemplateId]').count(),1);
+ assert.equal(await page.locator('[name=hazardActorTemplateId]').count(),0);
+ assert.equal(await page.locator('[data-action=replaceActor]').count(),1);
  assert.equal(await page.locator('[data-action=tokenIcon]').isVisible(),true);
  await page.evaluate(()=>window.FilePicker=class{constructor(options){this.options=options}browse(){this.options.callback('custom/hazard.webp')}});
  await page.locator('[data-action=tokenIcon]').click();
@@ -352,7 +353,9 @@ try{
  assert.ok(await page.locator('[data-action=save]').evaluate(el=>el.getBoundingClientRect().height)<55);
 
  await page.evaluate(()=>{window.hazardId=document.querySelector('[data-action=selectScene][aria-current=true]').dataset.id;});
+ await page.locator('[data-action=replaceActor]').click();
  await page.locator('[name=hazardActorTemplateId]').selectOption('actor2');
+ await page.locator('[data-action=popupSave]').click();
  const imageSize=await page.locator('.hazard-token-preview img').evaluate(el=>({width:el.getBoundingClientRect().width,border:getComputedStyle(el).borderTopWidth}));assert.equal(imageSize.width,64);assert.equal(imageSize.border,'1px');
  await page.locator('[data-action=save]').click();assert.equal(await page.evaluate(()=>scene.flags[M].hazards[hazardId].hazardActorTemplateId),'actor2');
  assert.equal(await page.evaluate(()=>scene.tokens.get(scene.flags[M].hazards[hazardId].bodyId).actor.system.derivedStats.hp.max),15);
@@ -360,7 +363,9 @@ try{
 
  await page.locator('[data-action=newHazard]').click();
  await page.locator('[name=name]').fill('Weapon-ready draft');
+ await page.locator('[data-action=replaceActor]').click();
  await page.locator('[name=hazardActorTemplateId]').selectOption('actor2');
+ await page.locator('[data-action=popupSave]').click();
  const beforeSpawn=await page.evaluate(()=>scene.tokens.size??scene.tokens.length);
  await page.locator('[data-action=add]').click();
  await page.locator('[data-effect-index="0"] [name=kind]').selectOption('attack');
@@ -371,17 +376,27 @@ try{
  assert.equal(await page.evaluate(()=>scene.tokens.size??scene.tokens.length),beforeSpawn+1,'Reopening effects must reuse the saved Actor');
  await page.locator('[data-action=popupCancel]').click();
 
+ await page.locator('[data-action=replaceActor]').click();
  await page.locator('[name=hazardActorTemplateId]').selectOption('');
+ await page.locator('[data-action=popupSave]').click();
  await page.locator('[data-action=add]').click();
  await page.locator('[data-effect-index="0"] [name=kind]').selectOption('attack');
  const defaultWeapons=await page.locator('[name=weapon] option').allTextContents();
  assert.ok(defaultWeapons.includes('Very Heavy Pistol'));assert.ok(!defaultWeapons.includes('Custom gun'));
  assert.equal(await page.evaluate(()=>scene.tokens.size??scene.tokens.length),beforeSpawn+1,'Template changes replace the body instead of leaving duplicates');
  await page.locator('[data-action=popupCancel]').click();
+ await page.locator('[data-action=replaceActor]').click();
  const templateOptions=await page.locator('[name=hazardActorTemplateId] option:not([disabled])').allTextContents();
  assert.deepEqual(templateOptions,['Default hazard Actor','Turret template']);
  assert.equal(await page.locator('[name=hazardActorTemplateId] option[value=""]').isDisabled(),false);
+ await page.locator('[name=hazardActorTemplateId]').selectOption('actor2');
+ await page.locator('[data-action=popupCancel]').click();
+ assert.ok((await page.locator('.hazard-current-actor').textContent()).includes('Default hazard Actor'));
+ await page.locator('[data-action=replaceActor]').click();
+ assert.equal(await page.locator('[name=hazardActorTemplateId]').inputValue(),'');
+ await page.locator('[data-action=popupCancel]').click();
  await page.evaluate(()=>{for(const actor of game.actors)actor.folder=null;Hooks.fire('updateActor');});
+ await page.locator('[data-action=replaceActor]').click();
  await page.waitForFunction(()=>document.querySelector('[name=hazardActorTemplateId]').options.length===1);
  assert.equal(await page.locator('[name=hazardActorTemplateId] option').textContent(),'Default hazard Actor');
  assert.deepEqual(errors,[]);

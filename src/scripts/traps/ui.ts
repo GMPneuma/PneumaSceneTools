@@ -112,13 +112,6 @@ class HazardEditor extends FormApplication {
     for (const {message, field, effectIndex} of this.renderIssues)
       mark(field, message, effectIndex);
     html.find('[name="formula"], [name="weapon"], [name="status"], [name="actorTemplateId"], [name="hazardId"]').on("change", () => {this.capture(form); this.refresh();});
-    html.find('[name="hazardActorTemplateId"]').on("change", () => {
-      this.capture(form);
-      const template = hazardActorTemplates().find(actor => actor.id === this.draft.hazardActorTemplateId);
-      if (template)
-        this.draft.tokenIcon = template.prototypeToken?.texture.src || template.img || this.draft.tokenIcon;
-      this.refresh();
-    });
     html.find('[name="apType"], [name="hazardTrigger"], [data-effect-index] [name="kind"], [data-effect-index] [name="actorId"]').on("change", () => {
       try {
         this.capture(form);
@@ -148,6 +141,7 @@ class HazardEditor extends FormApplication {
     activate: () => this.triggerSelectedHazard(),
     presetFiles: () => this.togglePresetFiles(),
     tokenIcon: () => this.chooseTokenIcon(),
+    replaceActor: () => this.replaceActor(),
     createAP: () => this.createAccessPoint(),
     bodySheet: () => this.openActorSheet(),
     reveal: (id: string) => this.setActorVisibility(id),
@@ -189,6 +183,26 @@ class HazardEditor extends FormApplication {
       this.draft.actions[index] = result;
       this.refresh();
     }
+  }
+
+  private async replaceActor(): Promise<void> {
+    const result = await this.popup('Replace Hazard Actor', () => ({
+      actorReplacement: true,
+      actorOptions: [{id: "", name: "Default hazard Actor", selected: !this.draft.hazardActorTemplateId},
+        ...hazardActorTemplates().map(actor => ({id: actor.id!, name: actor.name, selected: actor.id === this.draft.hazardActorTemplateId}))]
+    }), form => {
+      const id = (form.elements.namedItem("hazardActorTemplateId") as HTMLSelectElement).value;
+      if (id && !hazardActorTemplates().some(actor => actor.id === id))
+        throw Error("The selected Hazard Actor template is unavailable.");
+      return {id};
+    });
+    if (!result)
+      return;
+    this.draft.hazardActorTemplateId = result.id;
+    const template = hazardActorTemplates().find(actor => actor.id === result.id);
+    if (template)
+      this.draft.tokenIcon = template.prototypeToken?.texture.src || template.img || this.draft.tokenIcon;
+    this.refresh();
   }
 
   private async editTriggerSelection(): Promise<void> {
@@ -415,7 +429,9 @@ class HazardEditor extends FormApplication {
   private content = () => {
     this.resetMissingReferences();
     const view = this.view;
-    const actorTemplates = hazardActorTemplates();
+    const body = this.scene.tokens.get(this.draft.bodyId);
+    const templateId = String(foundry.utils.getProperty(body ?? {}, `flags.${MODULE_ID}.hazardActorTemplateId`) ?? "");
+    const templateName = (id: string) => id ? game.actors?.get(id)?.name ?? "Unavailable template" : "Default hazard Actor";
     const issues = validateHazardReadiness(this.draft, this.d ?? sceneHazard(this.scene, "draft"));
     this.renderIssues = issues;
     return {
@@ -423,7 +439,9 @@ class HazardEditor extends FormApplication {
       sidebar: view.sidebar(),
       draft: this.draft,
       presetOptions: [["", "Choose preset"], ...presets().map(p => [p.name, p.name])].map(([id, name]) => ({id, name, selected: id === this.selectedPreset})),
-      actorOptions: [{id: "", name: "Default hazard Actor", selected: !this.draft.hazardActorTemplateId}, ...actorTemplates.map(a => ({id: a.id!, name: a.name, selected: a.id === this.draft.hazardActorTemplateId}))],
+      currentActorName: body?.actor?.name ?? "Not created yet",
+      currentTemplateName: templateName(body?.actor ? templateId : this.draft.hazardActorTemplateId),
+      pendingActorTemplate: body?.actor && templateId !== this.draft.hazardActorTemplateId ? templateName(this.draft.hazardActorTemplateId) : "",
       accessPoint: view.accessPoint(),
       triggerSummary: view.triggerSummary(),
       targets: view.targets(),

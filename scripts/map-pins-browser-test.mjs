@@ -239,6 +239,7 @@ try {
     const rightClick=wrappers.get('Note.prototype._onUnclickRight');
     let native=0,stopped=0;
     const event={clientX:1040,clientY:940,stopPropagation(){stopped++;}};
+    window.openTestPinContext=()=>rightClick.call({document:scene.notes[0]},()=>native++,event);
     rightClick.call({document:scene.notes[0]},()=>native++,event);
     if(document.querySelector('.pneuma-pin-context'))throw Error('Menu opened before release events finished');
     document.body.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,button:2}));
@@ -512,6 +513,14 @@ try {
     const note={document:{parent:scene,entry:template,text:'Location',flags:{[ID]:{mapPin:{imagePageId:'image',descriptionPageId:'description',sections:'["Factions"]',hover:true}}}}};
     await hover.showPinHover(note);
     const publicText=document.querySelector('.pneuma-pin-hover')?.textContent;
+    game.user.isGM=true;
+    openTestPinContext();await new Promise(resolve=>setTimeout(resolve,0));
+    if(document.querySelector('.pneuma-pin-hover'))throw Error('Context menu did not dismiss the hover preview');
+    await hover.showPinHover(note);
+    if(document.querySelector('.pneuma-pin-hover'))throw Error('Hover preview appeared while context menu was open');
+    await pinContext.close();await hover.showPinHover(note);
+    if(!document.querySelector('.pneuma-pin-hover'))throw Error('Hover preview remained suppressed after menu closed');
+    game.user.isGM=false;
     template.allowed=false;await hover.showPinHover(note);const noJournal=!document.querySelector('.pneuma-pin-hover');
     template.allowed=true;template.pages.get('description').allowed=false;template.pages.get('image').allowed=false;
     await hover.showPinHover(note);const noPages=!document.querySelector('.pneuma-pin-hover');

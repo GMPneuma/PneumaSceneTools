@@ -18,7 +18,11 @@
           <div class="form-group"><label>Counter Time (Seconds)</label><div class="form-fields"><input name="disarmSeconds" type="number" step="any" value="{{draft.disarmSeconds}}"></div></div>
         </div>
         <div class="hazard-artwork-column">
-          <div class="hazard-token-icon"><div class="form-group"><label>Hazard Actor Token</label><div class="form-fields"><select name="hazardActorTemplateId">{{#each actorOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></div></div>
+          <div class="hazard-token-icon">
+            <h3>Hazard Actor</h3>
+            <div class="hazard-current-actor"><strong>{{currentActorName}}</strong><p class="notes">Template: {{currentTemplateName}}</p></div>
+            {{#if pendingActorTemplate}}<p class="notes">Pending replacement: {{pendingActorTemplate}}. Save Hazard to apply.</p>{{/if}}
+            <button type="button" data-action="replaceActor">Replace Hazard Actor</button>
             <div class="hazard-token-preview"><img src="{{draft.tokenIcon}}" alt="Hazard token icon"><input type="hidden" name="tokenIcon" value="{{draft.tokenIcon}}"><button type="button" data-action="tokenIcon">Choose icon</button></div>
           </div>
           {{> "modules/pneuma-scenetools/templates/hazard-access-point.hbs" accessPoint}}

@@ -92,6 +92,10 @@
 .pneuma-artwork-manager .artwork-editor legend {font-weight:bold;margin-bottom:12px;}
 .pneuma-artwork-manager label {display:block;margin-bottom:10px;}
 .pneuma-artwork-manager label>input,.pneuma-artwork-manager label>select {display:block;width:100%;margin-top:4px;}
+.pneuma-artwork-manager .artwork-name-override {display:flex;align-items:center;gap:8px;text-align:left;}
+.pneuma-artwork-manager .artwork-name-override>input {width:auto;flex:0 0 auto;margin:0;}
+.pneuma-artwork-manager [data-name-override] {text-align:left;}
+.pneuma-artwork-manager [data-name-override]>hr {margin:12px 0;}
 .pneuma-artwork-manager .artwork-folder,.pneuma-artwork-manager .artwork-dimensions {display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:nowrap;}
 .pneuma-artwork-manager .artwork-folder input {flex:1;min-width:0;}
 .pneuma-artwork-manager .artwork-folder button {flex:0 0 32px;width:32px;margin:0;}

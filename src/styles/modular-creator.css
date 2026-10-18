@@ -34,6 +34,7 @@
 #pneuma-modular-canvas {position:fixed;inset:0;pointer-events:none;z-index:60}
 #pneuma-modular-canvas button {pointer-events:auto;width:auto;min-height:30px;padding:3px 8px;color:var(--color-text-light-highlight, #f0f0e0);background:rgba(0,0,0,.5);border:1px solid var(--color-border-dark, #555);border-radius:4px;box-shadow:0 0 6px var(--color-shadow-dark, #000);white-space:nowrap}
 #pneuma-modular-canvas button:hover {background:rgba(0,0,0,.7)}
+#pneuma-modular-canvas .modular-live-cell[aria-pressed="true"] {border-color:var(--color-border-highlight, #ff6400);box-shadow:0 0 0 2px var(--color-border-highlight, #ff6400),0 0 6px #000}
 #pneuma-modular-canvas .modular-live-cell,#pneuma-modular-canvas .modular-live-expand,#pneuma-modular-canvas .modular-live-toolbar {position:absolute;transform:translate(-50%,-50%)}
 #pneuma-modular-canvas .modular-live-toolbar {display:flex;gap:4px;pointer-events:none}
 #pneuma-modular-canvas .modular-live-expand {font-size:24px;width:38px;height:38px;line-height:28px}

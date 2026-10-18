@@ -1,6 +1,10 @@
 <form class="hazard-popup hazard-sections">
   {{#if effectEditor}}{{> "modules/pneuma-scenetools/templates/hazard-effect-editor.hbs" effectEditor}}{{/if}}
   {{#if triggerEditor}}{{> "modules/pneuma-scenetools/templates/hazard-trigger-editor.hbs" triggerEditor}}{{/if}}
+  {{#if actorReplacement}}
+    <div class="form-group"><label for="hazard-replacement-template">Hazard Actor template</label><div class="form-fields"><select id="hazard-replacement-template" name="hazardActorTemplateId">{{#each actorOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></div></div>
+    <p class="notes">Choose a template, then Save Hazard to apply the replacement.</p>
+  {{/if}}
   <p role="alert"></p>
   <footer>
     <button type="submit" data-action="popupSave">Save</button>

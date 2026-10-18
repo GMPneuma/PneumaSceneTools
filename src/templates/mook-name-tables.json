@@ -1,0 +1,35 @@
+[
+  {
+    "key": "first",
+    "name": "Mook First Names",
+    "entries": [
+      "Joe",
+      "Tim",
+      "Maya",
+      "Alex",
+      "Rosa"
+    ]
+  },
+  {
+    "key": "last",
+    "name": "Mook Last Names",
+    "entries": [
+      "Smith",
+      "O’Malley",
+      "Chen",
+      "Reyes",
+      "Kowalski"
+    ]
+  },
+  {
+    "key": "handle",
+    "name": "Mook Handles",
+    "entries": [
+      "\"The Hammer\"",
+      "\"Ghost\"",
+      "\"Chrome\"",
+      "\"Switch\"",
+      "\"Razor\""
+    ]
+  }
+]
