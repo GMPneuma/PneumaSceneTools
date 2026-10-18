@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {chromium} from 'playwright';
+const combatToolsDist=resolve(process.env.PNEUMA_COMBATTOOLS_DIST??'../PneumaCombatTools/dist');
+// Fail before starting the browser if the integration dependency has not been installed.
+await readFile(resolve(combatToolsDist,'scripts/status-catalog.js'));
 const browser=await chromium.launch({headless:true,channel:process.env.PNEUMA_BROWSER_CHANNEL});
 try{
  const page=await browser.newPage({viewport:{width:1700,height:1100}}),errors=[];
@@ -11,7 +14,7 @@ try{
    const p=new URL(route.request().url()).pathname;
    if(p==='/systems/cyberpunk-red-core/modules/system/config.js')return route.fulfill({contentType:'text/javascript',body:'export default {skillList:{evasion:"Evasion",perception:"Perception",demolitions:"Demolitions"}};'});
    if(p==='/')return route.fulfill({contentType:'text/html',body:'<html><body></body></html>'});
-   if(p.startsWith('/modules/pneuma-combattools/'))return route.fulfill({contentType:'text/javascript',body:await readFile(resolve('../PneumaCombatTools/dist',p.replace(/^\/modules\/pneuma-combattools\//,'')))});
+   if(p.startsWith('/modules/pneuma-combattools/'))return route.fulfill({contentType:'text/javascript',body:await readFile(resolve(combatToolsDist,p.replace(/^\/modules\/pneuma-combattools\//,'')))});
    if(!p.startsWith('/modules/pneuma-scenetools/'))return route.fulfill({status:404,body:''});
    await route.fulfill({contentType:'text/javascript',body:await readFile(resolve('dist',p.replace(/^\/modules\/pneuma-scenetools\//,'')))});
  });

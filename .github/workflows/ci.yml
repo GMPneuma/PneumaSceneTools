@@ -21,4 +21,11 @@ jobs:
       - run: pnpm test
       - run: pnpm exec playwright install --with-deps chromium
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install pinned CombatTools integration dependency
+        run: |
+          curl --fail --location --retry 3 https://github.com/GMPneuma/PneumaCombatTools/releases/download/v0.9.21/pneuma-combattools.zip --output "$RUNNER_TEMP/combattools.zip"
+          echo "461fa6f5999a10d2c319c81583e463c7745b59104490adb5aeadf58860cb39aa  $RUNNER_TEMP/combattools.zip" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/combattools.zip" -d "$RUNNER_TEMP/combattools"
       - run: pnpm test:browser
+        env:
+          PNEUMA_COMBATTOOLS_DIST: ${{ runner.temp }}/combattools
