@@ -1,5 +1,6 @@
 import {MODULE_ID} from "./settings.js";
 import {ensureSceneToolsFolder} from "./world-folders.js";
+import {cleanDefaultPinTemplate} from "./map-pin-template-cleanup.js";
 
 export type PinTemplate = {journalId: string; imagePageId: string; descriptionPageId: string; sections: string;}
 export interface PinInfo {imagePageId: string; descriptionPageId: string; imageSrc?:string; sections: string; hover: boolean; category: string;}
@@ -37,11 +38,11 @@ export async function ensurePinTemplate(): Promise<JournalEntry> {
   if (defaultPending) return defaultPending;
   defaultPending = (async () => {
     const existing = game.journal?.find(journal => foundry.utils.getProperty(journal,`flags.${MODULE_ID}.pinTemplate`) === true);
-    if (existing) return existing;
+    if (existing) {await cleanDefaultPinTemplate(existing);return existing;}
     const folder = await ensureSceneToolsFolder("JournalEntry");
     const created = await JournalEntry.create({name:"Map POI Template",folder:folder.id,ownership:{default:CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE},
       flags:{[MODULE_ID]:{pinTemplate:true}},pages:[
-        {name:"POI",type:"text",sort:100000,text:{format:1,content:'<h2>Description</h2><p>Describe this location.</p><h2>Factions</h2><p></p><h2>NPC&#39;s</h2><p></p><h2>Contacts</h2><p></p><h2>Services</h2><p></p><section class="secret"><h2>GM notes</h2><p></p></section>'}},
+        {name:"POI",type:"text",sort:100000,text:{format:1,content:'<h2>Description</h2><p>Describe this location.</p><h2>Factions</h2><p></p><h2>NPC&#39;s</h2><p></p><h2>Contacts</h2><p></p><h2>Services</h2><p></p>'}},
       ]} as JournalEntry.CreateData);
     if (!created) throw new Error("Could not create the map pin template.");
     return created;
@@ -53,11 +54,12 @@ export async function getPinTemplate(): Promise<{journal:JournalEntry; config:Pi
   let config=game.settings!.get(MODULE_ID,"pinTemplate");
   if(config.journalId) {
     const journal=game.journal?.find(j=>j.id===config.journalId);
-    if(!journal) throw new Error("The selected pin template no longer exists. Select another template.");
-    return {journal,config};
+    if(journal){await cleanDefaultPinTemplate(journal);return {journal,config};}
   }
   const journal=await ensurePinTemplate();
+  const replacedMissing=!!config.journalId;
   config={journalId:journal.id!,imagePageId:journal.pages.find(p=>p.type==="image")?.id??journal.pages.find(p=>p.type==="text")?.id??"",descriptionPageId:journal.pages.find(p=>p.type==="text")?.id??"",sections:""};
+  if(replacedMissing)await game.settings!.set(MODULE_ID,"pinTemplate",config);
   return {journal,config};
 }
 export function validateTemplate(journal:JournalEntry,config:PinTemplate):void {

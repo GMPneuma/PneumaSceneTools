@@ -24,7 +24,7 @@ export function parseHoverPage(html:string,gm:boolean):HoverSection[] {
     const next=sections[index+1];if(next)range.setEndBefore(next);else range.setEnd(doc.body,doc.body.childNodes.length);
     const content=doc.createElement("div");content.append(range.cloneContents());
     return {name:heading.textContent?.trim()??"",html:content.innerHTML};
-  }).filter(section=>Boolean(section.name));
+  }).filter(section=>Boolean(section.name) && !/^gm\s+notes$/i.test(section.name));
 }
 let hideTimer:ReturnType<typeof setTimeout>|undefined;
 const cancelHide=()=>{if(hideTimer)clearTimeout(hideTimer);hideTimer=undefined;};
@@ -97,7 +97,7 @@ export async function showPinHover(note:Note):Promise<void> {
       body.append(bottom);
     }
   }else if(top.childElementCount)body.append(top);
-  const hint=document.createElement("small");hint.className="pin-hover-hint";hint.textContent="Double-click the pin to open its journal.";body.append(hint);
+  const hint=document.createElement("small");hint.className="pin-hover-hint";hint.textContent=canvas.notes?.active ? "Double-click to configure the note. Right-click to open its journal." : "Double-click the pin to open its journal.";body.append(hint);
   card.addEventListener("pointerenter",cancelHide);
   card.addEventListener("pointerleave",hidePinHover);
   document.body.append(card);

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.5 - 2026-10-18
+
+- Add vehicle promotion to permanent Actors while preserving functioning vehicle prototype tokens and seat layouts.
+- Style vehicle and patrol editors consistently with MookMaker, and remember the patrol widget's last position.
+- Match vehicle HUD icon sizing and spacing to native controls; add custom colors and optional Combat Tools color matching.
+- Open POI journals from right-click controls and Token-layer double-clicks; retain Note configuration on Journal Notes-layer double-clicks.
+- Add Pan to Note at the top of POI journals. Players pan only on their current scene; GMs can view the associated scene first.
+- Add JSON import/export for scene Notes and linked journals, with editable named journal sections, separate image paths, link remapping, and legacy HTML import support.
+- Remove GM Notes from the default POI template and hover choices, including existing default templates. Combine template selection and hover fields in Map POI Defaults and remove obsolete page selectors.
+- Improve malformed-hazard diagnostics and restrict automatic hazard validation, detection, and maintenance to the currently viewed scene.
+- Automated source, runtime, and browser checks remain separate from live Foundry and multiplayer verification.
+
 ## 0.6.0 - 2026-10-17
 
 - Add live modular scene building with named tile collections, placement, rotation, expansion, shrinking, Undo, and persistent browser thumbnails for static and animated tiles.

@@ -1,4 +1,4 @@
-<form class="pneuma-vehicle-config">
+<form class="pneuma-vehicle-config pneuma-mook-maker-form pneuma-mook-compact">
   <div class="vehicle-config-columns">
     <fieldset class="vehicle-config-left pneuma-mook-maker-section"><legend>Artwork Category</legend>
       <input type="hidden" name="artwork" value="{{selectedArtwork}}">
@@ -24,5 +24,10 @@
     </div>
     <fieldset class="vehicle-config-preview pneuma-vehicle-seats pneuma-mook-maker-section"><legend>Preview</legend><p data-preview-status role="status"></p><div data-preview-image></div></fieldset>
   </div>
-  <p data-config-error role="alert"></p><button type="submit"><i class="fas fa-save"></i> Save</button>
+  {{#if linked}}<p>Stats and player permissions apply to the linked Actor. Artwork and seat positions apply to this placed token.</p>{{/if}}
+  <p data-config-error role="alert"></p>
+  <div class="pneuma-mook-maker-form-actions">
+    <button type="submit"><i class="fas fa-save"></i> Save</button>
+    {{#if canPromote}}<button class="pneuma-mook-maker-promote" type="button" data-action="promote"><i class="fas fa-user-graduate"></i> Promote</button>{{/if}}
+  </div>
 </form>

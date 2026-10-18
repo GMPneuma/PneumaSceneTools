@@ -1,5 +1,5 @@
-<form class="pneuma-patrol" autocomplete="off">
-<div class="patrol-columns"><section class="patrol-settings">
+<form class="pneuma-patrol pneuma-mook-maker-form pneuma-mook-compact" autocomplete="off">
+<div class="patrol-columns"><fieldset class="patrol-settings pneuma-mook-maker-section pneuma-mook-maker-section-stats"><legend>Patrol Settings</legend>
   <div class="form-group"><label>Token</label><select name="token">{{#each tokens}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></div>
   <div class="form-group patrol-speed"><label>Movement speed</label><div class="form-fields"><input name="speed" type="number" min="0.1" max="5" step="0.1" value="{{config.speed}}"><span>grid spaces/sec</span></div></div>
   <div class="form-group patrol-section-start"><label>Mode</label><select name="mode">{{selectOptions modes selected=config.mode}}</select></div>
@@ -27,15 +27,15 @@
 </section>
 <div class="form-group patrol-section-start"><label>This is a vehicle</label><span data-vehicle-status></span></div>
   <div class="form-group" data-vehicle-front><label>Artwork front</label><select name="frontOffset"><option value="0">Up (0°)</option><option value="90">Right (90°)</option><option value="180">Down (180°)</option><option value="270">Left (270°)</option></select></div>
-</section>
-<aside class="patrol-activity"><h3>Recent operations</h3><ol data-operations role="log" aria-label="Recent patrol operations" aria-live="polite"></ol>
-  <section data-mode="route">
+</fieldset>
+<aside class="patrol-activity"><fieldset class="pneuma-mook-maker-section"><legend>Recent operations</legend><ol data-operations role="log" aria-label="Recent patrol operations" aria-live="polite"></ol></fieldset>
+  <fieldset class="pneuma-mook-maker-section pneuma-mook-maker-section-gear" data-mode="route"><legend>Waypoints</legend>
     <button type="button" data-action="pick"><i class="fas fa-map-marker-alt"></i> Place Waypoints</button>
     <div class="patrol-waypoints"><table><thead><tr><th>Stop</th><th>X</th><th>Y</th><th></th></tr></thead><tbody data-stops></tbody></table></div>
-  </section>
+  </fieldset>
 </aside></div>
   <p role="alert"></p>
-  <footer class="patrol-actions">
+  <footer class="patrol-actions pneuma-mook-maker-form-actions">
     <button type="button" data-action="save">Save</button><button type="button" data-action="start"><i class="fas fa-play"></i> Start</button><button type="button" data-action="stop"><i class="fas fa-stop"></i> Stop</button><button type="button" data-action="stop-all">Stop scene</button>
   </footer>
 </form>

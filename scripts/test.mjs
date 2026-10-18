@@ -5,6 +5,9 @@ import {execFileSync} from "node:child_process";
 import { check, root } from "./check.mjs";
 
 await check(resolve(root, "dist"));
+execFileSync(process.execPath, ["--test", "tests/map-pin-transfer.test.mjs"], {cwd: root, stdio: "inherit"});
+execFileSync(process.execPath, ["--test", "tests/map-pin-journal.test.mjs"], {cwd: root, stdio: "inherit"});
+execFileSync(process.execPath, ["--test", "tests/vehicle-promotion.test.mjs"], {cwd: root, stdio: "inherit"});
 execFileSync(process.execPath, ["scripts/default-hazard-template-test.mjs"], {cwd: root, stdio: "inherit"});
 execFileSync(process.execPath, ["--test", "tests/patrol.test.mjs"], {cwd: root, stdio: "inherit"});
 execFileSync(process.execPath, ["--test", "tests/modular-scenes.test.mjs"], {cwd: root, stdio: "inherit"});

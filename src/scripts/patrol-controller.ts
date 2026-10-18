@@ -2,9 +2,27 @@ import {MODULE_ID} from "./settings.js";
 import {patrolConfig,patrolStatus,savePatrol,scenePatrolStopped,setScenePatrolStopped} from "./patrol-runtime.js";
 
 let active:Dialog|undefined;
+const positions=new Map<string,{left:number;top:number}>();
 export function openPatrolController(edit:(token?:TokenDocument)=>Promise<void>):void {
   if(!game.user?.isGM||!canvas.scene)return;
   if(active){active.bringToTop();return;}
+  const positionKey=`${MODULE_ID}:patrol-position:${game.world?.id??"world"}:${game.user.id}`;
+  let saved=positions.get(positionKey);
+  if(!saved)try {
+    const value=JSON.parse(localStorage.getItem(positionKey)??"null");
+    if(value && Number.isFinite(value.left) && Number.isFinite(value.top))saved={left:value.left,top:value.top};
+  } catch { /* Retain normal placement when browser storage is unavailable. */ }
+  const restored=saved?{left:Math.max(0,Math.min(saved.left,innerWidth-160)),top:Math.max(0,Math.min(saved.top,innerHeight-40))}:{};
+  class PatrolDialog extends Dialog {
+    override setPosition(position?:Partial<Omit<Application.Position,"zIndex">>) {
+      const result=super.setPosition(position);
+      if(result && typeof result.left==="number" && typeof result.top==="number" && Number.isFinite(result.left) && Number.isFinite(result.top)){
+        const value={left:result.left,top:result.top};positions.set(positionKey,value);
+        try {localStorage.setItem(positionKey,JSON.stringify(value));}catch { /* Session memory remains available. */ }
+      }
+      return result;
+    }
+  }
   const scene=canvas.scene;
   let timer:ReturnType<typeof setInterval>|undefined,root:HTMLElement|undefined,busy=false,signature="";
   const content='<section class="patrol-controller"><header><button type="button" data-scene-toggle></button><button type="button" data-scene-edit aria-label="Edit patrols" title="Edit patrols"><i class="fas fa-pen" aria-hidden="true"></i></button></header><div data-patrol-list></div><p role="alert"></p></section>';
@@ -45,11 +63,11 @@ export function openPatrolController(edit:(token?:TokenDocument)=>Promise<void>)
     }
   };
   const close=()=>{void dialog.close();};
-  const dialog=new Dialog({title:"Scene Tools - Patrol",content,buttons:{},render:html=>{
+  const dialog=new PatrolDialog({title:"Scene Tools - Patrol",content,buttons:{},render:html=>{
     root=(html as JQuery)[0]!;
     root.querySelector('[data-scene-toggle]')!.addEventListener('click',()=>void run(()=>setScenePatrolStopped(scene,!scenePatrolStopped(scene))));
     root.querySelector('[data-scene-edit]')!.addEventListener('click',()=>void run(()=>edit()));
     signature="";refresh();if(timer)clearInterval(timer);timer=setInterval(refresh,500);
-  },close:()=>{if(timer)clearInterval(timer);Hooks.off('canvasTearDown',close);active=undefined;}},{id:"pneuma-patrol-controller",width:160,height:"auto",resizable:true});
+  },close:()=>{if(timer)clearInterval(timer);Hooks.off('canvasTearDown',close);active=undefined;}},{id:"pneuma-patrol-controller",width:160,height:"auto",resizable:true,...restored});
   Hooks.on('canvasTearDown',close);active=dialog;dialog.render(true);
 }

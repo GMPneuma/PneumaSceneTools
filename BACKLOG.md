@@ -1,5 +1,35 @@
 # Master roadmap
 
+- Automatic hazard validation, detection, and maintenance now process only the currently viewed scene. Queued work checks the scene again before running; opening a scene performs deferred destroyed-body and effect cleanup. Local regression coverage added; live Foundry verification pending.
+
+- Fixed named-section JSON export falling back to HTML for ordinary POIs with managed images. Export images separately as src/alt; preserve editable text sections and remap the Note image path on import.
+
+- Combined journal template selection and hover fields into Map POI Defaults. Removed the separate template dialog and redundant hover image/description page selectors; fields are drawn from the full template copied into each POI.
+
+- Updated Journal Template dialog guidance for the current POI workflow, permission scope, and JSON import/export location.
+
+- POI JSON supports plain-text named sections per journal page. Simple exported pages use this editable structure; rich/secret HTML retains the original content. Legacy HTML imports remain supported.
+
+- Added editable JSON export/import for scene pins and linked journals, with fresh-ID link remapping, preflight reference validation, and failed-import cleanup. See docs/map-pin-transfer.md.
+
+- POI journal pages now show Pan to Note at the top. Players only pan on their current scene; GMs may view the linked scene first. Missing/hidden Notes do not pan.
+
+- Vehicle HUD controls now follow native HUD sizing/spacing and provide Native, Custom, or active Combat Tools matching icon colors. Live Foundry/theme verification remains pending.
+
+- Patrol controller widget remembers its last position per world/user in the browser, including reopen and reload; restored positions keep its header on screen.
+
+- Patrol editor now shares the Mook Maker/vehicle compact form styling and colored sections, preserving its two-column controls and behavior.
+
+- Vehicle configuration now shares Mook Maker compact form styling and the gold Promote button, retaining its artwork/stats/seats/preview layout.
+
+- Existing module-created default POI templates now lose their GM Notes section automatically when the active GM loads the world, or when a GM uses the template. Other template sections and already-created POI journals are preserved.
+
+- Removed GM notes from the default POI template and hover fields/previews, including choices generated from older templates. Existing journal content is preserved.
+
+- Map pin journal access: right-click offers Open Journal; Token-layer double-click opens the linked journal for GM and players with read access; Journal Notes-layer double-click opens Note configuration for authorized editors. Automated validation; live Foundry retest pending.
+
+- Implemented vehicle promotion from Configure: save pending edits, create a permanent linked Actor in SceneTools/Promoted Vehicles, and preserve functional vehicle prototype artwork, footprint, pivot, and seats. Automated validation; live Foundry verification pending.
+
 - Addressed modular picker loading overhead: removed per-file full-window rebuilds, deferred media sources until dimension checks complete, and retained dimension metadata across reopenings. Browser regression measures render requests for a 35-image collection and verifies a warm reopen has no dimension probes. Live high-resolution asset timing still requires user retest.
 
 - Added the requested large-scene performance warning to the modular scene creation prompt.
@@ -463,3 +493,7 @@ Hazards layout correction (2026-10-13, local/unreleased): Hazard details are on 
 - Fixed hazard attack/effect navigation: explicit View in chat buttons replace ChatMessage sheet links and highlight the loaded card.
 
 - Modular tile browser uses generated WebP still thumbnails with a maximum 160-pixel edge for images and videos. Two concurrent generators cache the thumbnails and original dimensions in this browser across reloads (session-only if browser cache storage is unavailable). Initial generation reads originals once; preview/placement retain original paths. Refresh regenerates the collection thumbnails. Failed thumbnails remain placeholders, without loading originals into the thumbnail grid. Browser fixture verification covers still/video generation, persistent reuse, refresh and placement; live Foundry performance remains unverified.
+
+- A deleted selected POI template no longer blocks new pins: the default template is recreated/reused and selected with fresh page references. Existing templates and POI pages remain unchanged. The new default has no empty Image heading; a selected POI image is appended at the bottom.
+
+- Clarified malformed hazard errors with scene/hazard identity and trigger/target field labels; no automatic world-data conversion.

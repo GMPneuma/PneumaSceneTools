@@ -18,9 +18,10 @@ export {cleanupEffects} from "./effect-cleanup.js";
 export {cameraSees, propose, regionEvent, registerBehavior, manualTrigger} from "./triggers.js";
 
 const hitPoints = new Map<string, number>();
+const currentScene=(scene:Scene|null|undefined):scene is Scene=>!!scene&&canvas.ready&&scene.id===canvas.scene?.id;
 /** Persist deactivation for destroyed bodies, including unlinked token Actors. Healing never reactivates. */
 async function disableDestroyedHazards(scene:Scene):Promise<void>{
-  if(!authority())return;
+  if(!authority()||!currentScene(scene))return;
   for(const d of traps(scene)){
     const t=trapData(d)!,body=scene.tokens.get(t.bodyId),hp=Number(foundry.utils.getProperty(body?.actor??{},"system.derivedStats.hp.value"));
     if(t.armed&&body?.actor&&Number.isFinite(hp)&&hp<=0)await updateTrap(d,{armed:false});
@@ -29,20 +30,20 @@ async function disableDestroyedHazards(scene:Scene):Promise<void>{
 // Coalesce maintenance only; player actions and damage events retain their ordering.
 const pendingMaintenance = new Map<Scene, {destroyed: boolean; scan: boolean}>();
 function maintain(scene: Scene, destroyed = false, scan = true): void {
-  if (!authority()) return;
+  if (!authority()||!currentScene(scene)) return;
   const pending = pendingMaintenance.get(scene);
   if (pending) {pending.destroyed ||= destroyed; pending.scan ||= scan; return;}
   const work = {destroyed, scan};pendingMaintenance.set(scene, work);
   void enqueue(async () => {
     pendingMaintenance.delete(scene);
-    if (!authority()) return;
+    if (!authority()||!currentScene(scene)) return;
     if (work.destroyed) await disableDestroyedHazards(scene);
     await cleanupEffects(scene);
     if (work.scan && scene.id === canvas.scene?.id) for (const d of traps(scene)) await scanCamera(d);
   });
 }
 function actorScenes(actor: Actor): Scene[] {
-  return Array.from(game.scenes ?? (canvas.scene ? [canvas.scene] : [])).filter(scene =>
+  return (currentScene(canvas.scene)?[canvas.scene]:[]).filter(scene =>
     scene.tokens.some(token => token.actor === actor || token.actor?.uuid === actor.uuid || (!actor.isToken && token.actorId === actor.id)));
 }
 export function registerRuntime():void {
@@ -68,32 +69,34 @@ export function registerRuntime():void {
   });
   if (!hazardsAvailable()) return;
   Hooks.on("canvasReady",()=>{
+    hitPoints.clear();
     for (const token of canvas.scene?.tokens??[]) {if(token.actor)hitPoints.set(token.actor.uuid,Number(foundry.utils.getProperty(token.actor,"system.derivedStats.hp.value")));}
-    enqueue(async()=>{if (!authority() || !canvas.scene)return;await disableDestroyedHazards(canvas.scene);await cleanupEffects(canvas.scene);for(const d of traps(canvas.scene))await scanCamera(d);});
+    if(canvas.scene)maintain(canvas.scene,true);
   });
   Hooks.on("createToken",(token:TokenDocument)=>{if(token.actor)hitPoints.set(token.actor.uuid,Number(foundry.utils.getProperty(token.actor,"system.derivedStats.hp.value")));enqueue(async()=>{
-    if(!authority()||!token.parent)return;
+    if(!authority()||!currentScene(token.parent))return;
     for(const d of traps(token.parent)){const t=trapData(d)!;
 
       if(hasTrigger(t,"detect"))await scanCamera(d);
     }
   });});
   Hooks.on("updateToken",(token:TokenDocument,change:Record<string,unknown>)=>{
-    if (["x","y","elevation","rotation","hidden","width","height"].some(k=>k in change)) enqueue(()=>deviceMoved(token));
+    if(!currentScene(token.parent))return;
+    if (["x","y","elevation","rotation","hidden","width","height"].some(k=>k in change)) enqueue(async()=>{if(currentScene(token.parent))await deviceMoved(token);});
     // Membership also changes for plain effect-area Regions with no trap behavior.
-    if (("_regions" in change||"delta" in change||Object.keys(change).some(k=>k.startsWith("delta."))) && token.parent) enqueue(async()=>{await disableDestroyedHazards(token.parent!);await cleanupEffects(token.parent!);});
+    if (("_regions" in change||"delta" in change||Object.keys(change).some(k=>k.startsWith("delta."))) && token.parent) maintain(token.parent,true,false);
   });
   Hooks.on("deleteToken",(token:TokenDocument)=>{enqueue(async()=>{
-    if (!authority() || !token.parent)return;
+    if (!authority() || !currentScene(token.parent))return;
     if(token.actor){const ids=token.actor.effects.filter(e=>foundry.utils.getProperty(e,`flags.${MODULE_ID}.trapEffect.token`)===token.uuid).map(e=>e.id!);if(ids.length)await token.actor.deleteEmbeddedDocuments("ActiveEffect",ids);}
     for(const d of traps(token.parent)){const t=trapData(d)!;if(t.bodyId===token.id){await updateTrap(d,{armed:false});await syncAccessPoint(d);}}
     await cleanupEffects(token.parent);await cleanupHazardActor(token);
   });});
   Hooks.on("updateCombat",(combat:Combat,change:Record<string,unknown>)=>{
-    if (!("turn" in change || "round" in change) || !combat.scene)return;
+    if (!("turn" in change || "round" in change) || !currentScene(combat.scene))return;
     const scene=combat.scene,current=combat.combatant?.tokenId;
     const event=`Combat.${combat.id}.${combat.round}.${combat.turn}`;
-    enqueue(async()=>{if(!authority())return;
+    enqueue(async()=>{if(!authority()||!currentScene(scene))return;
       for(const d of traps(scene)){
         const t=trapData(d)!;
         if(hasTrigger(t,"detect"))await scanCamera(d);
@@ -104,7 +107,7 @@ export function registerRuntime():void {
       await cleanupEffects(scene);
     });
   });
-  Hooks.on("updateWorldTime",()=>{for(const scene of game.scenes??[])maintain(scene);});
+  Hooks.on("updateWorldTime",()=>{if(canvas.scene)maintain(canvas.scene);});
   for(const hook of ["createWall","updateWall","deleteWall"])Hooks.on(hook,(wall:WallDocument)=>{
     if(wall.parent?.id===canvas.scene?.id)maintain(wall.parent!);
   });
@@ -128,10 +131,11 @@ export function registerRuntime():void {
     if(actor?.documentName === "Actor")for(const scene of actorScenes(actor))maintain(scene,false,false);
   });
   Hooks.on("deleteActor",(actor:Actor)=>{hitPoints.delete(actor.uuid);for(const scene of actorScenes(actor))maintain(scene,false,false);});
-  Hooks.on("ready",()=>{for(const scene of game.scenes??[])for(const token of scene.tokens){if(token.actor)hitPoints.set(token.actor.uuid,Number(foundry.utils.getProperty(token.actor,"system.derivedStats.hp.value")));}enqueue(async()=>{for(const scene of game.scenes??[])await disableDestroyedHazards(scene);});});
+  Hooks.on("ready",()=>{if(!currentScene(canvas.scene))return;for(const token of canvas.scene.tokens){if(token.actor)hitPoints.set(token.actor.uuid,Number(foundry.utils.getProperty(token.actor,"system.derivedStats.hp.value")));}maintain(canvas.scene,true);});
+  Hooks.on("canvasTearDown",()=>{hitPoints.clear();});
   for(const hook of ["updateUser","userConnected"])Hooks.on(hook,()=>{if(game.user?.isGM)for(const message of game.messages??[]){const a=activation(message);if(a&&!["done","skipped"].includes(a.state))ui.chat?.updateMessage(message);}});
   Hooks.on("deleteRegion",(region:RegionDocument)=>enqueue(async()=>{
-    if(authority() && region.parent)await cleanupEffects(region.parent);
+    if(authority() && currentScene(region.parent))await cleanupEffects(region.parent);
 
   }));
 }

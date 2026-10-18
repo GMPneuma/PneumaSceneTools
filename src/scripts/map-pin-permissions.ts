@@ -4,6 +4,13 @@ import {pinningEnabled} from "./map-pins-data.js";
 export function pinPermissionDocument(note:NoteDocument):JournalEntryPage|JournalEntry|undefined {
   return note.pageId ? note.entry?.pages.get(note.pageId) : note.entry??undefined;
 }
+export function canOpenPinJournal(note:NoteDocument):boolean {
+  const linked=pinPermissionDocument(note);
+  return !!linked && !!game.user && (game.user.isGM || linked.testUserPermission(game.user,"OBSERVER"));
+}
+export function openPinJournal(note:NoteDocument):void {
+  if(canOpenPinJournal(note))note.entry?.sheet?.render(true,{pageId:note.pageId});
+}
 export function playersCanReadPin(note:NoteDocument):boolean {
   const document=pinPermissionDocument(note);
   if(!document)return false;
@@ -29,12 +36,17 @@ let installed=false;
 /** Use Foundry's ContextMenu for canvas pins; retain native handling elsewhere. */
 export function installPinContextMenu():void {
   if(installed)return;
+  // Native right-click permission is HUD/ownership based; readable pins also expose their journal menu.
+  libWrapper.register(MODULE_ID,"Note.prototype._canHUD",function(this:Note,wrapped:(...args:unknown[])=>boolean,...args:unknown[]){
+    if(pinningEnabled(this.document.parent) && this.visible && canOpenPinJournal(this.document))return true;
+    return wrapped(...args);
+  },"MIXED");
   let anchor:HTMLElement|undefined,menu:ContextMenu|undefined;
   let pending:ReturnType<typeof setTimeout>|undefined;
   const clear=()=>{clearTimeout(pending);pending=undefined;anchor?.remove();anchor=undefined;};
   libWrapper.register(MODULE_ID,"Note.prototype._onUnclickRight",function(this:Note,wrapped:(event:PIXI.FederatedEvent)=>unknown,event:PIXI.FederatedEvent){
     const note=this.document;
-    if(!game.user?.isGM || !pinningEnabled(note.parent))return wrapped(event);
+    if(!pinningEnabled(note.parent) || (!game.user?.isGM && !canOpenPinJournal(note)))return wrapped(event);
     void menu?.close({animate:false});clear();
     event.stopPropagation();
     const {clientX,clientY}=event as PIXI.FederatedPointerEvent;
@@ -42,14 +54,15 @@ export function installPinContextMenu():void {
     // contextmenu event have finished before creating the menu under the cursor.
     pending=setTimeout(()=>{
       pending=undefined;
-      if(!game.user?.isGM || !pinningEnabled(note.parent) || canvas.scene?.id!==note.parent?.id)return;
+      if(!pinningEnabled(note.parent) || canvas.scene?.id!==note.parent?.id || (!game.user?.isGM && !canOpenPinJournal(note)))return;
       const target=document.createElement("div");anchor=target;target.className="pneuma-pin-context";
       Object.assign(target.style,{position:"fixed",left:`${Math.max(0,Math.min(clientX,innerWidth-240))}px`,top:`${clientY}px`,width:"240px",height:"1px",zIndex:"10000"});
       document.body.append(target);
       const allowed=playersCanReadPin(note);
       menu=new ContextMenu($(target),".pneuma-pin-context",[
-        {name:pinPermissionLabel(note),icon:'<i class="fas fa-book-reader"></i>',condition:!!pinPermissionDocument(note),callback:()=>{void setPinPlayerRead(note,!allowed).catch(cause=>ui.notifications?.error(String(cause)));}},
-        {name:"Edit POI",icon:'<i class="fas fa-edit"></i>',callback:()=>{note.sheet?.render(true);}}
+        {name:"Open Journal",icon:'<i class="fas fa-book-open"></i>',condition:canOpenPinJournal(note),callback:()=>openPinJournal(note)},
+        {name:pinPermissionLabel(note),icon:'<i class="fas fa-book-reader"></i>',condition:!!game.user?.isGM && !!pinPermissionDocument(note),callback:()=>{void setPinPlayerRead(note,!allowed).catch(cause=>ui.notifications?.error(String(cause)));}},
+        {name:"Edit POI",icon:'<i class="fas fa-edit"></i>',condition:!!game.user?.isGM,callback:()=>{if(game.user?.isGM)note.sheet?.render(true);}}
       ],{onClose:()=>{target.remove();if(anchor===target){anchor=undefined;menu=undefined;}}});
       target.dispatchEvent(new MouseEvent("contextmenu",{bubbles:true,clientX,clientY}));
     },0);

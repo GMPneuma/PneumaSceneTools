@@ -22,6 +22,12 @@ function setup(){
 }
 const board=(token,seatId="driver",userId="player")=>executeSeatRequest(token,{id:"request",state:"pending",action:"board",vehicleId:"car",seatId},userId);
 
+test("promoted linked vehicles allow GM player-control changes on their permanent Actor",async()=>{
+ const {vehicle}=setup();vehicle.actorLink=true;vehicle.actor.flags={[ID]:{promotedVehicle:true}};
+ vehicle.actor.update=async changes=>{applyChanges(vehicle.actor,changes);return vehicle.actor;};
+ await allowPlayersToUse(vehicle);assert.equal(vehicle.actor.ownership.default,3);
+});
+
 test("GM access grants every player owner permission and rejects player or linked-token grants",async()=>{
  const {vehicle,player}=setup();let changes;vehicle.actor.ownership={default:0,player:1};vehicle.actor.update=async value=>{changes=value;return vehicle.actor;};
  await allowPlayersToUse(vehicle);assert.equal(changes.ownership.default,3);assert.equal(changes.ownership.player,3);assert.equal(changes.ownership.offline,3);

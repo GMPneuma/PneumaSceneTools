@@ -75,6 +75,10 @@ test('vehicle configuration edits native stats and armor, preserves unrelated va
  const initial=vehicleStats(actor);assert.equal(initial.sp,11);
  await assert.rejects(saveVehicleConfig(env.token,{...initial,sp:20},initial,''),/whole numbers/);assert.equal(armor.system.bodyLocation.sp,13);
  await saveVehicleConfig(env.token,{hp:25,maxHp:60,sp:8,maxSp:13,move:12,seats:0},initial,'');assert.equal(actor.system.derivedStats.hp.value,25);assert.equal(actor.system.stats.move.value,12);assert.equal(armor.system.bodyLocation.ablation,5);
+ env.token.actorLink=true;
+ await assert.rejects(saveVehicleConfig(env.token,initial,initial,''),/Unlink/);
+ actor.flags={[scope]:{promotedVehicle:true}};
+ await saveVehicleConfig(env.token,{...initial,hp:20},initial,'');assert.equal(actor.system.derivedStats.hp.value,20);
  env.token.isOwner=false;await assert.rejects(saveVehicleConfig(env.token,initial,initial,''),/own/);
 });
 

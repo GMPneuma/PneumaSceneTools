@@ -60,7 +60,7 @@ export async function proposeTargets(d: Hazard, target: TokenDocument, event: st
 /** Consume native Region membership and movement segments; Foundry handles shape holes and elevation. */
 export async function regionEvent(event: RegionDocument.RegionEvent, behaviorId?: string): Promise<void> {
   const region = event.region;
-  if (!authority() || !regionBehaviorEnabled(region))
+  if (!authority() || !canvas.ready || region.parent?.id!==canvas.scene?.id || !regionBehaviorEnabled(region))
     return;
   if (behaviorId && region.behaviors.find(b => String(b.type) === TRAP_BEHAVIOR && !b.disabled)?.id !== behaviorId)
     return;

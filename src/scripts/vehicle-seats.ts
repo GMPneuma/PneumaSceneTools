@@ -1,5 +1,6 @@
 import {registerSeatRequests, sendSeatRequest, type SeatAction} from "./vehicle-seat-requests.js";
 import {MODULE_ID} from "./settings.js";
+import {isPromotedVehicle} from "./vehicle-promotion.js";
 import {isVehicleToken} from "./vehicle-rotation.js";
 import {adjacentToVehicle, assignment, isPassenger, restoredUpdate, riders, seatCapacity, seatPosition, seatFlag, seatLayout, seatedUpdate, validateSeatLayout, type SeatAssignment, type SeatLayout} from "./vehicle-seats-model.js";
 import {registerSeatHud} from "./vehicle-seats-ui.js";
@@ -25,12 +26,12 @@ export function playersControlVehicle(vehicle: TokenDocument): boolean {
 
 export async function setPlayerVehicleControl(vehicle: TokenDocument, enabled: boolean): Promise<void> {
   if (!game.user?.isGM || !isVehicleToken(vehicle) || !vehicle.actor) throw new Error("Only a GM can grant vehicle access.");
-  if (vehicle.actorLink) throw new Error("Unlink this vehicle token before granting access to this vehicle only.");
+  if (vehicle.actorLink && !isPromotedVehicle(vehicle)) throw new Error("Unlink this vehicle token before granting access to this vehicle only.");
   requireCurrent(vehicle);
   const level = enabled ? CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER : CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE;
   const ownership: Record<string, number> = {...vehicle.actor.ownership, default: level};
   for (const user of game.users ?? []) if (!user.isGM) ownership[user.id!] = level;
-  // Updating the synthetic Actor preserves the source template and other spawned vehicles.
+  // Unlinked vehicles update their synthetic Actor; promoted vehicles share their permanent Actor's permissions.
   const saved = await vehicle.actor.update({ownership} as object);
   if (!saved) throw new Error("Vehicle permission update was cancelled.");
 }

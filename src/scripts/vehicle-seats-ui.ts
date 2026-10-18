@@ -1,4 +1,5 @@
 import {mountSeatEditor} from "./vehicle-seat-editor.js";
+import {styleVehicleHud} from "./vehicle-hud-style.js";
 import {MODULE_ID} from "./settings.js";
 import {isVehicleToken} from "./vehicle-rotation.js";
 import {assignment, isPassenger, riders, seatCapacity, seatLayout, type SeatLayout} from "./vehicle-seats-model.js";
@@ -161,6 +162,7 @@ export function registerSeatHud(): void {
     }
     if (showSeats) controls.append(button);
     (nativeLeft ?? html[0]!).append(controls[0]!);
+    requestAnimationFrame(()=>styleVehicleHud(html[0]!));
     return;
   };
   Hooks.on("renderTokenHUD", mount);

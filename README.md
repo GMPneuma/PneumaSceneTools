@@ -71,7 +71,7 @@ Browser contract checks run in CI with `pnpm test:browser`. Locally, install Chr
 
 MookMaker uses one operation guard per token within each client. Template upgrades use version flags and recognize moved default templates. The form uses separate Handlebars markup, view data, typed input parsing, and native document actions. Feature loading and startup failures are isolated. Scanner refreshes are filtered and coalesced; panel rendering resolves only referenced documents.
 
-Map POIs use one journal per Scene under SceneTools and one page per location, with headings for Description, Factions, Contacts, Services, and secret GM notes. Pins open their own page. New POIs share the Scene journal; existing POIs are not migrated.
+Map POIs use one journal per Scene under SceneTools and one page per location, with default headings for Description, Factions, NPCs, Contacts, and Services. Pins open their own page, and a Pan to Note button appears at the top of linked journals. Configure the template and hover fields in Map POI Defaults. The POI manager provides editable JSON import/export for Notes and linked journals. [JSON format and import behavior](docs/map-pin-transfer.md).
 
 ## Modular Scene Creator
 

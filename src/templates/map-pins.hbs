@@ -9,7 +9,13 @@
     <div class="form-group"><label>Text anchor point</label><div class="form-fields"><select name="textAnchor">{{{anchorOptions}}}</select></div></div>
     <div class="form-group"><label>Globally visible</label><div class="form-fields"><input type="checkbox" name="global" {{#if global}}checked{{/if}}></div></div>
     <div class="form-group"><label>Journal preview on hover</label><div class="form-fields"><input type="checkbox" name="hover" {{#if hover}}checked{{/if}}></div></div>
-    <div class="pin-options"><button type="button" data-action="template"><i class="fas fa-book"></i> Journal template &amp; hover layout</button></div>
+    <fieldset class="pneuma-pin-template"><legend>Journal template &amp; hover fields</legend>
+      <div class="form-group"><label>Template journal</label><div class="form-fields"><select name="journal">{{{journalOptions}}}</select></div></div>
+      <p class="notes">Template headings and text are copied into new POI pages. Edit the selected journal to change them. Existing POIs are unchanged.</p>
+      <div class="pin-options"><button type="button" data-action="edit-template">Edit selected journal</button><button type="button" data-action="default-template">Use default template</button></div>
+      <h4>Hover fields</h4><input type="hidden" name="sections"><div class="pin-section-list"></div>
+      <p class="notes">Journal and page permissions control player access; individual headings do not have separate permissions.</p>
+    </fieldset>
     <footer class="sheet-footer flexrow"><button type="submit"><i class="fas fa-save"></i> Save defaults</button></footer>
     <p class="pin-error" role="alert"></p>
   </form>

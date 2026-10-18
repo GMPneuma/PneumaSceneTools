@@ -132,9 +132,9 @@ const choice = <T extends string>(v: unknown, list: readonly T[]): T => {
   if (!list.includes(v as T))
     throw Error("Invalid option."); return v as T;
 };
-const strings = (v: unknown): string[] => {
+const strings = (v: unknown, field = "links"): string[] => {
   if (!Array.isArray(v) || v.length > 100)
-    throw Error("Invalid links."); return [...new Set(v.map(x => str(x, 100)))];
+    throw Error(`Invalid ${field}: expected a list of at most 100 entries.`); return [...new Set(v.map(x => str(x, 100)))];
 };
 export function blankAction(): ActionOf<"notice">;
 export function blankAction<K extends ActionKind>(kind: K): ActionOf<K>;
@@ -219,7 +219,7 @@ export function validateTrap(input: unknown): TrapConfig {
     check: str(t.check, 120), dv: num(t.dv, 0), spotDV: num(t.spotDV, 0), disarmSkill: COUNTER_SKILL, disarmDV: num(t.disarmDV, 0),
     disarmSeconds: num(t.disarmSeconds, 0), actions: t.actions.map(validateAction), deviceId: str(t.deviceId, 100),
     anchor: {x: num(anchor.x), y: num(anchor.y)}, apType: str(t.apType, 100), apId: str(t.apId, 100),
-    moveProgress: {}, detected: strings(t.detected), engaged: strings(t.engaged), deviceTemplate: validateDevice(t.deviceTemplate)
+    moveProgress: {}, detected: strings(t.detected, "detected targets"), engaged: strings(t.engaged, "engaged targets"), deviceTemplate: validateDevice(t.deviceTemplate)
   };
   if (result.minElevation > result.maxElevation)
     throw Error("Check name and elevation bounds.");
@@ -229,7 +229,7 @@ export function validateTrap(input: unknown): TrapConfig {
         result.moveProgress[key] = num(value, 0);
     }
   result.hazardType = choice<HazardType>(t.hazardType, ["active", "emplaced", "environmental", "notification"]);
-  result.triggers = strings(t.triggers).map(v => choice<Trigger>(v, ["enter", "move", "turnStart", "turnEnd", "deviceTurn", "detect", "manual"]));
+  result.triggers = strings(t.triggers, "hazard triggers").map(v => choice<Trigger>(v, ["enter", "move", "turnStart", "turnEnd", "deviceTurn", "detect", "manual"]));
   return result;
 }
 export function portableTrap(trap: TrapConfig): TrapConfig {

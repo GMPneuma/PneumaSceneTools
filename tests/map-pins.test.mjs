@@ -12,9 +12,9 @@ beforeEach(()=>{
   globalThis.CONST={JOURNAL_ENTRY_PAGE_FORMATS:{HTML:1},DOCUMENT_OWNERSHIP_LEVELS:{NONE:0,OBSERVER:2,INHERIT:-1}};
   const page=(id,type)=>({id,type,name:id,toObject:()=>({_id:id,type,name:id,sort:id==='image'?100:200,ownership:{default:3,player:3},flags:{},text:{content:'<h2>Factions</h2><p>Original</p>'}})});
   template={id:'template',pages:new Collection(page('image','image'),page('description','text'),page('extra','text'))};
-  globalThis.game={user:{isGM:true},journal:new Collection(template),folders:new Collection(),settings:{get:()=>({journalId:'template',imagePageId:'image',descriptionPageId:'description',sections:'["Factions"]'})}};
+  globalThis.game={user:{isGM:true},journal:new Collection(template),folders:new Collection(),settings:{value:{journalId:'template',imagePageId:'image',descriptionPageId:'description',sections:'["Factions"]'},get(){return this.value},async set(_module,_key,value){this.value=value;return value}} };
   globalThis.Folder={async create(data){const folder={...data,id:'folder-'+game.folders.length,folder:game.folders.get(data.folder)};game.folders.push(folder);return folder;}};
-  globalThis.JournalEntry={async create(data){created.push(structuredClone(data));const journal={...data,id:'copy-'+created.length,pages:new Collection(),async createEmbeddedDocuments(type,rows){return rows.map(row=>{const page={...row,id:'new-'+this.pages.length};this.pages.push(page);return page;});},async deleteEmbeddedDocuments(type,ids){if(failDelete)throw Error('Delete failed');for(const id of ids){deleted.push(id);this.pages.splice(this.pages.findIndex(p=>p.id===id),1);}}};game.journal.push(journal);return journal;}};
+  globalThis.JournalEntry={async create(data){created.push(structuredClone(data));const journal={...data,id:'copy-'+created.length,pages:new Collection(...(data.pages??[]).map((row,i)=>({...row,id:'template-page-'+i,toObject(){return {...row};}}))),async createEmbeddedDocuments(type,rows){return rows.map(row=>{const page={...row,id:'new-'+this.pages.length};this.pages.push(page);return page;});},async deleteEmbeddedDocuments(type,ids){if(failDelete)throw Error('Delete failed');for(const id of ids){deleted.push(id);this.pages.splice(this.pages.findIndex(p=>p.id===id),1);}}};game.journal.push(journal);return journal;}};
   scene={id:'scene-a',name:'Night City',flags:{[ID]:{mapPinning:true}},async createEmbeddedDocuments(type,rows){assert.equal(type,'Note');if(failNote)throw Error('Note failed');return rows.map(row=>({...row,id:'pin'}));}};
 });
 test('opt-in and GM boundaries block creation before journals are written',async()=>{
@@ -63,9 +63,20 @@ test('concurrent creation shares one scene journal',async()=>{
 test('missing template page fails before writing journal',async()=>{
   template.pages.splice(0,1);await assert.rejects(()=>createMapPin(scene,input),/image or text page/);assert.equal(created.length,0);
 });
-test('missing selected template does not silently substitute another',async()=>{
-  game.journal.length=0;await assert.rejects(()=>createMapPin(scene,input),/no longer exists/);assert.equal(created.length,0);
+test('deleted template is recreated and selected, with only one Image heading at the bottom',async()=>{
+  game.journal.length=0;
+  const note=await createMapPin(scene,{...input,imageSrc:'poi.webp'});
+  const replacement=game.journal.find(j=>j.flags?.[ID]?.pinTemplate);
+  assert.ok(replacement);assert.equal(game.settings.value.journalId,replacement.id);
+  const content=game.journal.get(note.entryId).pages.get(note.pageId).text.content;
+  assert.equal((content.match(/<h2>Image<\/h2>/g)??[]).length,1);
+  assert.ok(content.indexOf('<h2>Image</h2>')>content.indexOf('<h2>Services</h2>'));
+  assert.equal(content.includes('GM notes'),false);
+  assert.equal(replacement.pages[0].text.content.includes('<h2>Image</h2>'),false);
+  await createMapPin(scene,{...input,name:'Second POI'});
+  assert.equal(created.length,2,'Reuse the replacement template and scene journal');
 });
+
 test('existing POI templates retain their exact content',async()=>{
   template.flags={[ID]:{pinTemplate:true}};
   const page=template.pages.find(page=>page.type==='text');

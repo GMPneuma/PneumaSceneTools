@@ -24,6 +24,7 @@ export async function ensureVehicleTemplate(): Promise<void> {
 
 export function templateKind(actor: Actor | undefined): SpawnKind | undefined {
   if (!actor) return;
+  if (foundry.utils.getProperty(actor, `flags.${MODULE_ID}.promotedVehicle`) === true) return;
   if (actor.folder && actor.folder.id === findSceneToolsFolder("Actor", WORLD_FOLDERS.vehicleTemplates)?.id) return "vehicle";
   if (isTemplateActor(actor)) return "mook";
 }

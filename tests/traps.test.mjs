@@ -821,6 +821,31 @@ test('hazard maintenance combines queued wall refreshes and avoids other scenes'
  release();await Promise.all(calls);assert.equal(scans,once);
 });
 
+test('automatic hazard hooks ignore malformed hazards on other scenes',async()=>{
+ const f=setup(),other={...f.scene,id:'other',uuid:'Scene.other',name:'Other map',tokens:new Collection(),regions:new Collection(),flags:{[M]:{hazards:{bad:{...structuredClone(f.t()),triggers:undefined}}}}};
+ const token={...f.body,parent:other};other.tokens.set(token.id,token);game.scenes.set(other.id,other);
+ registerRuntime();
+ await f.hook('ready');await f.hook('updateWorldTime');
+ await f.hook('createToken',token);await f.hook('updateToken',token,{x:100,delta:{}});await f.hook('deleteToken',token);
+ await f.hook('updateActor',f.body.actor,{'system.derivedStats.hp.value':5});
+ await f.hook('updateCombat',{scene:other,id:'combat',round:1,turn:0},{turn:0});
+ await f.hook('deleteRegion',{...f.region,parent:other});
+ await regionEvent({region:{...f.region,parent:other},name:'tokenEnter',data:{token}});
+ assert.deepEqual(f.calls.errors,[]);
+ canvas.scene=other;await f.hook('canvasReady');
+ assert.ok(f.calls.errors.some(message=>message.includes('Invalid hazard triggers')),'the malformed record is validated when its own scene opens');
+});
+
+test('queued maintenance skips a scene after switching and checks destroyed bodies when returning',async()=>{
+ const f=setup();registerRuntime();
+ let release;const gate=new Promise(resolve=>release=resolve);void enqueue(()=>gate);
+ f.body.actor.system.derivedStats.hp.value=0;
+ const pending=f.hook('canvasReady');
+ canvas.scene={...f.scene,id:'other',tokens:new Collection(),regions:new Collection(),flags:{}};
+ release();await pending;assert.equal(f.t().armed,true);
+ canvas.scene=f.scene;await f.hook('canvasReady');assert.equal(f.t().armed,false);
+});
+
 test('hazard damage delegates through CT only after source validation, without applying native damage twice',async()=>{
  const f=setup();f.t().actions=[{...blankAction('damage'),formula:'2d6',armor:'half',ablation:2}];
  await propose(f.hazard,f.target,'enter');const message=game.messages.contents[0];

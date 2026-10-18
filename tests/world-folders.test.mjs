@@ -35,6 +35,7 @@ test("renamed current roots and children are reused when restoring a missing fol
 
 test("MookMaker and Scanner startup use one module namespace without duplicate settings or APIs",async()=> {
   const env=environment(),settings=new Set(),menus=new Set(),hooks=[];
+  foundry.data.fields={ColorField:class {}};
   CONFIG.Token={objectClass:class {_onUpdate(){} control(){return true}}};
   globalThis.PrimarySpriteMesh=class {resize() {}};
   globalThis.Application=class {static get defaultOptions(){return {};}};

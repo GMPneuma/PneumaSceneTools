@@ -8,6 +8,7 @@ import {armoredChassisData} from "./vehicle-chassis.js";
 import {isArtworkVideo, listCategoryArtwork} from "./artwork-media.js";
 import {vehicleFootprintSize, vehicleGridFootprintSize} from "./vehicle-rotation-geometry.js";
 import {getVehicleBaseSize} from "./vehicle-footprint.js";
+import {isPromotedVehicle, promoteVehicle} from "./vehicle-promotion.js";
 
 export async function vehicleArtworkUpdate(token: TokenDocument, category: ArtworkCategory, image: string, capacity: number): Promise<Record<string, unknown>> {
   const base = getVehicleBaseSize(token), width = category.width ?? base.width, height = category.height ?? base.height;
@@ -42,7 +43,7 @@ export interface VehicleAppearance {layout: SeatLayout; width: number; height: n
 
 export async function saveVehicleConfig(token: TokenDocument, stats: VehicleStats, initial: VehicleStats, artwork: string, appearance?: VehicleAppearance): Promise<void> {
   if (!game.user?.isGM || !isVehicleToken(token) || !token.isOwner || !token.actor || token.parent?.tokens.get(token.id!) !== token) throw new Error("This vehicle is unavailable or you do not own it.");
-  if (token.actorLink) throw new Error("Unlink this vehicle before configuring the placed vehicle.");
+  if (token.actorLink && !isPromotedVehicle(token)) throw new Error("Unlink this vehicle before configuring the placed vehicle.");
   if (!Object.values(stats).every(value => Number.isFinite(value) && Number.isInteger(value)) || stats.maxHp < 1 || stats.hp > stats.maxHp || stats.sp < 0 || stats.maxSp < stats.sp || stats.move < 0 || !Number.isInteger(stats.seats) || stats.seats < 0 || stats.seats > 100) throw new Error("Enter whole numbers: maximum HP must be positive, HP cannot exceed maximum, and SP/MOVE cannot be negative; Seats must be between 0 and 100.");
   if (stats.seats !== initial.seats) {
     const allowed = new Set(seatLayout(token)?.seats.slice(0, stats.seats).map(seat => seat.id) ?? []);
@@ -88,6 +89,10 @@ export async function saveVehicleConfig(token: TokenDocument, stats: VehicleStat
   }
   if (Object.keys(changes).length && !await actor.update(changes as object)) throw new Error("Vehicle stat update was cancelled; armor changes may already have saved.");
   if (image) {
+    if (token.actorLink) {
+      delete categoryUpdate["delta.img"];
+      if (!await actor.update({img: image} as object)) throw new Error("Vehicle artwork update was cancelled.");
+    }
     if (!await token.update(categoryUpdate as object)) throw new Error("Artwork update was cancelled; stat changes may already have saved.");
     await syncVehicleSeats(token);
   }
@@ -100,6 +105,7 @@ export async function openVehicleConfig(token: TokenDocument): Promise<void> {
   let closed = false;
   let disposeSizing = () => {};
   const content = await renderTemplate(`modules/${MODULE_ID}/templates/vehicle-config.hbs`, {stats: initial, gm: true, selectedArtwork: selected ?? "",
+    canPromote: !token.actorLink, linked: token.actorLink,
     width: base.width, height: base.height, scale: Math.abs(token.texture.scaleX ?? 1),
     artwork: categories.map(row => ({...row,width:row.width ?? 2,height:row.height ?? 3,seatCount:row.seatLayout?.seats.length ?? 0,selected:row.folder === selected}))});
   const dialog = new Dialog({title: `Configure ${token.name}`, content, buttons: {}, close: () => {closed = true;disposeSizing();}, render: html => {
@@ -261,6 +267,14 @@ export async function openVehicleConfig(token: TokenDocument): Promise<void> {
         });
       });
     }
+    root.querySelector('[data-action="promote"]')?.addEventListener('click', () => run(async () => {
+      if (!await Dialog.confirm({title: "Promote Vehicle", defaultYes: false,
+        content: "<p>Save pending edits and create a permanent Actor in SceneTools/Promoted Vehicles? This token will link to the Actor. Its prototype token will retain the vehicle artwork, footprint, rotation pivot, and seats.</p>"})) return;
+      if (closed) return;
+      await saveDraft();
+      await promoteVehicle(token);
+      await dialog.close();
+    }));
     root.querySelector("form")!.addEventListener("submit", event => {event.preventDefault();run(async () => {
       await saveDraft();
       await dialog.close();

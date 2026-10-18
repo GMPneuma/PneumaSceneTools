@@ -1,5 +1,7 @@
 # Implemented features
 
+- Automatic hazard validation, detection, and maintenance are scoped to the currently viewed scene, including startup, time updates, Actor/Token changes, combat turns, and Region events. Queued work skips scenes that are no longer viewed. Opening a scene checks destroyed bodies and expired effects; malformed records on other scenes no longer cause unrelated notifications. Local regression coverage added; live Foundry verification pending.
+
 - Modular tile dimension checks update existing thumbnail controls in place rather than re-rendering the whole picker per file. Preview media, focus and loaded thumbnail nodes remain intact during scanning. Metadata is cached across picker reopenings for the current session; Refresh clears it. Images remain original map assets displayed at thumbnail size, not separately generated thumbnail files.
 
 - New Modular Scene includes a performance warning recommending lower-resolution tiles and only a few animated tiles for large scenes, explaining the impact on players with slower devices.
@@ -129,7 +131,7 @@
 - Scene configuration inserts the checkbox into the Basics content panel, not the same-named navigation link. Browser regression checks preserve tab navigation layout and prevent duplicate controls.
 - Dedicated searchable/category-filtered icon grid, location creation, appearance editing, tint/size/position/global visibility, journal opening, pan, native configuration, and confirmed pin deletion (journal retained). Native note documents preserve placement, links and native functions.
 - New POIs use one text page each in a shared `SceneTools / Scene Name - POIs` journal. Scene-ID identity reuses the journal after renaming and separates same-named scenes. Template HTML and images become editable sections; other media retain native page links. Existing POIs are unchanged; no consolidation or migration is provided.
-- The private default template has one POI page with Description, Factions, Contacts, Services, and a secret GM notes section. New POI pages grant player Observer access without copying template editing grants. Template edits affect future pins only. Inline images can be used in hover previews; secret images and content remain permission-filtered. Failed note creation removes only its new page, preserving other POIs.
+- The private default template has one POI page with Description, Factions, NPC's, Contacts, and Services. GM notes is excluded from hover fields and previews, including older templates. Existing journal content is preserved. New POI pages grant player Observer access without copying template editing grants. Template edits affect future pins only. Inline images can be used in hover previews; secret images and content remain permission-filtered. Failed note creation removes only its new page, preserving other POIs.
 - Template defaults and native pin options list actual headings from the selected Description page as checkboxes. The Description section always appears in full across the bottom of the hover card; selected other sections appear as labeled fields to the right of the image in the top row. Every heading level defines a section, through the next heading. Pages without headings use their full content as Description. Selections use JSON arrays, supporting commas in names and selecting no extra fields.
 - Crafted hover cards preserve rich text and allow scrolling through full descriptions when the card exceeds the viewport. Moving onto the card keeps it open; leaving dismisses it. Hover cards check journal and page Observer permissions, omit unrevealed secret sections for players, and discard pending content after hover exit or document changes.
 - Self-contained labeled, recolorable preview: `docs/city-icons.html`. Source selection: `scripts/city-wayfinding-selection.json`; pinned path data: `scripts/vendor/city-wayfinding.json`; names/categories: `scripts/city-icon-catalog.json`; offline generator: `scripts/generate-city-icons.mjs`; assets and license notices: `src/assets/city-icons/`. Only explicit source refreshes (`scripts/fetch-city-wayfinding.mjs`) need network access.
@@ -578,7 +580,42 @@ On scenes with Scene Tools Map POI enabled, the Notes layer stays visible and in
 
 - Quick Scene Importer grid-color pickers default to black, including when a companion Scene JSON specifies red or another color. Individual and shared custom color selections remain available.
 
+### Map pin journal access
+
+- Managed POI images no longer force JSON journal exports back to HTML: text remains in named sections, and a separate page image object exposes src/alt. Import recreates the image block and synchronizes its Note image path.
+
+- Map POI Defaults includes template journal selection, Edit selected journal, Use default template, and hover-field choices in the same form as pin appearance. Removed the separate Journal Template dialog and redundant image/description page selectors. One Save persists appearance and template defaults; hover choices reflect all template pages and refresh when journal text changes.
+
+- Journal Template guidance explains editing template headings, new-POI-only changes, page-level permissions, and where to find JSON import/export; removed the obsolete GM-secret-section introduction.
+
+- Editable JSON journal pages support `sections: {"Description": "Text", "Factions": "Text", "NPCs": "Text"}` alongside page key/data. Import converts plain text into headings and paragraphs. Simple pages export in this form; complex HTML and secrets retain native text content. Ambiguous pages supplying both formats are rejected before writes.
+
+- Map POI manager includes Export JSON and Import JSON for all scene Notes and their linked journals/pages. Files are indented, manually editable JSON; import adds fresh documents and remaps Note/hover page links without overwriting existing content. Native artwork paths and default permissions are retained; user-specific grants and media files are not transferred. See [format and example](docs/map-pin-transfer.md).
+
+- Pan to Note is inserted above each linked POI journal page without changing saved journal content. The associated Note is resolved on click. Players on another scene receive a message without moving their view; GMs view the destination scene first. Current-scene players must have journal access and a visible Note. Missing Notes produce a message.
+
+- Upgrade cleanup removes GM Notes from existing module-created default POI templates on active-GM world startup and before template use. Other sections are retained; custom unflagged templates and existing scene POI journals are untouched. Repeated cleanup makes no further writes.
+
+- On enabled Map POI scenes, right-click offers Open Journal to GMs and players with read access. Permission and Edit POI actions remain GM-only.
+- Double-click on the Token layer opens the linked journal page for GMs and players. Double-click on the Journal Notes layer opens Note configuration for authorized editors. Journal permissions are rechecked when opening, and the hover hint reflects the active layer.
+- Automated browser fixture coverage; live Foundry verification pending.
+
+### Vehicle promotion
+
+- GM vehicle configuration includes Promote for unlinked SceneTools vehicles. Confirmation saves pending edits, creates an Actor under SceneTools/Promoted Vehicles, and links the placed token to it.
+- The permanent Actor preserves current stats and equipment. Its prototype retains vehicle provenance, artwork/scale, dimensions, rotation, pivot, and local/default seat layouts, so subsequent drops remain functioning vehicles. Template identity and scene-specific position, visibility, rider assignment, and patrol state are excluded from the prototype.
+- Promoted vehicles remain configurable: stats and player permissions affect the linked Actor; artwork and seat placement edits affect the placed token. Promotion captures the prototype setup at promotion time. Failed linking removes an unused newly created Actor.
+- Validated with automated fixtures and build checks; live Foundry and multiplayer verification remain pending.
+
 ### Vehicle configuration layout
+
+- Vehicle HUD buttons match the rendered native HUD button dimensions, margins, and icon size. Seat SVG and car/gear artwork scale with native icons. Vehicle HUD settings offer Native or Custom icon colors, plus Match to Combat Tools when that module is active.
+
+- Patrol controller widget saves its position per world/user in browser storage as it moves, restores it when reopened, and clamps restored coordinates to keep the header accessible. Session memory remains available if browser storage is blocked.
+
+- Patrol editor also uses Mook Maker compact form styling: green settings, blue recent operations, gold waypoint panels, compact labeled rows, and aligned footer actions.
+
+- Vehicle configuration reuses Mook Maker's compact form and section styles, label typography, row separators, and action-button layout. Promote uses the same gold button and hover/focus colors as Mook Maker.
 
 - MookMaker places Cancel on the left and Apply on the right. Its dialog fits the form without an unused native footer; vertical scrolling remains available when the window is constrained. Automated browser layout checks only; live Foundry verification pending.
 - Vehicle configuration shows an Artwork Category pick list above compact stats on the left, with a live artwork/seat preview on the right. Category entries include token width, height, and defined seat count. MookMaker uses the same Artwork Category label.
@@ -674,3 +711,7 @@ On scenes with Scene Tools Map POI enabled, the Notes layer stays visible and in
 - Hazard attack/effect links now navigate to and highlight the existing card in chat instead of opening an empty ChatMessage sheet. Unloaded older cards report that chat history must be loaded first.
 
 - Modular tile browser uses generated WebP still thumbnails with a maximum 160-pixel edge for images and videos. Two concurrent generators cache the thumbnails and original dimensions in this browser across reloads (session-only if browser cache storage is unavailable). Initial generation reads originals once; preview/placement retain original paths. Refresh regenerates the collection thumbnails. Failed thumbnails remain placeholders, without loading originals into the thumbnail grid. Browser fixture verification covers still/video generation, persistent reuse, refresh and placement; live Foundry performance remains unverified.
+
+- A deleted selected POI template no longer blocks new pins: the default template is recreated/reused and selected with fresh page references. Existing templates and POI pages remain unchanged. The new default has no empty Image heading; a selected POI image is appended at the bottom.
+
+- Hazard validation errors identify the scene, hazard, and invalid list field instead of a generic Invalid links message. Invalid saved data remains unchanged.

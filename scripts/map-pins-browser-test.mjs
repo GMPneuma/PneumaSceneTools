@@ -135,11 +135,20 @@ try {
     canvas.notes.placeables=[existing];game.activeTool='journal';
     await placement(native,{interactionData:{origin:{x:91,y:92}},stopPropagation(){stopped++;}});
     if(document.querySelector('.native-create')||nativeCalls!==2)throw Error('Clicking an existing pin opened creation');
+    canvas.notes.active=true;
     noteDoubleClick.call(existing,native,{stopPropagation(){stopped++;}});
     if(edits!==1||stopped!==2)throw Error('Double-click did not edit the existing pin');
-    game.user.isGM=false;noteDoubleClick.call(existing,native,{});game.user.isGM=true;
+    let journals=0;
+    existing.document.pageId='linked-page';existing.document.entry={pages:new Map([['linked-page',{testUserPermission:()=>true}]]),sheet:{render(_force,options){if(options.pageId!=='linked-page')throw Error('Wrong journal page');journals++;}}};
+    canvas.notes.active=false;canvas.tokens={active:true};
+    for(const isGM of [true,false]){game.user.isGM=isGM;noteDoubleClick.call(existing,native,{stopPropagation(){}});}
+    if(journals!==2||edits!==1)throw Error('Token layer double-click must open the journal for GM and player');
+    canvas.notes.active=true;canvas.tokens.active=false;
+    noteDoubleClick.call(existing,native,{stopPropagation(){}});
+    if(edits!==1||journals!==2)throw Error('Player opened unauthorized Note configuration');
+    game.user.isGM=true;
     scene.flags[ID].mapPinning=false;noteDoubleClick.call(existing,native,{});scene.flags[ID].mapPinning=true;
-    if(edits!==1||nativeCalls!==4)throw Error('Double-click override changed native player or unmarked-scene behavior');
+    if(edits!==1||nativeCalls!==3)throw Error('Double-click override changed unmarked-scene behavior');
     nativeCalls=2;canvas.notes.placeables=[];game.activeTool='select';
 
     await pins.openMapPins(scene);
@@ -199,7 +208,8 @@ try {
   assert.deepEqual(await page.evaluate(()=>({copied,deleted})),{copied:1,deleted:1});
   await page.evaluate(()=>pins.openPinTemplate());
   await page.locator('.pneuma-pin-template .pin-section-list input[value="Factions"]').check();
-  await page.locator('.pneuma-pin-template [type="submit"]').click();
+  assert.equal(await page.locator('.pneuma-pin-template select').count(),1,'Defaults only needs the template journal selector');
+  await page.locator('.pin-create [type="submit"]').click();
   await page.waitForFunction(()=>!document.querySelector('.pneuma-pin-template'));
   assert.deepEqual(JSON.parse(await page.evaluate(()=>game.settings.get().sections)),['Factions']);
   await page.evaluate(async()=>{
@@ -236,12 +246,28 @@ try {
     if(stopped!==1||native!==0||!pinContext)throw Error('Pin context menu did not open');
     document.body.dispatchEvent(new MouseEvent('pointerup',{bubbles:true,button:2}));
     if(!document.querySelector('.pneuma-pin-context'))throw Error('Menu closed on release');
-    pinContext.items[0].callback();await new Promise(resolve=>setTimeout(resolve,0));
+    let journals=0;scene.notes[0].entry.sheet={render(_force,options){if(options.pageId!=='page')throw Error('Wrong context journal page');journals++;}};
+    pinContext.items.find(item=>item.name==='Open Journal').callback();
+    if(journals!==1)throw Error('Context menu did not open journal');
+    pinContext.items.find(item=>item.name==='Remove player read access').callback();await new Promise(resolve=>setTimeout(resolve,0));
     if(permissionPage.ownership.player!==0)throw Error('Context permission action failed');
     await pinContext.close();
     if(document.querySelector('.pneuma-pin-context'))throw Error('Context anchor leaked');
     game.user.isGM=false;rightClick.call({document:scene.notes[0]},()=>native++,event);game.user.isGM=true;
     if(native!==1)throw Error('Player native right-click was intercepted');
+    permissionPage.ownership.default=2;permissionPage.ownership.player=2;
+    game.user.isGM=false;
+    const canHUD=wrappers.get('Note.prototype._canHUD');
+    if(!canHUD.call({document:scene.notes[0],visible:true},()=>false))throw Error('Readable player pin cannot receive right-click');
+    if(canHUD.call({document:scene.notes[0],visible:false},()=>false))throw Error('Hidden pin received right-click permission');
+    rightClick.call({document:scene.notes[0]},()=>native++,event);
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const readable=pinContext.items.filter(item=>item.condition);
+    if(readable.length!==1||readable[0].name!=='Open Journal')throw Error('Player context actions incorrect');
+    readable[0].callback();if(journals!==2)throw Error('Player journal action failed');
+    permissionPage.ownership.default=0;permissionPage.ownership.player=0;
+    readable[0].callback();if(journals!==2)throw Error('Journal action did not recheck permissions');
+    await pinContext.close();game.user.isGM=true;
   });
   await page.evaluate(()=>{
     window.bulkUpdates=[];
@@ -272,7 +298,7 @@ try {
   await page.locator('[data-action="defaults"]').click();
   await page.waitForSelector('[name="size"]');
   assert.equal(await page.locator('.pin-create .pin-icon-folders').count(),0);
-  assert.equal(await page.locator('.pin-create').evaluate(form=>form.closest('.dialog').style.width),'480px');
+  assert.equal(await page.locator('.pin-create').evaluate(form=>form.closest('.dialog').style.width),'560px');
   await page.locator('[data-pin-color="tint"]').fill('#123456');
   assert.equal(await page.locator('[name="tint"]').inputValue(),'#123456');
   await page.locator('.pin-create').evaluate(form=>form.closest('.dialog').scrollIntoView());
@@ -455,7 +481,7 @@ try {
     await page.screenshot({path:light?'docs/map-poi-light-preview.png':'docs/map-poi-dark-preview.png',fullPage:true});
   }
   await page.evaluate(async()=>{document.getElementById('theme-check')?.remove();for(const dialog of dialogs)if(dialog.rendered&&dialog.data.title==='Choose POI icon')await dialog.close();});
-  await page.evaluate(()=>{
+  await page.evaluate(async()=>{
     const data=new FormData(noteForm);
     if(data.get('text')!=='Existing native pin'||data.get('flags.pneuma-scenetools.mapPin.descriptionPageId')!=='description')throw Error('Combined native and special form data missing');
     const entry=noteForm.querySelector('[name="entryId"]');entry.value='';entry.dispatchEvent(new Event('change'));
@@ -465,6 +491,27 @@ try {
     Hooks.fire('renderNoteConfig',{object:draft,position:{width:400},setPosition(){}},[draftForm]);
     if(draftForm.querySelector('[name="fontSize"]').value!=='28'||draft.source.iconSize!==64)throw Error('Native new-pin editor did not inherit defaults');
     noteForm.remove();
+    const {addPinJournalButton}=await import('/modules/pneuma-scenetools/scripts/map-pin-journal.js');
+    const journalPage={flags:{'pneuma-scenetools':{poi:true}},testUserPermission:()=>true};
+    const journalRoot=document.createElement('section');journalRoot.className='journal-entry-page';journalRoot.innerHTML='<h2>Location</h2><div class="journal-page-content">Description</div>';
+    addPinJournalButton(journalPage,journalRoot);addPinJournalButton(journalPage,journalRoot.querySelector('.journal-page-content'));
+    if(journalRoot.querySelectorAll('.pneuma-pin-journal-action').length!==1||!journalRoot.firstElementChild.classList.contains('pneuma-pin-journal-action'))throw Error('Journal pan button must appear once at the top');
+    if(journalRoot.querySelector('button').textContent.trim()!=='Pan to Note')throw Error('Journal pan label mismatch');
+    const cleanup=await import('/modules/pneuma-scenetools/scripts/map-pin-template-cleanup.js');
+    const oldTemplate='<h2>Description</h2><p>Custom description</p><section class="secret"><h2>GM notes</h2><p>Old note</p></section><h2>Services</h2><p>Custom services</p>';
+    const expected='<h2>Description</h2><p>Custom description</p><h2>Services</h2><p>Custom services</p>';
+    if(cleanup.removeTemplateGMNotes(oldTemplate)!==expected)throw Error('Template cleanup lost unrelated edits');
+    if(cleanup.removeTemplateGMNotes(expected)!==expected)throw Error('Template cleanup is not idempotent');
+    if(cleanup.removeTemplateGMNotes('<h2>GM Notes</h2><p>Remove</p><h2>Services</h2><p>Keep</p>')!=='<h2>Services</h2><p>Keep</p>')throw Error('Unwrapped GM Notes cleanup failed');
+    let writes=0;
+    const legacyPage={type:'text',text:{content:oldTemplate},async update(data){writes++;this.text=data.text;return this;}};
+    const legacy={id:'legacy-template',flags:{'pneuma-scenetools':{pinTemplate:true}},pages:[legacyPage]};
+    game.user.isGM=false;await cleanup.cleanDefaultPinTemplate(legacy);
+    if(writes)throw Error('Player migrated a template');
+    game.user.isGM=true;await cleanup.cleanDefaultPinTemplate({...legacy,flags:{}});
+    if(writes)throw Error('Custom journal migrated');
+    await cleanup.cleanDefaultPinTemplate(legacy);await cleanup.cleanDefaultPinTemplate(legacy);
+    if(writes!==1||legacyPage.text.content!==expected)throw Error('Default template migration failed');
     for(const gm of [true,false]){
       game.user.isGM=gm;scene.flags['pneuma-scenetools'].mapPinning=!gm;
       const form=document.createElement('form');form.innerHTML='<input name="text"><button type="submit">Save</button>';
@@ -496,6 +543,11 @@ try {
   assert.match(states.gmText,/Hidden faction/);
   assert.ok(states.noJournal&&states.noPages&&states.noLate&&states.disabled);
   const layout=await page.evaluate(async()=>{
+    for(const gm of [true,false]){
+      const fields=hover.parseHoverPage('<h2>Description</h2><p>Main</p><h2>GM notes</h2><p>Private</p><h2>Services</h2><p>Shop</p>',gm);
+      if(fields.some(field=>field.name==='GM notes'||field.html.includes('Private')))throw Error('GM notes remains in hover fields');
+      if(fields.length!==2)throw Error('Removing GM notes affected other fields');
+    }
     const parsed=hover.parseHoverPage('<h2>Description</h2><p>Main</p><h3>Details</h3><p>Nested detail</p><h2>NPC, Contact</h2><p>Rogue</p>',false);
     if(parsed.length!==3||parsed[1].name!=='Details'||!parsed[1].html.includes('Nested detail')||parsed[2].name!=='NPC, Contact')throw Error('Mixed heading levels lost fields');
     if(hover.selectedHoverFields('["NPC, Contact"]')[0]!=='NPC, Contact')throw Error('Comma in section name lost');

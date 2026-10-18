@@ -31,7 +31,7 @@ try {
         static once(name,callback){this.on(name,callback)}
         static async fire(name,...args){for(const callback of this.events.get(name)??[])await callback(...args)}
       }
-      const foundry={data:{regionBehaviors:{RegionBehaviorType:class{}}},utils:{randomID:()=>crypto.randomUUID(),mergeObject:(a,b)=>({...a,...b}),getProperty:(object,path)=>path.split('.').reduce((value,key)=>value?.[key],object),getRoute:path=>'/'+path}};
+      const foundry={data:{fields:{ColorField:class{}},regionBehaviors:{RegionBehaviorType:class{}}},utils:{randomID:()=>crypto.randomUUID(),mergeObject:(a,b)=>({...a,...b}),getProperty:(object,path)=>path.split('.').reduce((value,key)=>value?.[key],object),getRoute:path=>'/'+path}};
       const notices=[];
       const ui={scenes:{element:[document.querySelector('#scenes')]},notifications:{info(){},warn(){},error(message){notices.push(message)}}};
       const canvas={ready:false};
@@ -66,9 +66,9 @@ try {
     if(globalThis.FormApplication!==undefined||globalThis.Hooks!==undefined)throw Error('Fixture must use lexical Foundry globals');
     await Promise.all(["main.js","mookmaker/entry.js","netarch/entry.js"].map(path=>import('/modules/pneuma-scenetools/scripts/'+path).catch(error=>notices.push(error.message))));
     await Hooks.fire('init');await Hooks.fire('ready');await Hooks.fire('renderSceneDirectory',{},[document.querySelector('#scenes')]);
-    return {folders:[...game.folders].map(folder=>folder.name),sceneFolders:[...game.folders].filter(folder=>folder.type==='Scene').map(folder=>({id:folder.id,name:folder.name,parent:folder.folder?.id??null})),actors:game.actors.size,button:document.querySelectorAll('.pneuma-scene-create').length,api:Boolean(game.modules.get('pneuma-scenetools').api)};
+    return {notices,folders:[...game.folders].map(folder=>folder.name),sceneFolders:[...game.folders].filter(folder=>folder.type==='Scene').map(folder=>({id:folder.id,name:folder.name,parent:folder.folder?.id??null})),actors:game.actors.size,button:document.querySelectorAll('.pneuma-scene-create').length,api:Boolean(game.modules.get('pneuma-scenetools').api)};
   });
-  assert.deepEqual(errors,[]);assert.equal(state.api,true);assert.equal(state.button,1);assert.equal(state.actors,9);
+  assert.deepEqual(errors,[]);assert.deepEqual(state.notices,[]);assert.equal(state.api,true);assert.equal(state.button,1);assert.equal(state.actors,9);
   assert.deepEqual(await page.locator('.pneuma-scene-tools-row button').allTextContents(),[' Import',' Modular']);
   assert.equal(await page.locator('.pneuma-scene-create .fa-file-import').count(),1);
   assert.equal(await page.locator('.pneuma-modular-open .fa-person-digging').count(),1);

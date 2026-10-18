@@ -29,12 +29,14 @@ try{
   globalThis.Dialog=class{
    constructor(data,options={}){this.options=options;this.data=data;globalThis.latestDialog=this}
    render(){const root=document.createElement('div');root.style='position:absolute;right:0;top:0;width:560px;background:#ddd;padding:12px';root.style.width=(this.options.width??560)+'px';root.id=this.options.id??'';root.className='app window-app dialog';root.style.height='200px';if(this.options.id==='pneuma-patrol-controller'){root.style.removeProperty('background');}root.innerHTML=`<section class="window-content"><div class="dialog-content">${this.data.content}</div></section>`;document.body.append(root);this.root=root;this.element=[root];this.data.render([root]);return this}
+   setPosition(position={}){this.position={left:0,top:0,width:160,height:200,...this.position,...position};return this.position}
    bringToTop(){}async close(){this.data.close();this.root.remove()}
    static async confirm(){return globalThis.confirmAnswer??true}
   };
  });
  await page.addStyleTag({content:'.window-app{display:flex;flex-direction:column;max-height:95vh;overflow:hidden}.window-content{flex:1;overflow:auto}'});
  await page.addStyleTag({content:await readFile('dist/styles/pneuma-scenetools.css','utf8')});
+ await page.addStyleTag({content:await readFile('dist/styles/mookmaker.css','utf8')});
  await page.evaluate(async()=>{globalThis.patrol=await import('/scripts/patrol-ui.js');await patrol.openPatrols();});
  assert.equal(await page.locator('[name=token]').inputValue(),'Guard');
  assert.equal(await page.locator('.pneuma-patrol .notes').count(),0);
@@ -131,7 +133,18 @@ try{
  assert.equal(scrolling,0,'Both windows and their lists grow instead of adding scrollbars');
  assert.equal(await page.locator('.patrol-waypoints').evaluate(el=>el.scrollHeight<=el.clientHeight+1),true);
  assert.equal(await page.locator('[data-patrol-list]').evaluate(el=>el.scrollHeight<=el.clientHeight+1),true);
- await page.evaluate(()=>Hooks.callAll('canvasTearDown'));assert.equal(await page.locator('.patrol-controller').count(),0);
+ await page.evaluate(async()=>{
+   Hooks.callAll('canvasTearDown');
+   patrolTool.onClick();
+   latestDialog.setPosition({left:240,top:180});
+   await latestDialog.close();patrolTool.onClick();
+   if(latestDialog.options.left!==240||latestDialog.options.top!==180)throw Error('Patrol position was not restored');
+   const stored=JSON.parse(localStorage.getItem('pneuma-scenetools:patrol-position:world:gm'));
+   if(stored.left!==240||stored.top!==180)throw Error('Patrol position was not persisted');
+   latestDialog.setPosition({left:9999,top:9999});await latestDialog.close();patrolTool.onClick();
+   if(latestDialog.options.left>innerWidth-160||latestDialog.options.top>innerHeight-40)throw Error('Restored widget is off screen');
+   Hooks.callAll('canvasTearDown');
+ });assert.equal(await page.locator('.patrol-controller').count(),0);
  await page.evaluate(async()=>{game.user.isGM=false;await patrol.openPatrols();patrolTool.onClick()});assert.equal(await page.locator('.pneuma-patrol').count(),0);
  assert.deepEqual(errors,[]);console.log('Patrol browser fixture passed: modes, placement, order, save/start/stop, validation, draft isolation, GM restriction, teardown.');
 }finally{await browser.close();}

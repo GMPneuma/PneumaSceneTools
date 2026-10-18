@@ -153,6 +153,30 @@ try {
  await page.getByLabel('Current HP',{exact:true}).fill('32');await page.getByLabel('Current SP',{exact:true}).fill('9');await page.locator('[name="move"]').fill('10');
  await page.locator('.pneuma-vehicle-config button[type="submit"]').click();await page.waitForFunction(()=>!document.querySelector('.pneuma-vehicle-config'));
  assert.deepEqual(await page.evaluate(()=>[vehicle.actor.system.derivedStats.hp.value,vehicle.actor.items[0].system.bodyLocation.ablation,vehicle.actor.system.stats.move.value]),[32,4,10]);
+ await page.evaluate(async()=>{
+   const {styleVehicleHud,registerVehicleHudStyle}=await import('/modules/pneuma-scenetools/scripts/vehicle-hud-style.js');
+   const previous={settings:game.settings,modules:game.modules,data:foundry.data};
+   const root=document.createElement('div');root.id='token-hud';root.innerHTML='<div class="col left"><div class="pneuma-vehicle-controls"><div class="control-icon"><span class="pneuma-car-gear"><i class="fa-car"></i></span></div></div></div>';document.body.append(root);
+   const native=document.createElement('div');
+   native.className='control-icon';native.style.cssText='width:32px;height:32px;padding:2px;margin:3px;box-sizing:border-box;font-size:20px';native.innerHTML='<i style="font-size:20px"></i>';
+   root.querySelector('.col.left').prepend(native);
+   let mode='native';const registered=new Map();
+   game.settings={get:(_id,key)=>key==='vehicleHudColorMode'?mode:'#123456',register:(_id,key,value)=>registered.set(key,value)};
+   game.modules=new Map();foundry.data={fields:{ColorField:class{}}};
+   registerVehicleHudStyle();if(registered.get('vehicleHudColorMode').choices.combat)throw Error('Combat match offered without Combat Tools');
+   game.modules.set('pneuma-combattools',{active:true});registerVehicleHudStyle();
+   if(registered.get('vehicleHudColorMode').choices.combat!=='Match to Combat Tools')throw Error('Combat match missing');
+   styleVehicleHud(root);
+   const button=root.querySelector('.pneuma-vehicle-controls > .control-icon');
+   for(const prop of ['width','height','margin','padding'])if(getComputedStyle(button)[prop]!==getComputedStyle(native)[prop])throw Error('Native HUD geometry mismatch: '+prop);
+   const icon=button.querySelector('.pneuma-car-gear');
+   if(getComputedStyle(icon).fontSize!=='20px')throw Error('Native icon size mismatch');
+   mode='custom';styleVehicleHud(root);if(getComputedStyle(icon).color!=='rgb(18, 52, 86)')throw Error('Custom icon color missing');
+   root.style.setProperty('--pneuma-cth-icon-color','#abcdef');mode='combat';styleVehicleHud(root);
+   if(getComputedStyle(icon).color!=='rgb(171, 205, 239)')throw Error('Combat icon color mismatch');
+   mode='native';styleVehicleHud(root);if(root.querySelector('.pneuma-vehicle-controls').style.getPropertyValue('--vehicle-hud-color'))throw Error('Native color override retained');
+   root.remove();game.settings=previous.settings;game.modules=previous.modules;foundry.data=previous.data;
+ });
  assert.deepEqual(errors,[]);
 
  // Category selection immediately previews its seats; Save retains the exact image and local edits.
@@ -248,7 +272,7 @@ try {
  assert.equal(await page.locator('#token-hud > .col.left').count(),0,'No synthetic native column');
  const standalonePosition=await page.evaluate(()=>{const root=document.querySelector('#token-hud').getBoundingClientRect(),controls=document.querySelector('.pneuma-vehicle-controls').getBoundingClientRect();return {root:root.left,right:controls.right,height:controls.height};});
  assert.ok(standalonePosition.right<=standalonePosition.root && standalonePosition.height>0,'Standalone controls are visible to the left of the HUD');
- await page.locator('[aria-label="Enter/Exit"]').click();await page.waitForSelector('[name="passenger"]');assert.equal(await page.locator('[name="passenger"]').inputValue(),'Passenger');
+ await page.locator('[aria-label="Enter/Exit"]').click();await page.waitForSelector('#token-hud [name="passenger"]');assert.equal(await page.locator('#token-hud [name="passenger"]').inputValue(),'Passenger');
  assert.equal(await page.evaluate(()=>canvas.tokens.controlled[0].document.id),'Passenger','Opening seats preserves selected character');
  await page.evaluate(()=>{document.querySelectorAll('.dialog').forEach(node=>node.remove());game.users.activeGM.isGM=true;game.user={id:'player',isGM:false};game.users.set('player',game.user);showStandalone();});
  assert.equal(await page.locator('[aria-label="Configure"]').count(),0);assert.equal(await page.locator('[aria-label="Enter/Exit"]').count(),1,'Player gets seats on unselected vehicle');

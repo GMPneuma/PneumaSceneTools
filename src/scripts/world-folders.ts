@@ -6,6 +6,7 @@ export const WORLD_FOLDERS = {
   mookTemplates: "MookMaker Templates",
   mookPromoted: "MookMaker Promoted Actors",
   vehicleTemplates: "Vehicle Templates",
+  vehiclePromoted: "Promoted Vehicles",
   netarchAPs: "NetArchAPs",
   hazardActorTemplates: "Hazard Actor Templates",
 } as const;

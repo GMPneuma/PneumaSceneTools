@@ -28,7 +28,9 @@ export async function updateTrap(d: Hazard, changes: Record<string, unknown>): P
 export const authority = () => hazardsAvailable() && !!game.user?.isGM && activeGM()?.id === game.user.id;
 export function trapData(d: Hazard): TrapConfig | undefined {
   const t = d instanceof SceneHazard ? d.config : undefined;
-  return t ? { ...validateTrap(t), minElevation: d.elevation.bottom ?? -1e7, maxElevation: d.elevation.top ?? 1e7 } : undefined;
+  if(!t)return;
+  try{return { ...validateTrap(t), minElevation: d.elevation.bottom ?? -1e7, maxElevation: d.elevation.top ?? 1e7 };}
+  catch(error){throw Error(`Hazard "${t.name||d.id}" on scene "${d.parent.name}": ${error instanceof Error?error.message:String(error)}`);}
 }
 export const traps = (scene: Scene): Hazard[] => Object.keys(sceneHazardData(scene)).map(id => new SceneHazard(scene, id));
 export const hazardForRegion = (region: RegionDocument): Hazard | undefined => traps(region.parent!).find(hazard => hazard.config?.triggerRegionId === region.id);

@@ -1,7 +1,10 @@
 import {installPinScaling} from "./map-pins-scale.js";
+import {registerPinJournal} from "./map-pin-journal.js";
+import {exportPins,importPins,parsePinBundle} from "./map-pin-transfer.js";
+import {cleanExistingPinTemplates} from "./map-pin-template-cleanup.js";
 import {compactIconPicker,bindIconPicker} from "./map-pin-icons.js";
 import {openPinStyleEditor} from "./map-pins-bulk.js";
-import {installPinContextMenu,pinPermissionDocument,pinPermissionLabel,playersCanReadPin,setPinPlayerRead} from "./map-pin-permissions.js";
+import {installPinContextMenu,openPinJournal,pinPermissionDocument,pinPermissionLabel,playersCanReadPin,setPinPlayerRead} from "./map-pin-permissions.js";
 import {MODULE_ID} from "./settings.js";
 import {syncPinImage} from "./map-pins-image.js";
 import {installPinVisibility} from "./map-pins-visibility.js";
@@ -39,51 +42,7 @@ function sectionChoices(container:HTMLElement,page:JournalEntryPage|undefined,in
   if(!fields.length){const empty=document.createElement("p");empty.className="notes";empty.textContent="No other sections found on this page. Add headings to the Description page to define hover fields.";container.append(empty);}
   write();
 }
-let templateDialog:Dialog|undefined;
-export async function openPinTemplate():Promise<void> {
-  if(!game.user?.isGM) return;
-  if(templateDialog?.rendered) {templateDialog.bringToTop();return;}
-  const saved=game.settings!.get(MODULE_ID,"pinTemplate");
-  const resolved=saved.journalId && !game.journal?.find(j=>j.id===saved.journalId) ? {journal:await ensurePinTemplate(),config:EMPTY_TEMPLATE} : await getPinTemplate();
-  const {journal,config}=resolved;
-  const content=`<form class="pneuma-pin-template"><p>Each new POI receives one page in its Scene's POI journal. Template text and images become sections on that page. Players have view-only access; secret sections remain GM-only until revealed.</p>
-    <div class="form-group"><label>Template journal</label><div class="form-fields"><select name="journal">${game.journal?.filter(()=>true).map(j=>option(j.id!,j.name,journal.id!)).join("")}</select></div></div>
-    <div class="form-group"><label>Hover image page</label><div class="form-fields"><select name="image">${pageOptions(journal,"image",config.imagePageId)}</select></div></div>
-    <div class="form-group"><label>Hover description page</label><div class="form-fields"><select name="description">${pageOptions(journal,"text",config.descriptionPageId)}</select></div></div>
-    <h4>Hover fields</h4><input type="hidden" name="sections"><div class="pin-section-list"></div>
-    <div class="pin-options"><button type="button" data-action="edit">Edit selected journal</button><button type="button" data-action="default">Use default template</button></div>
-    <button type="submit">Save template &amp; hover layout</button><p class="pin-error" role="alert"></p></form>`;
-  let currentForm:HTMLFormElement|undefined;
-  templateDialog=new Dialog({title:"Scene Tools Map POI — Journal Template",content,buttons:{},render:html=>{
-    const form=html[0]!.querySelector<HTMLFormElement>("form")!;
-    currentForm=form;
-    const journals=form.elements.namedItem("journal") as HTMLSelectElement;
-    const image=form.elements.namedItem("image") as HTMLSelectElement;
-    const description=form.elements.namedItem("description") as HTMLSelectElement;
-    const sections=form.elements.namedItem("sections") as HTMLInputElement;
-    const refreshSections=(value="")=>sectionChoices(form.querySelector(".pin-section-list")!,game.journal?.find(j=>j.id===journals.value)?.pages.find(p=>p.id===description.value),sections,value);
-    refreshSections(config.sections);description.addEventListener("change",()=>refreshSections());
-    hoverFieldRefreshers.set(form,page=>{
-      if(page.parent?.id!==journals.value||page.id!==description.value)return;
-      refreshSections(sections.value);templateDialog?.setPosition({height:"auto"});
-    });
-    const refresh=()=>{const selected=game.journal?.find(j=>j.id===journals.value);image.innerHTML=pageOptions(selected,"image",selected?.pages.find(p=>p.type==="image")?.id??"");description.innerHTML=pageOptions(selected,"text",selected?.pages.find(p=>p.name==="Description"&&p.type==="text")?.id??selected?.pages.find(p=>p.type==="text")?.id??"");refreshSections();};
-    journals.addEventListener("change",refresh);
-    form.querySelector('[data-action="edit"]')!.addEventListener("click",()=>game.journal?.find(j=>j.id===journals.value)?.sheet?.render(true));
-    form.querySelector('[data-action="default"]')!.addEventListener("click",()=>{void ensurePinTemplate().then(j=>{if(![...journals.options].some(o=>o.value===j.id))journals.add(new Option(j.name,j.id!));journals.value=j.id!;refresh();}).catch(e=>{form.querySelector(".pin-error")!.textContent=error(e);});});
-    let saving=false;
-    form.addEventListener("submit",event=>{event.preventDefault();if(saving)return;saving=true;
-      const submit=form.querySelector<HTMLButtonElement>('[type="submit"]')!;submit.disabled=true;
-      void (async()=>{
-        if(!game.user?.isGM)throw new Error("Only GMs can configure templates.");
-        const selected=game.journal?.find(j=>j.id===journals.value);if(!selected)throw new Error("Select an existing journal.");
-        const value={journalId:selected.id!,imagePageId:image.value,descriptionPageId:description.value,sections:sections.value};
-        validateTemplate(selected,value);await game.settings!.set(MODULE_ID,"pinTemplate",value);await templateDialog?.close();
-      })().catch(e=>{form.querySelector(".pin-error")!.textContent=error(e);}).finally(()=>{saving=false;submit.disabled=false;});
-    });
-  },close:()=>{if(currentForm)hoverFieldRefreshers.delete(currentForm);templateDialog=undefined;}},{width:560});
-  templateDialog.render(true);
-}
+export async function openPinTemplate():Promise<void> { await openPinDefaults(); }
 
 const managers=new Map<string,Dialog>();
 const creationTemplates=new WeakMap<NoteDocument,JournalEntry>();
@@ -336,6 +295,21 @@ export async function openMapPins(scene:Scene,editing?:NoteDocument,position?:{x
   const content=`<section class="pneuma-map-pins pneuma-pin-manager"><h3>${escape(scene.name)} — Scene pins (${scene.notes.size})</h3><div class="pin-options"><button type="button" data-action="place"><i class="fas fa-map-pin"></i> Place pin on map</button><button type="button" data-action="defaults"><i class="fas fa-cog"></i> Map POI Defaults</button></div><div class="pin-options pin-selection"><label><input type="checkbox" data-select-all> Select all</label><button type="button" data-action="bulk-style" disabled>Style selected (0)</button></div><div class="pin-list">${rows||"<p>No pins on this scene.</p>"}</div><p class="pin-error" role="alert"></p></section>`;
   const dialog=new Dialog({title:"Scene Tools Map POI",content,buttons:{},render:html=>{
     const root=html[0]!,message=root.querySelector(".pin-error")!;
+    const transfer=document.createElement('div');transfer.className='pin-options';
+    transfer.innerHTML='<button type="button" data-action="export-pins">Export JSON</button><button type="button" data-action="import-pins">Import JSON</button><input type="file" accept=".json,application/json" hidden>';
+    root.querySelector('.pin-options')!.after(transfer);
+    const file=transfer.querySelector<HTMLInputElement>('input')!;
+    transfer.querySelector('[data-action="export-pins"]')!.addEventListener('click',()=>{
+      try{saveDataToFile(JSON.stringify(exportPins(scene),null,2),'application/json',`${scene.name.replace(/[^a-z0-9_-]/gi,'_')}-pins.json`);}catch(cause){message.textContent=error(cause);}
+    });
+    transfer.querySelector('[data-action="import-pins"]')!.addEventListener('click',()=>file.click());
+    file.addEventListener('change',()=>{void (async()=>{
+      const selected=file.files?.[0];if(!selected)return;
+      const text=await selected.text(),bundle=parsePinBundle(text);
+      if(!await Dialog.confirm({title:'Import Map Pins',content:`<p>Add ${bundle.notes.length} pins and ${bundle.journals.length} journals to this scene? Existing documents are kept. Importing the same file again creates additional copies. Image files are not included.</p>`,defaultYes:false}))return;
+      transfer.querySelectorAll<HTMLButtonElement>('button').forEach(button=>{button.disabled=true;});
+      await importPins(scene,text);await dialog.close();await openMapPins(scene);
+    })().catch(cause=>{message.textContent=error(cause);}).finally(()=>{file.value='';transfer.querySelectorAll<HTMLButtonElement>('button').forEach(button=>{button.disabled=false;});});});
     const selections=Array.from(root.querySelectorAll<HTMLInputElement>(".pin-select"));
     const all=root.querySelector<HTMLInputElement>("[data-select-all]")!,bulk=root.querySelector<HTMLButtonElement>('[data-action="bulk-style"]')!;
     const selectedIds=()=>selections.filter(input=>input.checked).map(input=>input.closest<HTMLElement>(".pin-row")!.dataset.id!);
@@ -406,13 +380,18 @@ async function openPinForm():Promise<void> {
   const key="defaults";
   const existing=managers.get(key);if(existing?.rendered){existing.bringToTop();return;}
   const defaults=getPinDefaults();
+  const {journal,config}=await getPinTemplate();
+  if(managers.get(key)?.rendered){managers.get(key)!.bringToTop();return;}
   const content=await renderTemplate(`modules/${MODULE_ID}/templates/map-pins.hbs`,{
     ...defaults,
+    journalOptions:game.journal?.map(j=>option(j.id!,j.name,journal.id!)).join('')??'',
     fontOptions:Object.entries(typeof FontConfig!=="undefined"?FontConfig.getAvailableFontChoices():{Signika:"Signika"}).map(([id,label])=>option(id,label,defaults.fontFamily)).join(""),
     anchorOptions:["Center","Bottom","Top","Left","Right"].map((label,id)=>option(String(id),label,String(defaults.textAnchor))).join(""),
   });
+  let currentForm:HTMLFormElement|undefined;
   const dialog=new Dialog({title:"Scene Tools Map POI - Defaults",content,buttons:{},render:html=>{
     const root=html[0]!,form=root.querySelector<HTMLFormElement>(".pin-create")!;
+    currentForm=form;
     wholeCoordinates(form);
     for(const picker of form.querySelectorAll<HTMLInputElement>("[data-pin-color]")){
       const field=form.elements.namedItem(picker.dataset.pinColor!) as HTMLInputElement;
@@ -420,7 +399,22 @@ async function openPinForm():Promise<void> {
       field.addEventListener("input",()=>{if(/^#[0-9a-f]{6}$/i.test(field.value))picker.value=field.value;});
     }
     const message=root.querySelector(".pin-error")!;
-    root.querySelector('[data-action="template"]')!.addEventListener("click",()=>{void openPinTemplate().catch(e=>{message.textContent=error(e);});});
+    const journals=form.elements.namedItem('journal') as HTMLSelectElement;
+    const sections=form.elements.namedItem('sections') as HTMLInputElement;
+    const selectedJournal=()=>game.journal?.find(j=>j.id===journals.value);
+    const refreshSections=(value='')=>{
+      const selected=selectedJournal();
+      sectionChoices(form.querySelector('.pin-section-list')!,selected?{text:{content:poiPageContent(selected)}} as JournalEntryPage:undefined,sections,value);
+      dialog.setPosition?.({height:'auto'});
+    };
+    refreshSections(config.sections);
+    journals.addEventListener('change',()=>refreshSections());
+    hoverFieldRefreshers.set(form,page=>{if(page.parent?.id===journals.value)refreshSections(sections.value);});
+    root.querySelector('[data-action="edit-template"]')!.addEventListener('click',()=>selectedJournal()?.sheet?.render(true));
+    root.querySelector('[data-action="default-template"]')!.addEventListener('click',()=>{void ensurePinTemplate().then(j=>{
+      if(![...journals.options].some(o=>o.value===j.id))journals.add(new Option(j.name,j.id!));
+      journals.value=j.id!;refreshSections();
+    }).catch(cause=>{message.textContent=error(cause);});});
     let busy=false;
     form.addEventListener("submit",event=>{event.preventDefault();if(busy)return;busy=true;message.textContent="";
       const submit=form.querySelector<HTMLButtonElement>('[type="submit"]')!;submit.disabled=true;
@@ -430,11 +424,16 @@ async function openPinForm():Promise<void> {
         const defaults={size:Number(data.get("size")),tint:String(data.get("tint")),global:data.has("global"),hover:data.has("hover"),
           fontFamily:String(data.get("fontFamily")??""),fontSize:Number(data.get("fontSize")),textColor:String(data.get("textColor")),textAnchor:Number(data.get("textAnchor"))};
         validatePinDefaults(defaults);
+        const selected=selectedJournal();if(!selected)throw Error('Select an existing template journal.');
+        const textPage=selected.pages.find(page=>page.type==='text');
+        const template={journalId:selected.id!,imagePageId:selected.pages.find(page=>page.type==='image')?.id??textPage?.id??'',descriptionPageId:textPage?.id??'',sections:sections.value};
+        validateTemplate(selected,template);
+        await game.settings!.set(MODULE_ID,'pinTemplate',template);
         await game.settings!.set(MODULE_ID,"pinDefaults",defaults);
         await dialog.close();
       })().catch(e=>{message.textContent=error(e);}).finally(()=>{busy=false;submit.disabled=false;});
     });
-  },close:()=>{managers.delete(key);}},{width:480,height:"auto",resizable:true});
+  },close:()=>{if(currentForm)hoverFieldRefreshers.delete(currentForm);managers.delete(key);}},{width:560,height:"auto",resizable:true});
   managers.set(key,dialog);dialog.render(true);
 }
 
@@ -464,10 +463,15 @@ export function installPinPlacement():void {
     return openMapPins(scene,undefined,{x:origin.x,y:origin.y}).catch(e=>ui.notifications?.error(error(e))).finally(()=>{placementOpening=false;});
   },"MIXED");
   libWrapper.register(MODULE_ID,"Note.prototype._onClickLeft2",function(this:Note,wrapped:(event:PIXI.FederatedEvent)=>unknown,event:PIXI.FederatedEvent){
-    if(!game.user?.isGM||!pinningEnabled(this.document.parent))return wrapped(event);
+    if(!pinningEnabled(this.document.parent))return wrapped(event);
+    if(!canvas.notes?.active && !canvas.tokens?.active)return wrapped(event);
     placementSceneId=undefined;
     event.stopPropagation();
-    return this.document.sheet?.render(true);
+    if(canvas.notes?.active){
+      if(game.user?.isGM || this.document.isOwner)return this.document.sheet?.render(true);
+      return;
+    }
+    return openPinJournal(this.document);
   },"MIXED");
   document.addEventListener("keydown",event=>{if(event.key==="Escape")placementSceneId=undefined;});
   Hooks.on("canvasTearDown",()=>{placementSceneId=undefined;});
@@ -475,6 +479,8 @@ export function installPinPlacement():void {
 }
 
 export function registerMapPins():void {
+  registerPinJournal();
+  Hooks.on("ready",()=>{void cleanExistingPinTemplates().catch(cause=>ui.notifications?.error(String(cause)));});
   Hooks.on("updateNote",(note:NoteDocument,change:Record<string,unknown>,_options:unknown,userId:string)=>{
     if(userId!==game.user?.id || !game.user?.isGM)return;
     const path=`flags.${MODULE_ID}.mapPin.imageSrc`;
@@ -516,10 +522,10 @@ export function registerMapPins():void {
     }
   });
   Hooks.on("closeNoteConfig",(app:NoteConfig)=>{if(app.form)hoverFieldRefreshers.delete(app.form);});
-  Hooks.on("preCreateNote",(note:NoteDocument)=>{
+  Hooks.on("preCreateNote",(note:NoteDocument,_data:unknown,options?:{sceneToolsPinImport?:boolean})=>{
     if(!pinningEnabled(note.parent))return;
     // Configured pins already carry their form choices; direct native creation needs defaults.
-    if(!pinInfo(note))note.updateSource(pinVisualDefaults());
+    if(!pinInfo(note)&&!options?.sceneToolsPinImport)note.updateSource(pinVisualDefaults());
     note.updateSource({x:Math.round(note.x),y:Math.round(note.y)});
   });
   Hooks.on("preUpdateNote",(note:NoteDocument,change:NoteDocument.UpdateData)=>{
