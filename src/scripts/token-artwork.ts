@@ -124,14 +124,18 @@ class ArtworkCategoriesForm extends FormApplication {
     slider.addEventListener('input', () => {field('scale').value = slider.value;field('scale').dispatchEvent(new Event('input'));});
     const drawList = () => {
       list.replaceChildren();let count = 0;
-      this.rows.forEach((row, index) => {
+      this.rows.map((row,index)=>({row,index})).sort((a,b)=>a.row.name.localeCompare(b.row.name,undefined,{numeric:true,sensitivity:"base"})).forEach(({row,index}) => {
         if (![row.name,row.folder].join(" ").toLowerCase().includes(search.value.toLowerCase())) return;
         count++;
         const button = document.createElement("button");button.type = "button";button.className = "artwork-entry";button.dataset.index = String(index);
         button.classList.toggle("selected", index === this.selected);button.setAttribute("aria-pressed", String(index === this.selected));
         const title = document.createElement("strong");title.textContent = row.name || "New category";
-        const summary = document.createElement("small");summary.textContent = row.kind === "vehicle" ? `Vehicle · ${row.width ?? 2} × ${row.height ?? 3} · ${row.seatLayout?.seats.length ?? 0} seats` : "Mook";
-        button.append(title, summary);button.title = row.folder;button.addEventListener("click", () => {this.selected = index;refresh();});list.append(button);
+        button.append(title);
+        if(row.kind === "vehicle") {
+          const summary = document.createElement("small");summary.textContent = `Vehicle · ${row.width ?? 2} × ${row.height ?? 3} · ${row.seatLayout?.seats.length ?? 0} seats`;
+          button.append(summary);
+        }
+        button.title = row.folder;button.addEventListener("click", () => {this.selected = index;refresh();});list.append(button);
       });
       root.querySelector('[data-count]')!.textContent = `${count} of ${this.rows.length} categories`;
       if (!count) {const empty = document.createElement("p");empty.textContent = "No matching categories.";list.append(empty);}

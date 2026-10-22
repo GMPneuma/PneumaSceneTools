@@ -1,4 +1,5 @@
 import {withMookOperation} from "./operations.js";
+import {escapeHTML} from "../netarch/model.js";
 import {confirmPurgeGear,hasSavedMook} from "./purge.js";
 import {
   CREATED_BY_MOOK_MAKER_FLAG,
@@ -92,7 +93,12 @@ async function promoteTokenUnlocked(token: Token): Promise<boolean> {
 export function confirmPromotion(token: Token, sourceDialog: Dialog): void {
   new Dialog({
     title: game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PromoteConfirmTitle"),
-    content: `<p>${game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PromoteWarning")}</p><button type="button" class="pneuma-mook-maker-purge" data-action="purge-gear" ${hasSavedMook(token)?'':'disabled'}><i class="fas fa-trash"></i> ${game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PurgeGear")}</button>`,
+    content: `<section class="pneuma-promotion-content">
+      <header class="pneuma-promotion-heading"><i class="fas fa-user-graduate" aria-hidden="true"></i><div><h2>${escapeHTML(token.name??token.actor?.name??"")}</h2><p>${game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PromoteDescription")}</p></div></header>
+      <div class="pneuma-promotion-destination"><span>${game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PromoteDestination")}</span><strong><i class="fas fa-folder" aria-hidden="true"></i> SceneTools / MookMaker Promoted Actors</strong></div>
+      <p class="pneuma-promotion-warning"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><span>${game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PromoteWarning")}</span></p>
+      <div class="pneuma-promotion-cleanup"><h3>${game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PromoteCleanup")}</h3><button type="button" data-action="purge-gear" ${hasSavedMook(token)?'':'disabled'}><i class="fas fa-trash"></i> ${game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PurgeGear")}</button></div>
+    </section>`,
     render: html=>{
       const button=html.find('[data-action="purge-gear"]');
       if(!hasSavedMook(token))button.attr('title',game.i18n!.localize('PNEUMA_MOOK_MAKER.Form.SaveBeforePurge'));
@@ -108,7 +114,7 @@ export function confirmPromotion(token: Token, sourceDialog: Dialog): void {
     buttons: {
       confirm: {
         icon: '<i class="fas fa-user-graduate"></i>',
-        label: game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.Ok"),
+        label: game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.PromoteAction"),
         callback: async () => {
           try { if (await promoteToken(token)) await sourceDialog.close(); }
           catch (error) { ui.notifications?.error(String(error)); }
@@ -120,5 +126,5 @@ export function confirmPromotion(token: Token, sourceDialog: Dialog): void {
       },
     },
     default: "cancel",
-  }).render(true);
+  }, {width:460,classes:["dialog","pneuma-mook-promotion"]}).render(true);
 }

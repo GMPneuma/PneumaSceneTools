@@ -20,7 +20,7 @@ export function mookFormData(token: Token, availableRoles: AvailableRole[]) {
     tokenFields:[{name:"displayName",label:key+"DisplayName",choices:["Never","Control","OwnerHover","Hover","Owner","Always"].map((label,i)=>({value:i*10,label:key+"DisplayName"+label,selected:token.document.displayName===i*10}))},
       {name:"tokenDisposition",label:key+"TokenDisposition",choices:["Secret","Hostile","Neutral","Friendly"].map((label,i)=>({value:i-2,label:key+"Disposition"+label,selected:token.document.disposition===i-2}))}],
     combat:{customChoice:true,customCombat:false,customCombatValue:"",...radios("combatNumber",["10","11","12","13","14"],"No change"),noChange:true},
-    hp:radios("hitpoints",["20","25","30","35","40","45","50"],String(get("system.derivedStats.hp.value")??"")),
+    hp:radios("hitpoints",["20","25","30","35","40","45","50","unchanged"],"unchanged",{unchanged:game.i18n!.localize(key+"Unchanged")}),
     move:radios("move",["2","3","4","5","6","7","8"],String(get("system.stats.move.value")??"")),
     bodyArmor:radios("bodyArmor",armors,armor.body),headArmor:radios("headArmor",armors,armor.head),
     weapons:[1,2].map((number)=>({number,label:game.i18n!.format(key+"WeaponNumber",{number}),choices:inventory.weapons,selected:inventory.selectedWeaponIds[number-1]??""})),

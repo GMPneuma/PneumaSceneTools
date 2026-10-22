@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.0 - 2026-10-21
+
+- Add Unchanged as the default MookMaker Hit Points choice. Preserve current/max HP and BODY/WILL when selected, and use current WILL for skill adjustments.
+- Sort MookMaker and vehicle artwork categories alphabetically with natural number ordering, keeping Keep Current and Manual artwork first. Preserve category selections while editing.
+- Remove redundant Mook subtitles from artwork categories while retaining vehicle footprint and seat summaries.
+- Limit name-generator RollTable choices to names beginning with Mook or Names, case-insensitively, without rewriting saved recipes.
+- Clarify Promote Mook confirmation with token identity, Actor destination, warning, optional gear cleanup and a Promote Actor button. Keep Cancel as the default.
+
+Validation: strict TypeScript/module build, automated runtime tests and browser fixtures. Live Foundry/multiplayer verification remains pending.
+
+
 ## 0.7.1 - 2026-10-18
 
 - Move Promote to actor onto the Role/Level row so the Mook name field has more space.

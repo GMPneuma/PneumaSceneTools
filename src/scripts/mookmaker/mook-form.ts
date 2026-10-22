@@ -9,7 +9,8 @@ import {getAvailableSystemRoles, type AvailableRole} from "./roles.js";
 import {mookFormData} from "./form-data.js";
 import {readMookForm} from "./form-input.js";
 export async function showMookMakerMenu(token: Token): Promise<void> {
-  const categories = ((game.settings!.get(MODULE_ID, "tokenArtworkCategories") ?? []) as ArtworkCategory[]).filter(row => row.kind === "mook");
+  const categories = ((game.settings!.get(MODULE_ID, "tokenArtworkCategories") ?? []) as ArtworkCategory[]).filter(row => row.kind === "mook")
+    .sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:"base"}));
   const actorName = token.actor?.name ?? token.document.name;
   const initialName = token.document.name ?? token.actor?.name ?? "";
   let availableRoles: AvailableRole[];

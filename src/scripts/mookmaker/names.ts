@@ -31,7 +31,7 @@ export async function generateName(recipe:NameRecipe):Promise<string> {
 }
 export async function editNameRecipe(initial:NameRecipe,title='Three-part name'):Promise<NameRecipe|null> {
   const recipe=validateNameRecipe(initial);
-  const tables=(game.tables?.contents as RollTable[]|undefined)?.map(table=>({id:table.id,name:table.name}))??[];
+  const tables=(game.tables?.contents as RollTable[]|undefined)?.filter(table=>/^(?:Mook|Names)/i.test(table.name??'')).map(table=>({id:table.id,name:table.name}))??[];
   const content=await renderTemplate(`modules/${MODULE_ID}/templates/mook-name-config.hbs`,{parts:recipe.map((part,index)=>({...part,index,number:index+1,tables:tables.map(table=>({...table,selected:table.id===part.tableId})),missing:part.tableId&&!tables.some(table=>table.id===part.tableId)}))});
   return new Promise(resolve=>{
     let result:NameRecipe|null=null;
@@ -52,7 +52,7 @@ export async function editNameRecipe(initial:NameRecipe,title='Three-part name')
   });
 }
 export async function manualName(initial:NameRecipe,current:string):Promise<string|null> {
-  const recipe=validateNameRecipe(initial),tables=(game.tables?.contents as RollTable[]|undefined)?.map(table=>({id:table.id,name:table.name}))??[];
+  const recipe=validateNameRecipe(initial),tables=(game.tables?.contents as RollTable[]|undefined)?.filter(table=>/^(?:Mook|Names)/i.test(table.name??'')).map(table=>({id:table.id,name:table.name}))??[];
   const content=await renderTemplate(`modules/${MODULE_ID}/templates/mook-name-manual.hbs`,{current,parts:recipe.map((part,index)=>({...part,index,number:index+1,tables:tables.map(table=>({...table,selected:table.id===part.tableId}))}))});
   return new Promise(resolve=>{
     let result:string|null=null;

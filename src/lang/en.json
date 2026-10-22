@@ -61,7 +61,7 @@
   "PNEUMA_MOOK_MAKER.Form.PurgeFailed": "Pneuma Mook Maker could not purge this mook's unused inventory. See the console for details.",
   "PNEUMA_MOOK_MAKER.Form.Promote": "Promote to Actor",
   "PNEUMA_MOOK_MAKER.Form.PromoteConfirmTitle": "Promote Mook",
-  "PNEUMA_MOOK_MAKER.Form.PromoteWarning": "This will promote this unlinked token to an Actor under SceneTools/MookMaker Promoted Actors. You will no longer be able to edit it with MookMaker. This is not reversible.",
+  "PNEUMA_MOOK_MAKER.Form.PromoteWarning": "This cannot be undone. MookMaker will no longer edit this token.",
   "PNEUMA_MOOK_MAKER.Form.Ok": "OK",
   "PNEUMA_MOOK_MAKER.Form.Promoted": "Promoted \"{name}\" to SceneTools/MookMaker Promoted Actors.",
   "PNEUMA_MOOK_MAKER.Form.PromotedFolderMissing": "The SceneTools/MookMaker Promoted Actors Actor folder could not be found.",
@@ -95,6 +95,9 @@
   "PNEUMA_MOOK_MAKER.Form.UnlinkedOnly": "This action only works on unlinked tokens.",
   "PNEUMA_MOOK_MAKER.Form.Renamed": "Renamed token and actor to \"{name}\".",
   "PNEUMA_MOOK_MAKER.Form.RenameFailed": "Pneuma Mook Maker could not rename this token. See the console for details.",
-  "PNEUMA_MOOK_MAKER.Form.ApplyFailed": "Pneuma Mook Maker could not apply these changes. See the console for details."
+  "PNEUMA_MOOK_MAKER.Form.ApplyFailed": "Pneuma Mook Maker could not apply these changes. See the console for details.",
+  "PNEUMA_MOOK_MAKER.Form.PromoteDescription": "Create a linked Actor from this token.",
+  "PNEUMA_MOOK_MAKER.Form.PromoteDestination": "Save Actor to",
+  "PNEUMA_MOOK_MAKER.Form.PromoteCleanup": "Optional cleanup",
+  "PNEUMA_MOOK_MAKER.Form.PromoteAction": "Promote Actor"
 }
-

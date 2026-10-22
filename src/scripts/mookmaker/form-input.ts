@@ -37,11 +37,10 @@ export function readMookForm(html: JQuery, token: Token, availableRoles: Availab
     );
   }
 
-  const selectedHitPoints = Number(
-    html.find<HTMLInputElement>('input[name="hitpoints"]:checked').val(),
-  );
-  const hitPointStats = getStatsForHitPoints(selectedHitPoints);
-  if (!hitPointStats) {
+  const hitPointsSelection = html.find<HTMLInputElement>('input[name="hitpoints"]:checked').val();
+  const selectedHitPoints = hitPointsSelection === "unchanged" ? null : Number(hitPointsSelection);
+  const hitPointStats = selectedHitPoints === null ? null : getStatsForHitPoints(selectedHitPoints);
+  if (selectedHitPoints !== null && !hitPointStats) {
     throw new Error(
       game.i18n!.localize("PNEUMA_MOOK_MAKER.Form.HitpointsRequired"),
     );
@@ -158,7 +157,7 @@ export function readMookForm(html: JQuery, token: Token, availableRoles: Availab
   const skillUpdates = getSkillUpdates(
     actor,
     skillTargets,
-    hitPointStats.will,
+    hitPointStats?.will ?? Number(foundry.utils.getProperty(actor,"system.stats.will.value")),
     bulletDodging === "reflex" ? 8 : undefined,
   );
 

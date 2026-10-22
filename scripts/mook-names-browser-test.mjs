@@ -15,7 +15,7 @@ try {
   window.game={user:{isGM:true},settings:{get:()=>window.recipe}};
   window.CONST={TABLE_RESULT_TYPES:{TEXT:0}};
   let roll=0;window.calls=[];
-  const rows=[{id:'first',name:'First names',text:'Joe'},{id:'last',name:'Last names',text:'Smith'},{id:'handle',name:'Handles',text:'"The Hammer"'}];
+  const rows=[{id:'first',name:'Mook First names',text:'Joe'},{id:'last',name:'Names Last names',text:'Smith'},{id:'handle',name:'mook Handles',text:'"The Hammer"'},{id:'loot',name:'Loot',text:'Excluded'},{id:'other',name:'Other Names',text:'Excluded'}];
   game.tables={contents:rows,get:id=>{const row=rows.find(r=>r.id===id);return row?{...row,roll:async options=>{calls.push(options);return {results:[{type:0,text:row.id==='first'&&roll++>0?'Tim':row.text}]}}}:undefined;}};
   window.renderTemplate=async(path,data)=>Handlebars.compile(await(await fetch('/'+path)).text())(data);
   window.Dialog=class {constructor(data){this.data=data;}render(){this.root=document.createElement('div');this.root.className='dialog';this.root.innerHTML=this.data.content;document.body.append(this.root);this.data.render?.([this.root]);return this;}async close(){this.root.remove();this.data.close?.();}};
@@ -30,6 +30,7 @@ try {
  await page.waitForSelector('[data-generate]');
  await page.locator('.dialog').screenshot({path:'docs/mook-name-generator-preview.png'});
  assert.equal(await page.locator('select').count(),3);
+ assert.deepEqual(await page.locator('select').first().locator('option').allTextContents(),['Skip this part','Mook First names','Names Last names','mook Handles']);
  assert.equal(await page.locator('[name*=prefix],[name*=suffix]').count(),0);
  const columns=await page.locator('.mook-name-parts select').evaluateAll(nodes=>nodes.map(el=>({x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().y})));
  assert.ok(columns[0].x<columns[1].x&&columns[1].x<columns[2].x);assert.equal(columns[0].y,columns[2].y);
@@ -40,7 +41,7 @@ try {
  await page.evaluate(()=>{window.cancelResult=undefined;void names.manualName(recipe,'Original').then(value=>cancelResult=value);});
  await page.locator('[data-cancel]').click();assert.equal(await page.evaluate(()=>cancelResult),null);
  await page.evaluate(()=>{window.configResult=undefined;void names.editNameRecipe(recipe).then(value=>configResult=value);});
- await page.locator('[name="0.tableId"]').selectOption('last');await page.locator('[data-save]').click();
+ await page.waitForSelector('[name="0.tableId"]');assert.deepEqual(await page.locator('[name="0.tableId"] option').allTextContents(),['Skip this part','Mook First names','Names Last names','mook Handles']);await page.locator('[name="0.tableId"]').selectOption('last');await page.locator('[data-save]').click();
  assert.deepEqual(await page.evaluate(()=>configResult[0]),{tableId:'last'});
  await page.evaluate(async()=>{const {normalizeCategories}=await import('/modules/pneuma-scenetools/scripts/token-artwork.js');const row={name:'NCPD',kind:'mook',folder:'art/ncpd',nameRecipe:configResult};if(JSON.stringify(normalizeCategories([row])[0].nameRecipe)!==JSON.stringify(configResult))throw Error('Override lost');});
  await page.evaluate(async()=>{

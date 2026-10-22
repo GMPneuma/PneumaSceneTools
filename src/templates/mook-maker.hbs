@@ -114,7 +114,7 @@
         </div>
 
 {{> tokenControls}}
-</div><div class="pneuma-mook-categories"><label for="pneuma-mook-category">Artwork Category</label><select id="pneuma-mook-category" name="artworkCategory" size="6"><option value="" selected>Keep Current</option><option value="manual">Manual</option>{{#each artworkCategories}}<option value="{{index}}">{{name}}</option>{{/each}}</select></div>
+</div><div class="pneuma-mook-categories"><label for="pneuma-mook-category">Artwork Category</label><select id="pneuma-mook-category" name="artworkCategory" size="6"><option value="" selected>Keep Current</option><option value="manual">Manual artwork</option>{{#each artworkCategories}}<option value="{{index}}">{{name}}</option>{{/each}}</select></div>
 <div class="pneuma-mook-artwork"><div data-artwork-preview></div><button type="button" data-action="choose-artwork" disabled>Choose Image</button><p data-artwork-status role="status"></p></div></div>
 </fieldset>
 <fieldset class="pneuma-mook-maker-section pneuma-mook-maker-section-stats"><legend>{{localize "PNEUMA_MOOK_MAKER.Form.SectionStats"}}</legend>

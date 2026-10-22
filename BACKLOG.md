@@ -537,3 +537,13 @@ Hazards layout correction (2026-10-13, local/unreleased): Hazard details are on 
 - A deleted selected POI template no longer blocks new pins: the default template is recreated/reused and selected with fresh page references. Existing templates and POI pages remain unchanged. The new default has no empty Image heading; a selected POI image is appended at the bottom.
 
 - Clarified malformed hazard errors with scene/hazard identity and trigger/target field labels; no automatic world-data conversion.
+
+- Promote Mook confirmation separates token identity, Actor destination, irreversible-change warning, optional gear cleanup, and final actions. Native colors, spaced footer buttons, and a Promote Actor label; Cancel remains the default and purge still requires a saved Mook.
+
+- Removed repeated Mook subtitles from the Mook Artwork pick-list.
+
+- MookMaker and Configure Vehicle artwork categories display in alphabetical order (case-insensitive, natural number ordering), after Keep Current and Manual artwork. Both artwork category editors sort the pick-list while retaining the selected category and original category references during edits.
+
+- Name-generator RollTable dropdowns (default/category recipes and manual generation) list only names beginning with Mook or Names, case-insensitively. Saved recipes are not rewritten.
+
+- MookMaker Hit Points includes Unchanged, selected by default. Applying with Unchanged omits current/max HP and related BODY/WILL writes; skill adjustments use current WILL. Explicit HP values retain their existing behavior.

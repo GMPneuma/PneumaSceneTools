@@ -101,7 +101,7 @@ export async function saveVehicleConfig(token: TokenDocument, stats: VehicleStat
 export async function openVehicleConfig(token: TokenDocument): Promise<void> {
   if (!game.user?.isGM || !isVehicleToken(token) || !token.isOwner || !token.actor) return;
   const initial = vehicleStats(token.actor), selected = seatFlag(token, "vehicleArtworkCategory"), base = getVehicleBaseSize(token);
-  const categories = artworkCategories("vehicle");
+  const categories = artworkCategories("vehicle").sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:"base"}));
   let closed = false;
   let disposeSizing = () => {};
   const content = await renderTemplate(`modules/${MODULE_ID}/templates/vehicle-config.hbs`, {stats: initial, gm: true, selectedArtwork: selected ?? "",

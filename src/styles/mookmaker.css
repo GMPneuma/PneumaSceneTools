@@ -509,3 +509,22 @@
 .pneuma-mook-compact .pneuma-mook-maker-radio:has(input[value="unchanged"]) {order:1;margin-left:auto;}
 .pneuma-mook-compact .pneuma-mook-weapon-row {display:flex;align-items:flex-end;justify-content:space-between;gap:12px;}
 .pneuma-mook-compact .pneuma-mook-weapon-row>.pneuma-mook-maker-purge {width:auto;flex:0 0 auto;margin:0;font-size:12px;}
+
+/* Promotion confirmation uses native controls and colors. */
+.pneuma-mook-promotion .dialog-content {flex:0 1 auto;}
+.pneuma-promotion-content {display:flex;flex-direction:column;gap:16px;padding:8px 4px 16px;}
+.pneuma-promotion-content p,.pneuma-promotion-content h2,.pneuma-promotion-content h3 {margin:0;}
+.pneuma-promotion-heading {display:flex;align-items:center;gap:12px;}
+.pneuma-promotion-heading>i {font-size:30px;flex:0 0 auto;}
+.pneuma-promotion-heading h2 {font-size:20px;border:0;overflow-wrap:anywhere;}
+.pneuma-promotion-heading p {margin-top:4px;line-height:1.45;}
+.pneuma-promotion-destination {display:flex;flex-direction:column;gap:5px;padding:10px 12px;border:1px solid var(--color-border-light-primary);border-radius:4px;}
+.pneuma-promotion-destination>span {font-size:12px;}
+.pneuma-promotion-destination strong {font-size:13px;overflow-wrap:anywhere;}
+.pneuma-promotion-destination i {margin-right:5px;}
+.pneuma-promotion-warning {display:flex;align-items:baseline;gap:8px;line-height:1.5;}
+.pneuma-promotion-cleanup {display:flex;flex-direction:column;gap:7px;}
+.pneuma-promotion-cleanup h3 {font-size:13px;border:0;}
+.pneuma-promotion-cleanup button {margin:0;}
+.pneuma-mook-promotion .dialog-buttons {flex:0 0 auto;gap:8px;padding-top:12px;border-top:1px solid var(--color-border-light-primary);}
+.pneuma-mook-promotion .dialog-buttons button {margin:0;min-height:34px;}

@@ -14,8 +14,8 @@ export interface ApplyMookChanges {
   displayName: number;
   tokenDisposition: number;
   move: number;
-  hitPoints: number;
-  hitPointStats: HitPointStats;
+  hitPoints: number | null;
+  hitPointStats: HitPointStats | null;
   roleName: string;
   roleLevel: number;
   roleSource?: Record<string, unknown>;
@@ -150,10 +150,6 @@ async function applyMookChangesUnlocked(changes: ApplyMookChanges): Promise<bool
 
     const deltaChanges: Record<string, unknown> = {
       "system.stats.move.value": move,
-      "system.stats.body.value": hitPointStats.body,
-      "system.stats.will.value": hitPointStats.will,
-      "system.derivedStats.hp.max": hitPoints,
-      "system.derivedStats.hp.value": hitPoints,
       "system.roleInfo.activeRole": roleName,
     };
     if (nameChanged) deltaChanges.name = newName;
@@ -161,12 +157,17 @@ async function applyMookChangesUnlocked(changes: ApplyMookChanges): Promise<bool
     const actorSource = actor.toObject?.() ?? actor;
     const deltaRollback: Record<string, unknown> = {
       "system.stats.move.value": foundry.utils.getProperty(actorSource, "system.stats.move.value"),
-      "system.stats.body.value": foundry.utils.getProperty(actorSource, "system.stats.body.value"),
-      "system.stats.will.value": foundry.utils.getProperty(actorSource, "system.stats.will.value"),
-      "system.derivedStats.hp.max": foundry.utils.getProperty(actorSource, "system.derivedStats.hp.max"),
-      "system.derivedStats.hp.value": foundry.utils.getProperty(actorSource, "system.derivedStats.hp.value"),
       "system.roleInfo.activeRole": originalActiveRole,
     };
+    if(hitPoints !== null) {
+      if(!hitPointStats)throw new Error("Choose valid hit points.");
+      Object.assign(deltaChanges,{
+        "system.stats.body.value":hitPointStats.body,"system.stats.will.value":hitPointStats.will,
+        "system.derivedStats.hp.max":hitPoints,"system.derivedStats.hp.value":hitPoints,
+      });
+      for(const key of ["system.stats.body.value","system.stats.will.value","system.derivedStats.hp.max","system.derivedStats.hp.value"])
+        deltaRollback[key]=foundry.utils.getProperty(actorSource,key);
+    }
     if (nameChanged) deltaRollback.name = actor.name;
     if (changes.artwork) deltaRollback.img = actor.img;
     rollbackActions.push(() => updateDelta(deltaRollback));

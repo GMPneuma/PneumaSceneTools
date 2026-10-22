@@ -99,6 +99,10 @@ assert.equal(f.actor.system.stats.ref.value, 8);
 assert.equal(f.actor.items.get("handgun").system.level + f.actor.system.stats.ref.value, 12);
 assert.equal(f.events[0][0], "delta");
 assert.equal(f.actor.items.get("concentration").system.level, 3);
+f=fixture();f.actor.system.derivedStats.hp={value:13,max:37};f.actor.system.stats.body.value=9;f.actor.system.stats.will.value=8;
+await applyMookChanges({...changes(f),hitPoints:null,hitPointStats:null,bulletDodging:'unchanged'});
+assert.deepEqual(f.actor.system.derivedStats.hp,{value:13,max:37});assert.equal(f.actor.system.stats.body.value,9);assert.equal(f.actor.system.stats.will.value,8);
+assert(!f.events.some(([,data])=>data&&Object.keys(data).some(key=>/system\.(?:derivedStats\.hp|stats\.(?:body|will))/.test(key))),'Unchanged HP must omit HP/BODY/WILL updates');
 const originalError = console.error;
 console.error = () => {};
 try {
@@ -168,6 +172,10 @@ const {readMookForm}=await import("../../dist/scripts/mookmaker/form-input.js");
 const selected={name:"Updated",move:"4",hitpoints:"30",role:"none",level:"0",bodyArmor:"None",headArmor:"None",displayName:"30",tokenDisposition:"-1",combatNumber:"custom",customCombatNumber:"12",secondarySkills:"unchanged",tertiarySkills:"unchanged",bulletDodging:"unchanged"};
 const form={find(selector){const name=selector.match(/name="([^"]+)"/)[1];return {val:()=>selected[name]}}};
 const parsed=readMookForm(form,fixture().token,[],"Mook");assert.equal(parsed.newName,"Updated");assert.equal(parsed.move,4);assert.equal(parsed.hitPoints,30);
+selected.hitpoints="unchanged";const unchangedFixture=fixture();unchangedFixture.actor.system.stats.will.value=8;
+selected.secondarySkills="set-custom";selected.secondarySkillsTarget="10";
+const unchangedHP=readMookForm(form,unchangedFixture.token,[],"Mook");assert.equal(unchangedHP.hitPoints,null);assert.equal(unchangedHP.hitPointStats,null);assert.equal(unchangedHP.skillUpdates.find(row=>row._id==='concentration')['system.level'],2);
+selected.hitpoints="30";selected.secondarySkills="unchanged";
 selected.move="invalid";assert.throws(()=>readMookForm(form,fixture().token,[],"Mook"));selected.move="4";
 let dialog;
 globalThis.Dialog = class { constructor(data) { dialog = data; } render() {} };
@@ -194,6 +202,7 @@ if (process.env.PNEUMA_PLAYWRIGHT_MODULE) {
     await page.locator('[data-action="apply"]').scrollIntoViewIfNeeded();
     assert(await page.locator('[data-action="apply"]').isVisible(), 'Apply remains reachable');
     await page.setViewportSize({width:1280,height:1000});
+    assert(await page.locator('input[name="hitpoints"][value="unchanged"]').isChecked());
     assert.equal(await page.locator('.pneuma-mook-maker-section-stats input[name="bulletDodging"]').count(), 3);
     assert.deepEqual((await page.locator('input[name="bulletDodging"]').evaluateAll(nodes=>nodes.map(node=>node.parentElement.textContent.trim()))), ["Unchanged", "REF 8", "Reflex Co-Processor"]);
     assert.equal(await page.locator('.pneuma-mook-weapon-row [data-action="purge-gear"]').count(), 1);
@@ -213,7 +222,7 @@ if (process.env.PNEUMA_PLAYWRIGHT_MODULE) {
     assert.equal(await page.locator('.pneuma-mook-maker-form-header').count(),0);
     assert.equal(await page.locator('[name="combatNumber"][value="Civilian"]').count(),0);
     assert.equal(await page.locator('[name="combatNumber"]').last().getAttribute('value'),'No change');
-    assert.deepEqual(await page.locator('[name="artworkCategory"] option').allTextContents(),['Keep Current','Manual','Gangers','Corporate']);
+    assert.deepEqual(await page.locator('[name="artworkCategory"] option').allTextContents(),['Keep Current','Manual artwork','Corporate','Gangers']);
     for (const name of ['hitpoints','move','bodyArmor','headArmor']) {
       const tops=await page.locator('input[name="'+name+'"]').evaluateAll(nodes=>nodes.map(node=>Math.round(node.getBoundingClientRect().top)));
       assert.equal(new Set(tops).size,1,name+' choices remain in one row');
