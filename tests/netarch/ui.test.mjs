@@ -138,13 +138,14 @@ test("Netrunner dropdown filters roles and optionally player ownership, includin
   assert.ok(panel.getData().runners.some(r=>r.id===npc.id));
 });
 
-test("Netrunner list follows token additions and embedded role changes", () => {
+test("Netrunner list follows token additions and embedded role changes", async () => {
   environment(); const scene=makeScene(); const panel=new ScannerPanel({scene});
   assert.equal(panel.getData().runners.length,0);
   const runner=makeToken(scene,"new-runner",{ap:false});
   runner.actor.items.get("netrunner-role").name=" NETRUNNER ";
   assert.equal(panel.getData().runners[0].id,runner.id);
   runner.actor.items.clear();
+  await Hooks.call("deleteItem",{parent:runner.actor});
   assert.equal(panel.getData().runners.length,0);
 });
 
@@ -325,4 +326,15 @@ test("Scanner ignores unrelated updates and renders once for a batch of relevant
  game.actors[Symbol.iterator]=()=>{throw Error("Full Actor scan")};
  game.scenes[Symbol.iterator]=()=>{throw Error("Full Scene scan")};
  assert.equal(panel.getData().rows.length,1);await panel.close();
+});
+
+
+test('Scanner reuses role qualification across movement and invalidates embedded item edits',async()=>{
+ environment();const scene=makeScene(),runner=makeToken(scene,'runner',{ap:false});makeToken(scene,'ap');
+ let scans=0;const some=runner.actor.items.some.bind(runner.actor.items);runner.actor.items.some=fn=>{scans++;return some(fn);};
+ const panel=new ScannerPanel({scene,runnerId:runner.id});panel.getData();const before=scans;
+ for(let i=0;i<100;i++){runner.x=i;await Hooks.call('updateToken',runner,{x:i});panel.getData();}
+ assert.equal(scans,before);
+ runner.actor.items.get('netrunner-role').name='Solo';await Hooks.call('updateItem',{parent:runner.actor});
+ assert.equal(panel.getData().runners.length,0);assert.equal(scans,before+1);
 });

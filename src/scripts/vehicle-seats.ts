@@ -161,6 +161,15 @@ export async function syncVehicleSeats(vehicle: TokenDocument): Promise<void> {
   if (failures.length) throw new Error(failures.join("; "));
 }
 
+let seatedScene: Scene|null|undefined;
+let seatedActors: Map<string,TokenDocument[]>|undefined;
+function renderedRiders(vehicle:TokenDocument):TokenDocument[]{
+ if(seatedScene!==vehicle.parent||!seatedActors){
+  seatedScene=vehicle.parent;seatedActors=new Map();
+  for(const token of vehicle.parent?.tokens??[]){const id=assignment(token)?.vehicleId;if(!id)continue;const group=seatedActors.get(id)??[];group.push(token);seatedActors.set(id,group);}
+ }
+ return seatedActors.get(vehicle.id!)??[];
+}
 /** Render against the actual image transform during native animation, before GM persistence arrives. */
 function refreshSeatedArt(token: Token, flags?: Record<string, unknown>): void {
   if (!refreshAffectsSeats(flags)) return;
@@ -169,7 +178,7 @@ function refreshSeatedArt(token: Token, flags?: Record<string, unknown>): void {
   const layout = seatLayout(vehicle); if (!layout) return;
   const mesh = vehicle.object.mesh, texture = mesh.texture;
   if (!texture) return;
-  for (const rider of token.document === vehicle ? riders(vehicle) : [token.document]) {
+  for (const rider of token.document === vehicle ? renderedRiders(vehicle) : [token.document]) {
     const object = rider.object, seat = layout.seats.find(value => value.id === assignment(rider)?.seatId);
     if (!object?.mesh || !seat) continue;
     const global = mesh.toGlobal(new PIXI.Point((seat.x - mesh.anchor.x) * texture.orig.width, (seat.y - mesh.anchor.y) * texture.orig.height));
@@ -182,6 +191,9 @@ function refreshSeatedArt(token: Token, flags?: Record<string, unknown>): void {
 
 export function registerVehicleSeats(): void {
   registerSeatHud();
+  const invalidate=()=>{seatedActors=undefined;};
+  for(const hook of ['createToken','deleteToken','canvasReady','canvasTearDown'])Hooks.on(hook,invalidate);
+  Hooks.on('updateToken',(_doc:TokenDocument,changes:object)=>{if(changesSeatFields(changes,['flags.pneuma-scenetools.vehicleSeat']))invalidate();});
   registerSeatRequests(executeSeatRequest,queueSeatWork);
   // v12's refreshToken hook does not expose which fields refreshed. Use native render flags.
   libWrapper.register(MODULE_ID, "Token.prototype._applyRenderFlags", function(this: Token, wrapped: (flags: Record<string, unknown>) => void, flags: Record<string, unknown>) {

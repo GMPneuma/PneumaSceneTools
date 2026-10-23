@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.1 - 2026-10-23
+
+- Limit ordinary camera movement checks to affected targets and batch queued vehicle/passenger updates. Retain full checks when cameras or light sources move.
+- Cache passenger membership during vehicle animation and Netrunner role qualification in the Scanner, with document-change invalidation.
+- Process only enabled patrols, stop polling while idle or paused, and resume on lifecycle changes. Restrict geometry invalidation to relevant scene changes.
+- Run access-point animation only while pulses need it; rebuild local lighting only when lighting inputs change.
+
+Validation: strict TypeScript/module builds and automated runtime/browser regression fixtures. Live Foundry performance and multiplayer verification remain pending.
+
 ## 0.8.0 - 2026-10-21
 
 - Add Unchanged as the default MookMaker Hit Points choice. Preserve current/max HP and BODY/WILL when selected, and use current WILL for skill adjustments.

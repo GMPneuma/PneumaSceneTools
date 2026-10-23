@@ -126,23 +126,24 @@ export function registerBehavior(): void {
   };
   config.RegionBehavior.dataModels[TRAP_BEHAVIOR] = TrapBehavior;
 }
-export async function deviceMoved(token: TokenDocument): Promise<void> {
-  if (!authority() || !token.parent)
-    return;
-  for (const instance of token.parent.tokens) {
-    if (foundry.utils.getProperty(instance, `flags.${MODULE_ID}.hazardCondition.target`) === token.uuid)
-      await instance.update({x: token.x + (token.width ?? 1) * token.parent.grid.size, y: token.y, elevation: token.elevation, hidden: token.hidden});
-  }
-  for (const d of traps(token.parent)) {
-    const t = trapData(d)!;
-    if (t.bodyId === token.id) {
-      await updateTrap(d, {anchor: center(token)});
-      await syncAccessPoint(d);
-    }
-    await scanCamera(d);
-  }
+export async function deviceMoved(token:TokenDocument):Promise<void>{await devicesMoved([token]);}
+/** Coalesce a vehicle and its passengers without dropping any target's detection check. */
+export async function devicesMoved(tokens:TokenDocument[]):Promise<void>{
+ const scene=tokens[0]?.parent;if(!authority()||!scene)return;
+ const moved=tokens.filter(token=>token.parent===scene&&scene.tokens.get(token.id!)===token);
+ const byUuid=new Map(moved.map(token=>[token.uuid,token]));
+ for(const instance of scene.tokens){
+  const target=byUuid.get(String(foundry.utils.getProperty(instance,`flags.${MODULE_ID}.hazardCondition.target`)));
+  if(target)await instance.update({x:target.x+(target.width??1)*scene.grid.size,y:target.y,elevation:target.elevation,hidden:target.hidden});
+ }
+ for(const d of traps(scene)){
+  const t=trapData(d)!,body=moved.find(token=>token.id===t.bodyId);
+  if(body){await updateTrap(d,{anchor:center(body)});await syncAccessPoint(d);}
+  const full=moved.some(token=>token.id===t.bodyId||token.id===t.deviceId||!!Number(token.light?.bright)||!!Number(token.light?.dim));
+  await scanCamera(d,full?undefined:moved);
+ }
 }
-export async function scanCamera(d: Hazard): Promise<void> {
+export async function scanCamera(d: Hazard, moved?: TokenDocument|TokenDocument[]): Promise<void> {
   if (!hasTrigger(trapData(d)!, "detect"))
     return;
   if (!operational(d)) {
@@ -150,11 +151,16 @@ export async function scanCamera(d: Hazard): Promise<void> {
       await updateTrap(d, {detected: []});
     return;
   }
-  const t = trapData(d)!, seen = d.parent!.tokens.filter(target => eligible(t, target) && cameraSees(d, target));
+  const t = trapData(d)!;
+  const targets=moved ? Array.isArray(moved)?moved:[moved] : undefined;
+  const changed=new Set(targets?.map(token=>token.id));
+  const seen = (targets ?? d.parent!.tokens.contents).filter(target => eligible(t, target) && cameraSees(d, target));
   for (const target of seen)
     if (!t.detected.includes(target.id!))
       await proposeTargets(d, target, "Camera detected target");
-  const ids = seen.map(t => t.id!);
+  const ids = moved
+    ? d.parent!.tokens.filter(target => changed.has(target.id) ? seen.some(token=>token.id===target.id) : t.detected.includes(target.id!)).map(target => target.id!)
+    : seen.map(target => target.id!);
   if (JSON.stringify(ids) !== JSON.stringify(t.detected))
     await updateTrap(d, {detected: ids});
 }

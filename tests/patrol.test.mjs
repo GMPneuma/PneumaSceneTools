@@ -784,3 +784,18 @@ test('seat synchronization retains a vehicle route through moving turns; boardin
  await vehicleTick(a,15000);
  assert.ok(searches>1,'Seat assignment changes must still invalidate plans');
 });
+
+
+test('idle patrols schedule no timer and pause/resume/start/stop wake correctly',()=>{
+ const f=setup(),scheduled=new Map();let serial=0;
+ const originalSet=globalThis.setTimeout,originalClear=globalThis.clearTimeout;
+ globalThis.setTimeout=fn=>{scheduled.set(++serial,fn);return serial;};globalThis.clearTimeout=id=>scheduled.delete(id);
+ const emit=(name,...args)=>f.hooks.get(name)?.forEach(fn=>fn(...args));
+ try{
+  emit('ready');assert.equal(scheduled.size,0);
+  const t=f.token('moving',0,0,{enabled:true,route:[p(50,50),p(250,50)]});emit('createToken',t);assert.equal(scheduled.size,1);
+  game.paused=true;emit('pauseGame');assert.equal(scheduled.size,0);
+  game.paused=false;emit('pauseGame');assert.equal(scheduled.size,1);
+  t.flags[ID].patrol.enabled=false;emit('updateToken',t,{['flags.'+ID+'.patrol.enabled']:false},{});assert.equal(scheduled.size,0);
+ }finally{emit('canvasTearDown');globalThis.setTimeout=originalSet;globalThis.clearTimeout=originalClear;}
+});

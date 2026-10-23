@@ -5,7 +5,7 @@ import {Collection,getPath,applyChanges} from './netarch/helpers.mjs';
 import {blankTrap,blankAction,validateAction,validateTrap,parsePresets,exportPresets,validateDevice} from '../dist/scripts/traps/model.js';
 import {setHazardRegionVisibility,locateHazard,deleteHazard,sceneHazard,traps,findHazard,resolveHazard,operational,hazardIssues,saveTrap,syncAccessPoint,ensureBehavior,TRAP_BEHAVIOR,ensureRegionHazard,updateTrap,createHazardToken,setHazardHP,cleanupHazardActor,createHazardAccessPoint} from '../dist/scripts/traps/documents.js';
 import {propose,resolve,applyCombatEffect,activation,registerRuntime,registerBehavior,regionEvent,enqueue,cameraSees,cleanupEffects,manualTrigger,card} from '../dist/scripts/traps/runtime.js';
-import {eligible} from '../dist/scripts/traps/triggers.js';
+import {eligible,deviceMoved,scanCamera} from '../dist/scripts/traps/triggers.js';
 import {validateHazardReadiness} from '../dist/scripts/traps/readiness.js';
 import {applyAction,attackHazard} from '../dist/scripts/traps/resolution.js';
 globalThis.FormApplication = class {};
@@ -896,4 +896,28 @@ test('hazard attacks reject a missing native weapon skill before calling Combat 
  f.body.actor.items.set('skill',{id:'skill',type:'skill',name:'Handgun'});
  assert.equal((await attackHazard(f.hazard,f.target,{...blankAction('attack'),weapon:'pistol'})).status,'started');
  assert.equal(attacks,1);
+});
+
+
+test('ordinary movement checks one camera target; moving lights and cameras rescan all targets',async()=>{
+ const f=setup();Object.assign(f.t(),{triggers:['detect'],deviceId:'device',range:10,angle:360,darkness:true,walls:true});
+ f.target.x=-50;f.target.y=150;
+ for(let i=0;i<30;i++)f.makeToken('crowd'+i,-50,150);
+ let checks=0;CONFIG.Canvas.polygonBackends.sight.testCollision=()=>{checks++;return false;};
+ await scanCamera(f.hazard);const full=checks;assert.ok(full>=31);checks=0;
+ const original=[...f.t().detected];await deviceMoved(f.target);assert.equal(checks,1);assert.deepEqual(f.t().detected,original);
+ f.target.x=10000;await deviceMoved(f.target);assert.equal(f.t().detected.includes(f.target.id),false);assert.equal(f.t().detected.length,original.length-1);
+ f.target.x=-50;checks=0;await deviceMoved(f.target);assert.equal(checks,1);assert.deepEqual(f.t().detected,original);
+ checks=0;f.target.light={bright:5};await deviceMoved(f.target);assert.equal(checks,full);
+ checks=0;await deviceMoved(f.device);assert.equal(checks,full);
+});
+
+
+test('a queued vehicle/passenger burst checks each affected target only once',async()=>{
+ const f=setup();Object.assign(f.t(),{triggers:['detect'],deviceId:'device',range:10,angle:360,darkness:true,walls:true});
+ f.target.x=-50;f.target.y=150;const passenger=f.makeToken('passenger',-50,150);
+ let checks=0;CONFIG.Canvas.polygonBackends.sight.testCollision=()=>{checks++;return false;};
+ registerRuntime();await f.hook('canvasReady');checks=0;
+ await Promise.all([f.hook('updateToken',f.target,{x:-50}),f.hook('updateToken',passenger,{x:-50}),f.hook('updateToken',f.target,{y:150})]);
+ assert.equal(checks,2);assert.ok(f.t().detected.includes(passenger.id));
 });

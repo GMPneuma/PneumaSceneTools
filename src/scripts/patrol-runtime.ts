@@ -395,6 +395,8 @@ async function advance(token:TokenDocument, now:number):Promise<void> {
     }
   }
 }
+let activePatrols: Map<string,TokenDocument>|undefined;
+function rebuildPatrols(){activePatrols=new Map((canvas.scene?.tokens.contents??[]).filter(token=>patrolConfig(token).enabled).map(token=>[token.uuid,token]));}
 export async function tickPatrols(now=Date.now()):Promise<void> {
   if(ticking)return;
   ticking=true;
@@ -402,9 +404,10 @@ export async function tickPatrols(now=Date.now()):Promise<void> {
   try {
     for(const [id,entries] of passages){const live=entries.filter(p=>p.until>now);if(live.length)passages.set(id,live);else passages.delete(id);}
     if(!patrolAuthority()||!canvas.ready||!canvas.scene){states.clear();return;}
-    for(const key of states.keys())if(!canvas.scene.tokens.contents.some(t=>t.uuid===key&&patrolConfig(t).enabled))states.delete(key);
+    const tokens=activePatrols ? [...activePatrols.values()] : canvas.scene.tokens.contents.filter(token=>patrolConfig(token).enabled);
+    const enabled=new Set(tokens.map(token=>token.uuid));
+    for(const key of states.keys())if(!enabled.has(key))states.delete(key);
     if(patrolPaused(canvas.scene))return;
-    const tokens=canvas.scene.tokens.contents;
     const offset=patrolCursor++%Math.max(1,tokens.length);
     for(const token of [...tokens.slice(offset),...tokens.slice(0,offset)]) {
       if(!patrolConfig(token).enabled)continue;
@@ -424,29 +427,40 @@ export async function tickPatrols(now=Date.now()):Promise<void> {
     }
   } finally {ticking=false;}
 }
-export function clearPatrolRuntime():void {states.clear();faults.clear();passages.clear();operations.clear();patrolCursor=0;geometryRevision++;}
+export function clearPatrolRuntime():void {activePatrols=undefined;states.clear();faults.clear();passages.clear();operations.clear();patrolCursor=0;geometryRevision++;}
 export function registerPatrolRuntime():void {
-  let generation=0;
+  let generation=0,initialized=false;
   const stop=()=>{generation++;if(timer)clearTimeout(timer);timer=undefined;clearPatrolRuntime();};
+  const runnable=()=>!!activePatrols?.size&&!!canvas.scene&&!patrolPaused(canvas.scene);
   const start=()=>{
+    if(!initialized)return;
+    if(!activePatrols)rebuildPatrols();
     if(!patrolAuthority()||!canvas.ready){stop();return;}
+    if(!runnable()){generation++;if(timer)clearTimeout(timer);timer=undefined;return;}
     if(timer)return;
     const epoch=generation;
     const loop=async()=>{
       try{await tickPatrols();}finally{
-        if(epoch===generation&&patrolAuthority()&&canvas.ready)timer=setTimeout(()=>void loop(),25);
+        if(epoch===generation&&patrolAuthority()&&canvas.ready&&runnable())timer=setTimeout(()=>void loop(),25);
         else if(epoch===generation)timer=undefined;
       }
     };
     timer=setTimeout(()=>void loop(),25);
   };
-  Hooks.on("ready",start);Hooks.on("canvasReady",start);Hooks.on("updateUser",start);Hooks.on("userConnected",start);
-  Hooks.on("canvasTearDown",stop);
-  const invalidate=()=>{geometryRevision++;};
-  for(const event of ["createWall","updateWall","deleteWall","createRegion","updateRegion","deleteRegion","createToken"] as const)Hooks.on(event,invalidate);
-  Hooks.on("updateScene",invalidate);
-  Hooks.on("deleteToken",(token:TokenDocument)=>{states.delete(token.uuid);operations.delete(token.uuid);invalidate();});
+  const ready=()=>{initialized=true;rebuildPatrols();start();};
+  Hooks.on("ready",ready);Hooks.on("canvasReady",ready);Hooks.on("updateUser",start);Hooks.on("userConnected",start);
+  Hooks.on("canvasTearDown",()=>{initialized=false;stop();});
+  for(const hook of ["pauseGame","createCombat","updateCombat","deleteCombat"])Hooks.on(hook,start);
+  const invalidate=(doc?:{parent?:{id?:string|null}|null})=>{if(!doc||doc.parent?.id===canvas.scene?.id)geometryRevision++;};
+  for(const event of ["createWall","deleteWall","createRegion","deleteRegion"] as const)Hooks.on(event,invalidate);
+  Hooks.on("updateWall",(doc:WallDocument,changes:object)=>{if(changesSeatFields(changes,['c','ds','door','dir','move','flags']))invalidate(doc);});
+  Hooks.on("updateRegion",(doc:RegionDocument,changes:object)=>{if(changesSeatFields(changes,['shapes','elevation']))invalidate(doc);});
+  Hooks.on("createToken",(token:TokenDocument)=>{if(token.parent?.id!==canvas.scene?.id)return;if(initialized)rebuildPatrols();invalidate(token);start();});
+  Hooks.on("updateScene",(scene:Scene,changes:object)=>{if(scene.id!==canvas.scene?.id)return;if(changesSeatFields(changes,['grid','width','height','padding']))geometryRevision++;start();});
+  Hooks.on("deleteToken",(token:TokenDocument)=>{states.delete(token.uuid);operations.delete(token.uuid);activePatrols?.delete(token.uuid);invalidate(token);start();});
   Hooks.on("updateToken",(token:TokenDocument,changes:Record<string,unknown>,options:{patrolMove?:boolean;vehicleSeats?:boolean})=>{
+    if(token.parent?.id!==canvas.scene?.id)return;
+    if(changesSeatFields(changes,[`flags.${MODULE_ID}.patrol`,`flags.${MODULE_ID}.vehicleSeat`])){if(initialized)rebuildPatrols();start();}
     // Seat placement follows its vehicle; it is dynamic movement, not a scene geometry edit.
     // Boarding/exiting and patrol configuration changes must still invalidate existing plans.
     if(options.vehicleSeats&&!changesSeatFields(changes,[`flags.${MODULE_ID}.vehicleSeat`,`flags.${MODULE_ID}.patrol`]))return;

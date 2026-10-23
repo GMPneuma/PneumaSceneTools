@@ -765,3 +765,13 @@ On scenes with Scene Tools Map POI enabled, the Notes layer stays visible and in
 - Name-generator RollTable dropdowns (default/category recipes and manual generation) list only names beginning with Mook or Names, case-insensitively. Saved recipes are not rewritten.
 
 - MookMaker Hit Points includes Unchanged, selected by default. Applying with Unchanged omits current/max HP and related BODY/WILL writes; skill adjustments use current WILL. Explicit HP values retain their existing behavior.
+
+## Refresh performance
+
+- Camera detection evaluates the moved target on ordinary token movement; moving a camera, hazard body, or light source retains full target evaluation. Global maintenance checks remain unchanged.
+- AP presentation attaches its ticker only while pulses need animation. Token refresh hooks continue to position AP artwork.
+- AP presentation requests light-source reinitialization only when effective AP light inputs change, including visibility, radius, position, elevation, and grid scale. Cosmetic changes do not rebuild lights.
+
+Validated with local compilation and automated regression fixtures; live Foundry performance is not established by those checks.
+
+Queued camera movement checks are batched and retain each passenger target. Scanner role qualification and passenger rendering membership are cached with document-hook invalidation. Patrol scheduling visits enabled patrols only, stops while idle or paused, and wakes on relevant lifecycle hooks; geometry invalidation is scene-scoped and ignores cosmetic wall/Region changes.

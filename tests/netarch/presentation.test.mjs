@@ -77,8 +77,9 @@ test("hiding an AP removes both its art and vision source", async () => {
   game.user = player;
   const display = new APPresentation(); await display.refresh(); display.initializeLights();
   const entry = display.entries.get(ap.id); apData(ap).discovery.revealed = false;
-  display.tick(); assert.equal(entry.group.visible, false);
-  await display.refresh(); display.initializeLights();
+  display.registerHooks();
+  await Hooks.call("updateToken", ap); display.initializeLights();
+  assert.equal(entry.group.destroyed, true);
   assert.equal(display.entries.size, 0); assert.equal(display.lights.size, 0);
 });
 test("late texture loads cannot revive a deleted or concealed AP", async () => {
@@ -94,7 +95,9 @@ test("scene teardown removes ticker callbacks and all local sources", async () =
   const { values, tickers } = renderingEnvironment(); values.set("revealStyle", "vision");
   const ap = makeToken(canvas.scene); apData(ap).discovery = { revealed: true, public: true };
   const display = new APPresentation(); await display.refresh(); display.initializeLights();
-  assert.equal(tickers.size, 1); display.destroy();
+  assert.equal(tickers.size, 0, "Idle APs require no ticker");
+  apData(ap).pulse = {started: game.time.serverTime, duration: 1000, count: 2, audience: {public:true}};
+  await display.refresh(); assert.equal(tickers.size, 1); display.destroy();
   assert.equal(tickers.size, 0); assert.equal(display.entries.size, 0); assert.equal(display.lights.size, 0);
 });
 
@@ -129,4 +132,19 @@ test("hidden AP names use generic artwork and revealing names restores actual to
   await display.refresh();
   assert.ok(entry.sprite.texture.path.endsWith("/generic.svg"));
   assert.equal(ap.texture.src, "custom/turret.webp");
+});
+
+
+test("only pulsing APs animate; completion detaches ticker and cosmetic changes preserve lights", async () => {
+  const {values,tickers}=renderingEnvironment(); values.set("revealStyle","vision");
+  const a=makeToken(canvas.scene); apData(a).discovery={revealed:true,public:true};
+  const display=new APPresentation(); let lighting=0; canvas.perception.update=()=>lighting++;
+  display.queueRefresh(); await Promise.resolve(); assert.equal(lighting,1); assert.equal(tickers.size,0);
+  a.name="Renamed"; display.queueRefresh(); await Promise.resolve(); assert.equal(lighting,1);
+  apData(a).pulse={started:10000,duration:1000,count:1,audience:{public:true}};
+  display.queueRefresh(); await Promise.resolve(); assert.equal(lighting,1); assert.equal(tickers.size,1);
+  game.time.serverTime=11000; display.tick(); assert.equal(tickers.size,0); assert.equal(display.entries.get(a.id).pulse.lines.length,0);
+  a.x+=100; display.queueRefresh(); await Promise.resolve(); assert.equal(lighting,2);
+  values.set("visionRadius",1); display.queueRefresh(); await Promise.resolve(); assert.equal(lighting,3);
+  display.destroy();
 });

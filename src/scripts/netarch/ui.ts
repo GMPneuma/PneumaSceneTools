@@ -111,7 +111,7 @@ export class ScannerPanel extends Application {
   }
 
   get runners() { return this.scene.tokens.filter((doc) => isNetrunner(doc) && (!this.playerOwnedOnly || isPlayerOwned(doc))); }
-  get runner() { return this.runners.find((doc) => doc.id === this.runnerId) ?? null; }
+  get runner() { const doc=this.scene.tokens.get(this.runnerId); return doc && isNetrunner(doc) && (!this.playerOwnedOnly || isPlayerOwned(doc)) ? doc : null; }
   get documents() { return this.scene.tokens.filter(isAP); }
 
   override getData() {
@@ -147,7 +147,7 @@ export class ScannerPanel extends Application {
         netarch: data.netarch ? netNames.get(data.netarch) ?? "Missing Architecture" : "Undefined Scene NetArch",
         color: colorFor(data.netarch, this.scene), distance, distanceText: distance === null ? "—" : distance.toFixed(1),
         visible, selected: this.selected.has(doc.id!),
-        controls: visibleControls().map((option) => ({ ...option, checked: controlState(doc, serverNow(), this.runner?.uuid ?? null)[option.key], apId: doc.id, name: doc.name })),
+        controls: visibleControls().map((option) => ({ ...option, checked: controlState(doc, serverNow(), runner?.uuid ?? null)[option.key], apId: doc.id, name: doc.name })),
         status: !discovery?.revealed ? "Hidden" : discovery.public ? "All players" : recipients.join(", ") || (users.length ? `Players: ${users.join(", ")}` : "GM only"),
         statusTitle: discovery?.revealed && !discovery.public && users.length ? `Player access: ${users.join(", ")}` : "",
       };

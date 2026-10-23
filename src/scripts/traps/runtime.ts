@@ -6,7 +6,7 @@ import {activation, isActivationAction} from "./activation-state.js";
 import {resolve} from "./activation.js";
 import {enqueue} from "./queue.js";
 import {cleanupEffects} from "./effect-cleanup.js";
-import {eligible, proposeTargets, scanCamera, deviceMoved} from "./triggers.js";
+import {eligible, proposeTargets, scanCamera, devicesMoved} from "./triggers.js";
 
 // Preserve existing entry points while keeping implementation responsibilities separate.
 export {activation} from "./activation-state.js";
@@ -80,9 +80,14 @@ export function registerRuntime():void {
       if(hasTrigger(t,"detect"))await scanCamera(d);
     }
   });});
+  const pendingMoves=new Set<TokenDocument>();
+  Hooks.on("canvasTearDown",()=>pendingMoves.clear());
   Hooks.on("updateToken",(token:TokenDocument,change:Record<string,unknown>)=>{
     if(!currentScene(token.parent))return;
-    if (["x","y","elevation","rotation","hidden","width","height"].some(k=>k in change)) enqueue(async()=>{if(currentScene(token.parent))await deviceMoved(token);});
+    if (["x","y","elevation","rotation","hidden","width","height"].some(k=>k in change)) {
+      const queued=pendingMoves.size>0;pendingMoves.add(token);
+      if(!queued)enqueue(async()=>{const moved=[...pendingMoves].filter(doc=>currentScene(doc.parent));pendingMoves.clear();await devicesMoved(moved);});
+    }
     // Membership also changes for plain effect-area Regions with no trap behavior.
     if (("_regions" in change||"delta" in change||Object.keys(change).some(k=>k.startsWith("delta."))) && token.parent) maintain(token.parent,true,false);
   });

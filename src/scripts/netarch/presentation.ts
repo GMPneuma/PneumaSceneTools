@@ -13,6 +13,8 @@ export class APPresentation {
   entries: Map<string, APDisplay>;
   lights: Map<string, InstanceType<typeof CONFIG.Canvas.lightSourceClass>>;
   pending: boolean;
+  pulsing = new Set<APDisplay>();
+  lightSignature = "";
 
   constructor() {
     this.container = null;
@@ -29,7 +31,11 @@ export class APPresentation {
       this.pending = false;
       if (!canvas.ready) return;
       this.refresh().catch((error) => console.error(`${MODULE_ID} | AP display`, error));
-      canvas.perception.update({ initializeLightSources: true });
+      const signature = this.lightingSignature();
+      if (signature !== this.lightSignature) {
+        this.lightSignature = signature;
+        canvas.perception.update({ initializeLightSources: true });
+      }
     });
   }
 
@@ -41,7 +47,6 @@ export class APPresentation {
       this.container.eventMode = "none";
       this.container.interactiveChildren = false;
       this.container.zIndex = 1000;
-      canvas.app!.ticker.add(this.tick);
     }
     const wanted = new Set<string>();
     for (const token of canvas.tokens!.placeables) {
@@ -82,7 +87,24 @@ export class APPresentation {
       entry.group.destroy({ children: true });
       this.entries.delete(id);
     }
+    this.pulsing.clear();
+    for (const entry of this.entries.values()) {
+      entry.pulse.clear();
+      const pulse = apData(entry.token.document).pulse;
+      if (pulse && (pulse.started > serverNow() || canSeePulse(entry.token.document, game.user, serverNow()))) this.pulsing.add(entry);
+    }
+    canvas.app!.ticker.remove(this.tick);
+    if (this.pulsing.size) canvas.app!.ticker.add(this.tick);
     this.tick();
+  }
+
+  lightingSignature(): string {
+    if (setting("revealStyle") !== "vision") return "off";
+    return JSON.stringify([canvas.scene?.id, setting("visionRadius"), canvas.grid?.size, canvas.scene?.grid.distance,
+      [...this.entries.values()].filter(entry => apData(entry.token.document).discovery?.revealed).map(({token}) => {
+        const doc = token.document;
+        return [doc.id, doc.x, doc.y, doc.width, doc.height, doc.elevation];
+      })]);
   }
 
   layout(entry: APDisplay) {
@@ -114,18 +136,22 @@ export class APPresentation {
 
   tick() {
     const now = serverNow();
-    for (const entry of this.entries.values()) {
+    for (const entry of this.pulsing) {
       const doc = entry.token.document;
-      if (!canvas.scene?.tokens.has(doc.id!) || !canSeeAP(doc, game.user)) { entry.group.visible = false; continue; }
+      if (!canvas.scene?.tokens.has(doc.id!) || !canSeeAP(doc, game.user)) { entry.group.visible = false; this.pulsing.delete(entry); continue; }
       entry.group.visible = true;
       entry.group.position.set(entry.token.center.x, entry.token.center.y);
       entry.pulse.clear();
-      if (!canSeePulse(doc, game.user, now)) continue;
+      if (!canSeePulse(doc, game.user, now)) {
+        if (!(Number(apData(doc).pulse?.started) > now)) this.pulsing.delete(entry);
+        continue;
+      }
       const progress = pulseProgress(apData(doc).pulse, now);
       if (progress === null) continue;
       const radius = entry.size * (0.55 + progress * 0.9);
       entry.pulse.lineStyle(3, entry.color, 0.85 * (1 - progress)).drawCircle(0, 0, radius);
     }
+    if (!this.pulsing.size) canvas.app?.ticker.remove(this.tick);
   }
 
   initializeLights() {
@@ -167,6 +193,8 @@ export class APPresentation {
     for (const source of this.lights.values()) source.destroy();
     this.lights.clear();
     this.entries.clear();
+    this.pulsing.clear();
+    this.lightSignature = "";
     if (this.container && !this.container.destroyed) this.container.destroy({ children: true });
     this.container = null;
   }

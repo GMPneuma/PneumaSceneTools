@@ -291,3 +291,17 @@ test('owner rechecks permission after the GM grants a seat',async()=>{
  f.deliver(f.packets.find(p=>p.packet.seatType==='complete').packet,f.gm);await queueSeatWork(async()=>{});await Promise.resolve();
  await f.receive(f.replies().at(-1),f.player);await failed;assert.equal(assignment(f.rider),undefined);
 });
+
+
+test('vehicle animation reuses passenger membership and exits invalidate it',async()=>{
+ const {scene,vehicle,rider}=setup();registerVehicleSeats();await board(rider);await queueSeatWork(async()=>{});
+ globalThis.PIXI={Point:class {constructor(x,y){this.x=x;this.y=y;}}};
+ canvas.tokens.toLocal=p=>p;canvas.primary={toLocal:p=>p};
+ vehicle.object.mesh={texture:{orig:{width:200,height:300}},anchor:{x:.5,y:.5},toGlobal:p=>p};
+ let placements=0;rider.object.mesh={position:{set(){}}};rider.object.position={set(){placements++;}};rider.object.w=rider.object.h=100;
+ const object=new Token();object.document=vehicle;
+ let scans=0;const iterator=scene.tokens[Symbol.iterator].bind(scene.tokens);scene.tokens[Symbol.iterator]=function*(){scans++;yield* iterator();};
+ object._applyRenderFlags({refreshPosition:true});const first=scans;assert.ok(first>0);
+ for(let i=0;i<100;i++)object._applyRenderFlags({refreshPosition:true});assert.equal(scans,first);assert.ok(placements>=101);
+ await exitSeat(rider);const before=placements;object._applyRenderFlags({refreshPosition:true});assert.equal(placements,before);assert.ok(scans>first);
+});
