@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {registerTokenGuards} from '../dist/scripts/netarch/templates.js';
+const hooks=new Map();globalThis.Hooks={on:(name,fn)=>hooks.set(name,fn)};
+registerTokenGuards();
+const flag={'pneuma-scenetools':{accessPoint:true}};
+const actor=(type,prototypeFlags={})=>({getFlag:()=>type,prototypeToken:{flags:prototypeFlags}});
+for(const candidate of [{token:{flags:flag},actor:actor(undefined)},{token:{flags:{}},actor:actor('camera')},{token:{flags:{}},actor:actor(undefined,flag)}])assert.equal(hooks.get('preCreateCombatant')(candidate),false);
+assert.equal(hooks.get('preCreateCombatant')({token:{flags:{}},actor:actor(undefined)}),undefined);
+assert.equal(hooks.get('preCreateCombatant')({token:null,actor:null}),undefined);
+let removed=0;
+const html={0:{querySelectorAll:selector=>{assert.equal(selector,'[data-action="combat"]');return [{remove:()=>removed++}];}}};
+hooks.get('renderTokenHUD')({object:{document:{flags:flag}}},html);assert.equal(removed,1);
+hooks.get('renderTokenHUD')({object:{document:{flags:{},actor:actor(undefined)}}},html);assert.equal(removed,1);
+console.log('Access-point combat creation blocked for token, template and prototype flags; ordinary actors unchanged; combat HUD control removed only for APs.');

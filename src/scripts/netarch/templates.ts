@@ -39,6 +39,16 @@ async function provision() {
 }
 
 export function registerTokenGuards() {
+  Hooks.on("preCreateCombatant", (combatant: Combatant) => {
+    const token = combatant.token;
+    if (isAP(token) || combatant.actor?.getFlag(MODULE_ID, "templateType") || isAP(combatant.actor?.prototypeToken)) return false;
+  });
+  Hooks.on("renderTokenHUD", (hud: TokenHUD, html: JQuery) => {
+    const token = hud.object?.document;
+    if (isAP(token) || token?.actor?.getFlag(MODULE_ID, "templateType") || isAP(token?.actor?.prototypeToken)) {
+      html[0]?.querySelectorAll('[data-action="combat"]').forEach(control => control.remove());
+    }
+  });
   Hooks.on("preCreateToken", (doc: TokenDocument, _data: object, _options: object, userId: string) => {
     if (userId !== game.user!.id) return;
     const templateType = game.actors!.get(doc.actorId ?? "")?.getFlag(MODULE_ID, "templateType");

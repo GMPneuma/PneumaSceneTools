@@ -1,5 +1,9 @@
 # Implemented features
 
+- Access points cannot be newly added to combat: native preCreateCombatant guards recognize AP token flags, AP Actor template flags and AP prototype-token flags. Their native token HUD combat toggle is removed. Existing combat entries are not automatically deleted. Build and focused guard checks passed; live Foundry verification pending.
+
+- Scanner chat reveal button declares its Scanner action and GM role for VisualTools styling. Without VisualTools it uses native theme fallback colors; GM access and click behavior remain unchanged. Local/unreleased; live Foundry verification pending.
+
 - Name dialogs advise duplicating starter tables for personal name lists.
 
 - Bundled Mook name RollTables use a custom name-badge/dice icon. Existing starter tables with the default icon receive it automatically; custom artwork is preserved.

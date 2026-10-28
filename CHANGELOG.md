@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.2 - 2026-10-28
+
+- Prevent access point tokens and actors from being newly added to combat; hide their native combat toggle. Leave existing combat entries unchanged.
+- Give the Scanner reveal button semantic styling hooks for Visual Tools and native fallback styling.
+
+Validation: production build and automated checks. Live Foundry multiplayer verification remains pending.
+
 ## 0.8.1 - 2026-10-23
 
 - Limit ordinary camera movement checks to affected targets and batch queued vehicle/passenger updates. Retain full checks when cameras or light sources move.

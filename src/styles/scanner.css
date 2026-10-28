@@ -285,19 +285,19 @@ html[data-cpr-theme="darkmode"] .pneuma-scanner-panel {
   padding: 8px 12px;
   min-height: 36px;
   height: auto;
-  border: 1px solid #194929;
+  border: 1px solid var(--color-border-dark, #999);
   border-radius: 4px;
-  background: #28633a;
-  color: #ffffff;
+  background: var(--color-bg-option, #e3e3df);
+  color: var(--color-text-primary, #242829);
   font-weight: 700;
   line-height: 1.4;
   text-align: center;
   text-shadow: none;
-  box-shadow: 0 2px 2px #0003;
+  box-shadow: none;
   cursor: pointer;
 }
-.chat-message button.pneuma-open-scanner:hover { background: #327d49; border-color: #194929; color: #ffffff; }
-.chat-message button.pneuma-open-scanner:focus-visible { outline: 2px solid #327d49; outline-offset: 2px; }
+.chat-message button.pneuma-open-scanner:hover { border-color: var(--color-border-highlight, #ff6400); }
+.chat-message button.pneuma-open-scanner:focus-visible { outline: 2px solid var(--color-border-highlight, #ff6400); outline-offset: 2px; }
 .chat-message button.pneuma-open-scanner:active { transform: translateY(1px); box-shadow: none; }
 
 .pneuma-scanner-panel .ap-controls-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
