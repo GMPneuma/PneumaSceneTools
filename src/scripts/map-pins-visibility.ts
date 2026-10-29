@@ -1,5 +1,5 @@
 import {MODULE_ID} from "./settings.js";
-import {pinningEnabled} from "./map-pins-data.js";
+import {pinningEnabled,pinningChanged} from "./map-pins-data.js";
 
 /** Change only the Notes container; native Note permission and vision checks remain intact. */
 export function refreshPinVisibility():void {
@@ -28,6 +28,6 @@ export function installPinVisibility():void {
     setting.onChange=value=>{original?.(value);refreshPinVisibility();};
   }
   Hooks.on("canvasReady",refreshPinVisibility);
-  Hooks.on("updateScene",(scene:Scene)=>{if(scene.id===canvas.scene?.id)refreshPinVisibility();});
+  Hooks.on("updateScene",(scene:Scene,changes:object)=>{if(scene.id===canvas.scene?.id&&pinningChanged(changes))refreshPinVisibility();});
   installed=true;
 }

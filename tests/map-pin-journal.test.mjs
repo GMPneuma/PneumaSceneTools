@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {panToPin} from '../dist/scripts/map-pin-journal.js';
+import {panToPin,registerPinJournal,addPinJournalButton} from '../dist/scripts/map-pin-journal.js';
 
 test('journal pan never uses another scene coordinates for players and validates GM scene transitions',async()=>{
   const notices=[],pans=[];
@@ -17,4 +17,25 @@ test('journal pan never uses another scene coordinates for players and validates
   game.user.isGM=true;canvas.scene={id:'other'};await panToPin(page);assert.equal(canvas.scene,scene);assert.equal(pans.length,2);
   canvas.scene={id:'other'};scene.view=async()=>{};await panToPin(page);assert.equal(pans.length,2);
   scene.notes.contents=[];await panToPin(page);assert.equal(pans.length,2);assert.match(notices.pop(),/no longer/);
+});
+
+test('hazard updates preserve the note lookup while pin membership changes invalidate it',()=>{
+ const hooks=new Map();globalThis.Hooks={on(name,fn){hooks.set(name,fn);}};
+ globalThis.foundry={utils:{getProperty:(o,p)=>p.split('.').reduce((v,k)=>v?.[k],o)}};
+ globalThis.document={createElement:()=>({append(){},addEventListener(){}})};
+ const scene={id:'scene',flags:{'pneuma-scenetools':{mapPinning:true}},notes:[{entryId:'journal',pageId:'page'}]};
+ let scans=0,buttons=0;
+ globalThis.game={user:{isGM:true},scenes:{*[Symbol.iterator](){scans++;yield scene;}}};
+ const page={id:'page',parent:{id:'journal'},testUserPermission:()=>true};
+ const root={closest(){return this;},querySelectorAll:()=>[],prepend(){buttons++;}};
+ registerPinJournal();hooks.get('createScene')(scene);
+ addPinJournalButton(page,root);assert.equal(scans,1);assert.equal(buttons,1);
+ for(let i=0;i<100;i++){
+   hooks.get('updateScene')(scene,{'flags.pneuma-scenetools.hazards.trap.moveProgress.pc':i});
+   addPinJournalButton(page,root);
+ }
+ assert.equal(scans,1,'Repeated Journal renders reuse their note index through hazard updates');
+ scene.flags['pneuma-scenetools'].mapPinning=false;
+ hooks.get('updateScene')(scene,{'flags.pneuma-scenetools.-=mapPinning':null});
+ addPinJournalButton(page,root);assert.equal(scans,2);assert.equal(buttons,101);
 });

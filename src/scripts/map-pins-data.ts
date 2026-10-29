@@ -1,4 +1,5 @@
 import {MODULE_ID} from "./settings.js";
+import {changesSeatFields} from "./vehicle-seat-changes.js";
 import {ensureSceneToolsFolder} from "./world-folders.js";
 
 export type PinTemplate = {journalId: string; imagePageId: string; descriptionPageId: string; sections: string;}
@@ -23,6 +24,9 @@ declare global {interface SettingConfig {"pneuma-scenetools.pinTemplate": PinTem
 export const EMPTY_TEMPLATE: PinTemplate = {journalId:"",imagePageId:"",descriptionPageId:"",sections:""};
 export function pinningEnabled(scene: Scene | null | undefined): boolean {
   return Boolean(scene && foundry.utils.getProperty(scene,`flags.${MODULE_ID}.mapPinning`));
+}
+export function pinningChanged(changes: object): boolean {
+  return changesSeatFields(changes, [`flags.${MODULE_ID}.mapPinning`]);
 }
 export function pinInfo(note: NoteDocument): PinInfo | undefined {
   return foundry.utils.getProperty(note,`flags.${MODULE_ID}.mapPin`) as PinInfo | undefined;

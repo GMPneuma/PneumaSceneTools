@@ -1,8 +1,12 @@
 # Implemented features
 
+- Walking patrol pauses reuse their occupancy check until token placement, destination reservations or scene geometry changes; idle pauses no longer rebuild routing worlds every 25 ms. Deleted tokens lose hazard movement-progress entries, and unused generated hazard Actors are removed on off-scene token or Scene deletion. Shared Actors and condition templates remain protected. v0.8.3; live Foundry verification pending.
+
+- Hazard camera, manual and device-turn activation batches expand region targets once and share one transient chat-history lookup. Pending-card and same-combat-event duplicate prevention remain intact, and triggering-token cards retain independent groups. Unchanged movement progress skips Scene writes. Hazard bookkeeping no longer rebuilds Map POI controls, note scaling/visibility or access-point presentation; relevant pin toggles, AP colors and scene geometry still refresh. v0.8.3; live Foundry verification pending.
+
 - Access points cannot be newly added to combat: native preCreateCombatant guards recognize AP token flags, AP Actor template flags and AP prototype-token flags. Their native token HUD combat toggle is removed. Existing combat entries are not automatically deleted. Build and focused guard checks passed; live Foundry verification pending.
 
-- Scanner chat reveal button declares its Scanner action and GM role for VisualTools styling. Without VisualTools it uses native theme fallback colors; GM access and click behavior remain unchanged. Local/unreleased; live Foundry verification pending.
+- Scanner chat reveal button declares its Scanner action and GM role for VisualTools styling. Without VisualTools it uses native theme fallback colors; GM access and click behavior remain unchanged. v0.8.3; live Foundry verification pending.
 
 - Name dialogs advise duplicating starter tables for personal name lists.
 

@@ -5,7 +5,7 @@ import {Collection,getPath,applyChanges} from './netarch/helpers.mjs';
 import {blankTrap,blankAction,validateAction,validateTrap,parsePresets,exportPresets,validateDevice} from '../dist/scripts/traps/model.js';
 import {setHazardRegionVisibility,locateHazard,deleteHazard,sceneHazard,traps,findHazard,resolveHazard,operational,hazardIssues,saveTrap,syncAccessPoint,ensureBehavior,TRAP_BEHAVIOR,ensureRegionHazard,updateTrap,createHazardToken,setHazardHP,cleanupHazardActor,createHazardAccessPoint} from '../dist/scripts/traps/documents.js';
 import {propose,resolve,applyCombatEffect,activation,registerRuntime,registerBehavior,regionEvent,enqueue,cameraSees,cleanupEffects,manualTrigger,card} from '../dist/scripts/traps/runtime.js';
-import {eligible,deviceMoved,scanCamera} from '../dist/scripts/traps/triggers.js';
+import {eligible,deviceMoved,scanCamera,proposeTargets} from '../dist/scripts/traps/triggers.js';
 import {validateHazardReadiness} from '../dist/scripts/traps/readiness.js';
 import {applyAction,attackHazard} from '../dist/scripts/traps/resolution.js';
 globalThis.FormApplication = class {};
@@ -886,6 +886,29 @@ test('hazard activation progress saves only to its Scene record',async()=>{
  assert.equal(f.region.flags[M]?.trap,undefined);assert.deepEqual(f.region.shapes,before);
 });
 
+test('off-scene token deletion removes progress and unused generated actors',async()=>{
+ const f=setup();nativeCreation(f);registerRuntime();
+ const token=await createHazardToken(f.scene,'Generated',5,{x:0,y:0,elevation:0,hidden:true},{});
+ f.t().bodyId=token.id;f.t().moveProgress[token.id]=2;f.t().moveProgress.pc=1;
+ canvas.scene={id:'elsewhere'};canvas.ready=false;
+ f.scene.tokens.delete(token.id);await f.hook('deleteToken',token);
+ assert.equal(game.actors.has(token.actorId),false);assert.equal(f.t().armed,false);
+ assert.equal(Object.hasOwn(f.t().moveProgress,token.id),false);assert.equal(f.t().moveProgress.pc,1);
+ assert.deepEqual(f.calls.errors,[]);
+});
+
+test('scene deletion removes only generated actors unused by surviving scenes',async()=>{
+ const f=setup();nativeCreation(f);registerRuntime();
+ const make=()=>createHazardToken(f.scene,'Generated',5,{x:0,y:0,elevation:0,hidden:true},{});
+ const orphan=await make(),shared=await make(),template=await make();
+ template.flags[M]={hazardCondition:{templateActorId:template.actorId}};
+ const other={id:'other',tokens:new Collection([{id:'linked',actorId:shared.actorId}])};game.scenes.set(other.id,other);
+ game.scenes.delete(f.scene.id);canvas.scene=other;canvas.ready=false;
+ await f.hook('deleteScene',f.scene);
+ assert.equal(game.actors.has(orphan.actorId),false);assert.equal(game.actors.has(shared.actorId),true);
+ assert.equal(game.actors.has(template.actorId),true);assert.deepEqual(f.calls.errors,[]);
+});
+
 test('hazard attacks reject a missing native weapon skill before calling Combat Tools',async()=>{
  const f=setup();let attacks=0;
  f.body.object={actor:f.body.actor};f.target.object={actor:f.target.actor};
@@ -920,4 +943,58 @@ test('a queued vehicle/passenger burst checks each affected target only once',as
  registerRuntime();await f.hook('canvasReady');checks=0;
  await Promise.all([f.hook('updateToken',f.target,{x:-50}),f.hook('updateToken',passenger,{x:-50}),f.hook('updateToken',f.target,{y:150})]);
  assert.equal(checks,2);assert.ok(f.t().detected.includes(passenger.id));
+});
+
+test('region camera and manual batches each read chat history once for ten targets',async()=>{
+ const f=setup();Object.assign(f.t(),{triggers:['detect'],deviceId:'device',range:10,darkness:true,targetMode:'region'});
+ f.target.x=-50;f.target.y=150;
+ const targets=[f.target,...Array.from({length:9},(_,i)=>f.makeToken('crowd'+i,-50,150))];
+ f.region.tokens=new Set(targets);
+ for(let i=0;i<1000;i++)game.messages.set('history'+i,{id:'history'+i,flags:{}});
+ let passes=0,visits=0;
+ game.messages[Symbol.iterator]=function*(){passes++;for(const message of this.values()){visits++;yield message;}};
+ await scanCamera(f.hazard);
+ assert.equal(passes,1);assert.equal(visits,1000);assert.equal(game.messages.size,1010);
+ const cards=game.messages.contents.filter(message=>activation(message));
+ assert.equal(new Set(cards.map(message=>activation(message).batch)).size,1);
+ assert.equal(new Set(cards.map(message=>activation(message).target)).size,10);
+ assert.equal(f.calls.effects.length,0,'Detection still requires GM approval');
+ passes=visits=0;await scanCamera(f.hazard);assert.equal(passes,0,'Unchanged detection needs no history lookup');
+ await manualTrigger(f.hazard,targets);assert.equal(passes,1);assert.equal(visits,1010);assert.equal(game.messages.size,1010);
+ for(const message of cards)await resolve(message,'skip');
+ passes=visits=0;await manualTrigger(f.hazard,targets);
+ assert.equal(passes,1);assert.equal(game.messages.size,1020,'A later manual event can retrigger completed targets');
+});
+
+test('batch lookups preserve pending and combat-event deduplication without stale deleted cards',async()=>{
+ const f=setup(),other=f.makeToken('other');f.t().targetMode='triggering';
+ await proposeTargets(f.hazard,[f.target,f.target,other],'Combat.c.1.0.turnStart');
+ assert.equal(game.messages.size,2);
+ const [first,second]=game.messages.contents;
+ assert.notEqual(activation(first).batch,activation(second).batch,'Triggering targets retain independent card groups');
+ await resolve(first,'skip');
+ await proposeTargets(f.hazard,[f.target,other],'Combat.c.1.0.turnStart');assert.equal(game.messages.size,2);
+ await proposeTargets(f.hazard,[f.target,other],'Combat.c.2.0.turnStart');assert.equal(game.messages.size,3,'A pending card blocks even a later event');
+ game.messages.delete(second.id);
+ await proposeTargets(f.hazard,[other],'Combat.c.2.0.turnStart');assert.equal(game.messages.size,3,'Deleted cards no longer block their target');
+});
+
+test('device turns expand a region once and retain same-turn duplicate protection',async()=>{
+ const f=setup();registerRuntime();Object.assign(f.t(),{triggers:['deviceTurn'],targetMode:'region'});
+ f.region.tokens=new Set([f.target,...Array.from({length:9},(_,i)=>f.makeToken('target'+i))]);
+ let passes=0;game.messages[Symbol.iterator]=function*(){passes++;yield* this.values();};
+ const combat={id:'combat',scene:f.scene,round:1,turn:0,combatant:{tokenId:'body'}};
+ await f.hook('updateCombat',combat,{turn:0});assert.equal(passes,1);assert.equal(game.messages.size,10);
+ for(const message of game.messages.contents)await resolve(message,'skip');
+ passes=0;await f.hook('updateCombat',combat,{turn:0});assert.equal(passes,1);assert.equal(game.messages.size,10);
+});
+
+test('movement progress writes only changed distances and still resets on exit',async()=>{
+ const f=setup();Object.assign(f.t(),{triggers:['move'],distance:2});f.region.tokens.add(f.target);
+ let writes=0;const update=f.scene.update;f.scene.update=async changes=>{writes++;return update(changes);};
+ const move=distance=>regionEvent({name:'tokenMove',region:f.region,data:{token:f.target,segments:[{type:0,from:{x:0,y:0},to:{x:distance*50,y:0}}]}});
+ await move(0);assert.equal(writes,0);
+ await move(1);assert.equal(writes,1);assert.equal(f.t().moveProgress.pc,1);
+ await move(0);assert.equal(writes,1);
+ f.region.tokens.delete(f.target);await move(0);assert.equal(writes,2);assert.equal(f.t().moveProgress.pc,0);
 });

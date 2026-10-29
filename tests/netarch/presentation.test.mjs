@@ -148,3 +148,19 @@ test("only pulsing APs animate; completion detaches ticker and cosmetic changes 
   values.set("visionRadius",1); display.queueRefresh(); await Promise.resolve(); assert.equal(lighting,3);
   display.destroy();
 });
+
+test("hazard scene flags skip AP work while color, deletion and grid changes refresh",async()=>{
+  renderingEnvironment();makeToken(canvas.scene);
+  const display=new APPresentation();let refreshes=0;
+  display.refresh=async()=>{refreshes++;};display.registerHooks();
+  for(let i=0;i<100;i++)await Hooks.call('updateScene',canvas.scene,{flags:{'pneuma-scenetools':{hazards:{trap:{moveProgress:{pc:i},detected:['pc']}}}}});
+  assert.equal(refreshes,0);
+  for(const changes of [
+    {'flags.pneuma-scenetools.unassignedColor':'#ff0000'},
+    {flags:{'pneuma-scenetools':{'-=unassignedColor':null}}},
+    {grid:{size:150}}, {'grid.distance':5},
+  ])await Hooks.call('updateScene',canvas.scene,changes);
+  assert.equal(refreshes,4);
+  await Hooks.call('updateScene',{id:'another-scene'},{grid:{size:200}});assert.equal(refreshes,4);
+  display.destroy();
+});

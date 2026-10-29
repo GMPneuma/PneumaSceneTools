@@ -92,10 +92,29 @@ export function registerRuntime():void {
     if (("_regions" in change||"delta" in change||Object.keys(change).some(k=>k.startsWith("delta."))) && token.parent) maintain(token.parent,true,false);
   });
   Hooks.on("deleteToken",(token:TokenDocument)=>{enqueue(async()=>{
-    if (!authority() || !currentScene(token.parent))return;
+    if (!authority() || !token.parent || token.parent.tokens.has(token.id!))return;
+    pendingMoves.delete(token);
+    if(token.actor)hitPoints.delete(token.actor.uuid);
     if(token.actor){const ids=token.actor.effects.filter(e=>foundry.utils.getProperty(e,`flags.${MODULE_ID}.trapEffect.token`)===token.uuid).map(e=>e.id!);if(ids.length)await token.actor.deleteEmbeddedDocuments("ActiveEffect",ids);}
-    for(const d of traps(token.parent)){const t=trapData(d)!;if(t.bodyId===token.id){await updateTrap(d,{armed:false});await syncAccessPoint(d);}}
-    await cleanupEffects(token.parent);await cleanupHazardActor(token);
+    try {
+      for(const d of traps(token.parent)){
+        const t=d.config,changes:Record<string,unknown>={};
+        if(t?.moveProgress&&Object.hasOwn(t.moveProgress,token.id!))changes[`moveProgress.-=${token.id}`]=null;
+        if(t?.bodyId===token.id)changes.armed=false;
+        if(Object.keys(changes).length)await updateTrap(d,changes);
+        if(t?.bodyId===token.id&&currentScene(token.parent))await syncAccessPoint(d);
+      }
+      if(currentScene(token.parent))await cleanupEffects(token.parent);
+    } finally {await cleanupHazardActor(token);}
+  });});
+  Hooks.on("deleteScene",(scene:Scene)=>{enqueue(async()=>{
+    if(!authority())return;
+    pendingMaintenance.delete(scene);
+    for(const token of scene.tokens){
+      pendingMoves.delete(token);
+      if(token.actor)hitPoints.delete(token.actor.uuid);
+      await cleanupHazardActor(token);
+    }
   });});
   Hooks.on("updateCombat",(combat:Combat,change:Record<string,unknown>)=>{
     if (!("turn" in change || "round" in change) || !currentScene(combat.scene))return;
@@ -106,7 +125,8 @@ export function registerRuntime():void {
         const t=trapData(d)!;
         if(hasTrigger(t,"detect"))await scanCamera(d);
         if(current===t.bodyId&&hasTrigger(t,"deviceTurn")){
-          for(const target of triggerRegion(d,t)?.tokens??[])if(eligible(t,target)&&Number(foundry.utils.getProperty(target.actor??{},"system.derivedStats.hp.value"))>0)await proposeTargets(d,target,event+".deviceTurn");
+          const targets=Array.from(triggerRegion(d,t)?.tokens??[]).filter(target=>eligible(t,target)&&Number(foundry.utils.getProperty(target.actor??{},"system.derivedStats.hp.value"))>0);
+          await proposeTargets(d,targets,event+".deviceTurn");
         }
       }
       await cleanupEffects(scene);

@@ -2,6 +2,7 @@ import { MODULE_ID, iconPath } from "./constants.js";
 import { apData, canSeeAP, canSeePulse, isAP, pulseProgress, tokenCenter } from "./model.js";
 import { colorFor, serverNow } from "./actions.js";
 import { setting } from "./settings.js";
+import { changesSeatFields } from "../vehicle-seat-changes.js";
 
 interface APDisplay {
   group: PIXI.Container; pulse: PIXI.Graphics; sprite: PIXI.Sprite; label: PIXI.Text;
@@ -211,7 +212,9 @@ export class APPresentation {
       if (entry) this.layout(entry);
     });
     Hooks.on("updateUser", () => this.queueRefresh());
-    Hooks.on("updateScene", (scene: Scene) => { if (scene.id === canvas.scene?.id) this.queueRefresh(); });
+    Hooks.on("updateScene", (scene: Scene, changes: object) => {
+      if (scene.id === canvas.scene?.id && changesSeatFields(changes, ["grid", "width", "height", "padding", "tokens", `flags.${MODULE_ID}.unassignedColor`])) this.queueRefresh();
+    });
   }
 }
 

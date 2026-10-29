@@ -1,5 +1,6 @@
 import {managedPinPage,pinImagePath} from './map-pins-image.js';
-import {pinInfo,pinningEnabled} from "./map-pins-data.js";
+import {pinInfo,pinningEnabled,pinningChanged} from "./map-pins-data.js";
+import {changesSeatFields} from "./vehicle-seat-changes.js";
 import {MODULE_ID} from "./settings.js";
 
 export interface HoverSection {name:string;html:string;}
@@ -117,5 +118,6 @@ export async function showPinHover(note:Note):Promise<void> {
 export function registerPinHover():void {
   document.addEventListener("pointermove",event=>{if(card?.contains(event.target as Node))return;pointer={x:event.clientX,y:event.clientY};if(!hideTimer)position();});
   Hooks.on("hoverNote",(note:Note,hovered:boolean)=>{if(hovered) void showPinHover(note).catch(()=>hidePinHover());else {generation++;cancelHide();hideTimer=setTimeout(hidePinHover,180);}});
-  for(const hook of ["canvasTearDown","updateJournalEntry","updateJournalEntryPage","deleteJournalEntry","deleteJournalEntryPage","updateNote","deleteNote","updateScene","updateUser"]) Hooks.on(hook,hidePinHover);
+  for(const hook of ["canvasTearDown","updateJournalEntry","updateJournalEntryPage","deleteJournalEntry","deleteJournalEntryPage","updateNote","deleteNote","updateUser"]) Hooks.on(hook,hidePinHover);
+  Hooks.on('updateScene',(scene:Scene,changes:object)=>{if(scene.id===canvas.scene?.id&&(pinningChanged(changes)||changesSeatFields(changes,['notes','ownership','grid','width','height','padding'])))hidePinHover();});
 }

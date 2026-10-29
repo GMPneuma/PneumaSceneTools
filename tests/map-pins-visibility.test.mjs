@@ -22,7 +22,10 @@ test('POI visibility overrides the layer for players without changing saved pref
   assert.equal(layer.objects.visible,true);
   setting.onChange(false);assert.equal(nativeChanges,1);assert.equal(layer.objects.visible,true);assert.equal(saved,false);
   assert.deepEqual(layer.placeables,[{visible:false},{visible:true}]);
-  scene.flags['pneuma-scenetools'].mapPinning=false;hooks.get('updateScene')(scene);
+  scene.flags['pneuma-scenetools'].mapPinning=false;
+  hooks.get('updateScene')(scene,{'flags.pneuma-scenetools.hazards.trap.detected':['pc']});
+  assert.equal(layer.objects.visible,true,'Unrelated bookkeeping must not refresh the note layer');
+  hooks.get('updateScene')(scene,{flags:{'pneuma-scenetools':{mapPinning:false}}});
   assert.equal(layer.objects.visible,false);assert.equal(layer.interactiveChildren,false);
   layer.active=true;refreshPinVisibility();assert.equal(layer.objects.visible,true);
   layer.active=false;saved=true;refreshPinVisibility();assert.equal(layer.objects.visible,true);
@@ -47,8 +50,11 @@ test('POI screen size caps at configured size while zoom-out, position and docum
   }
   canvas.stage.scale.x=3;hooks.get('drawNote')(note);assert.equal(note.scale.x,1/3);
   hooks.get('refreshNote')(note);assert.equal(note.scale.x,1/3);
-  scene.flags['pneuma-scenetools'].mapPinning=false;hooks.get('updateScene')(scene);assert.equal(note.scale.x,1);
+  scene.flags['pneuma-scenetools'].mapPinning=false;
+  hooks.get('updateScene')(scene,{'flags.pneuma-scenetools.hazards.trap.moveProgress.pc':1});
+  assert.equal(note.scale.x,1/3,'Hazard progress must not rescan note scales');
+  hooks.get('updateScene')(scene,{'flags.pneuma-scenetools.mapPinning':false});assert.equal(note.scale.x,1);
   note.scale.set(0.8,0.8);refreshPinScale(note);assert.equal(note.scale.x,0.8);
   scene.flags['pneuma-scenetools'].mapPinning=true;hooks.get('canvasReady')();assert.equal(note.scale.x,0.8/3);
-  scene.flags['pneuma-scenetools'].mapPinning=false;hooks.get('updateScene')(scene);assert.equal(note.scale.x,0.8);
+  scene.flags['pneuma-scenetools'].mapPinning=false;hooks.get('updateScene')(scene,{'flags.pneuma-scenetools.-=mapPinning':null});assert.equal(note.scale.x,0.8);
 });

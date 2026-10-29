@@ -29,33 +29,44 @@ export function cameraSees(d: Hazard, target: TokenDocument, point = center(targ
   }
   return true;
 }
-export async function propose(d: Hazard, target: TokenDocument, event: string, chain: string[] = [], batch = foundry.utils.randomID()): Promise<void> {
+/** One transient lookup per activation batch; never retain stale chat state across events. */
+function blockedTargets(d: Hazard, event: string): Set<string> {
+  const targets = new Set<string>();
+  for (const message of game.messages ?? []) {
+    const a = activation(message);
+    if (a?.region === d.uuid && (!["done", "skipped"].includes(a.state) || a.event === event && event.startsWith("Combat.")))
+      targets.add(a.target);
+  }
+  return targets;
+}
+export async function propose(d: Hazard, target: TokenDocument, event: string, chain: string[] = [], batch = foundry.utils.randomID(), blocked?: Set<string>): Promise<void> {
   if (!authority() || !operational(d))
     return;
   const t = trapData(d)!;
   if (chain.includes(d.uuid) || chain.length >= 100 || !eligible(t, target))
     return;
-  const existing = game.messages!.some(m => {
-    const a = activation(m);
-    return a?.region === d.uuid && a.target === target.uuid
-      && (!["done", "skipped"].includes(a.state) || a.event === event && event.startsWith("Combat."));
-  });
-  if (existing)
+  const existing = blocked ?? blockedTargets(d, event);
+  if (existing.has(target.uuid))
     return;
   const a: Activation = {region: d.uuid, target: target.uuid, event, kind: "trap", state: "pending", index: 0, config: structuredClone(t), chain: [...chain, d.uuid], error: "", batch, targetName: target.name, rolled: null, revision: 0};
-  await ChatMessage.create({
+  const created = await ChatMessage.create({
     content: card(a), whisper: ChatMessage.getWhisperRecipients("GM").map(u => u.id!),
     speaker: {alias: "Scene Tools · Hazards"}, flags: {[MODULE_ID]: {trapActivation: a}}
   } as unknown as ChatMessage.CreateData);
+  if (created) existing.add(target.uuid);
 }
-export async function proposeTargets(d: Hazard, target: TokenDocument, event: string, chain: string[] = []): Promise<void> {
+export async function proposeTargets(d: Hazard, target: TokenDocument | TokenDocument[], event: string, chain: string[] = []): Promise<void> {
+  const triggering = Array.isArray(target) ? target : [target];
+  if (!triggering.length || !authority() || !operational(d) || chain.includes(d.uuid) || chain.length >= 100) return;
   const t = trapData(d)!, area = effectRegion(d, t);
   if (!area)
     throw Error("The affected Region no longer exists.");
-  const targets = t.targetMode === "region" ? Array.from(area.tokens) : [target];
-  const batch = foundry.utils.randomID();
+  const targets = t.targetMode === "region" ? Array.from(area.tokens) : triggering;
+  const blocked = blockedTargets(d, event);
+  // Region cards share their group; triggering-token cards retain independent groups.
+  const batch = t.targetMode === "region" ? foundry.utils.randomID() : undefined;
   for (const token of targets)
-    await propose(d, token, event, chain, batch);
+    await propose(d, token, event, chain, batch ?? foundry.utils.randomID(), blocked);
 }
 /** Consume native Region membership and movement segments; Foundry handles shape holes and elevation. */
 export async function regionEvent(event: RegionDocument.RegionEvent, behaviorId?: string): Promise<void> {
@@ -100,7 +111,9 @@ async function hazardRegionEvent(d: Hazard, event: RegionDocument.RegionEvent): 
     const distance = (startsInside ? t.moveProgress[token.id!] ?? 0 : 0) + moved;
     if (moved > 0 && (t.distance === 0 || distance >= t.distance))
       await proposeTargets(d, token, "Movement inside hazard Region");
-    await updateTrap(d, {[`moveProgress.${token.id}`]: region.tokens.has(token) && t.distance > 0 ? distance % t.distance : 0});
+    const progress = region.tokens.has(token) && t.distance > 0 ? distance % t.distance : 0;
+    if (progress !== (t.moveProgress[token.id!] ?? 0))
+      await updateTrap(d, {[`moveProgress.${token.id}`]: progress});
   }
   if (hasTrigger(t, "turnStart") && event.name === CONST.REGION_EVENTS.TOKEN_TURN_START && region.tokens.has(token)) {
     const combat = data.combatant?.parent;
@@ -155,9 +168,7 @@ export async function scanCamera(d: Hazard, moved?: TokenDocument|TokenDocument[
   const targets=moved ? Array.isArray(moved)?moved:[moved] : undefined;
   const changed=new Set(targets?.map(token=>token.id));
   const seen = (targets ?? d.parent!.tokens.contents).filter(target => eligible(t, target) && cameraSees(d, target));
-  for (const target of seen)
-    if (!t.detected.includes(target.id!))
-      await proposeTargets(d, target, "Camera detected target");
+  await proposeTargets(d, seen.filter(target => !t.detected.includes(target.id!)), "Camera detected target");
   const ids = moved
     ? d.parent!.tokens.filter(target => changed.has(target.id) ? seen.some(token=>token.id===target.id) : t.detected.includes(target.id!)).map(target => target.id!)
     : seen.map(target => target.id!);
@@ -172,6 +183,5 @@ export async function manualTrigger(d: Hazard, tokens: TokenDocument[]): Promise
     throw Error("Complete and activate the hazard before triggering it.");
   if (!tokens.length)
     throw Error("Select target tokens first.");
-  for (const token of tokens)
-    await proposeTargets(d, token, "Manual trigger");
+  await proposeTargets(d, tokens, "Manual trigger");
 }

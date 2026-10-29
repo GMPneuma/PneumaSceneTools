@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test,beforeEach} from 'node:test';
-import {createMapPin,pinningEnabled,ensurePinTemplate} from '../dist/scripts/map-pins-data.js';
+import {createMapPin,pinningEnabled,pinningChanged,ensurePinTemplate} from '../dist/scripts/map-pins-data.js';
 const ID='pneuma-scenetools';
 class Collection extends Array {get(id){return this.find(x=>x.id===id)}get contents(){return this}}
 const getProperty=(object,path)=>path.split('.').reduce((value,key)=>value?.[key],object);
@@ -22,6 +22,29 @@ test('opt-in and GM boundaries block creation before journals are written',async
   await assert.rejects(()=>createMapPin(scene,input),/Enable/);assert.equal(created.length,0);
   scene.flags[ID].mapPinning=true;game.user.isGM=false;
   await assert.rejects(()=>createMapPin(scene,input),/Only GMs/);assert.equal(created.length,0);
+});
+
+test('pin refresh matching accepts nested, dotted and deleted settings without hazard invalidation',()=>{
+ for(const changes of [
+   {flags:{[ID]:{mapPinning:false}}}, {[`flags.${ID}.mapPinning`]:true},
+   {flags:{[ID]:{'-=mapPinning':null}}}, {[`flags.-=${ID}`]:null}, {flags:null},
+ ])assert.equal(pinningChanged(changes),true);
+ for(const changes of [{name:'Renamed'},{flags:{[ID]:{hazards:{trap:{detected:['pc']}}}}},{[`flags.${ID}.hazards.trap.moveProgress.pc`]:1}])
+   assert.equal(pinningChanged(changes),false);
+});
+
+test('hazard bookkeeping does not rebuild POI controls, but pin toggles still do',async()=>{
+ globalThis.FormApplication=class{};globalThis.FilePicker=class{};globalThis.Application=class{};
+ globalThis.document={addEventListener(){}};
+ const hooks=new Map();globalThis.Hooks={on(name,fn){const callbacks=hooks.get(name)??[];callbacks.push(fn);hooks.set(name,callbacks);}};
+ game.settings.register=()=>{};game.settings.registerMenu=()=>{};
+ globalThis.canvas={scene};let controls=0;globalThis.ui={controls:{initialize(){controls++;}}};
+ const {registerMapPins}=await import('../dist/scripts/map-pins.js');registerMapPins();
+ const update=changes=>{for(const fn of hooks.get('updateScene')??[])fn(scene,changes);};
+ for(let i=0;i<100;i++)update({[`flags.${ID}.hazards.trap.moveProgress.pc`]:i});
+ assert.equal(controls,0);
+ update({flags:{[ID]:{mapPinning:true}}});assert.equal(controls,1);
+ scene.flags[ID].mapPinning=false;update({[`flags.${ID}.-=mapPinning`]:null});assert.equal(controls,2);
 });
 test('one scene journal holds independent POI pages with view-only ownership',async()=>{
   const before=JSON.stringify(template.pages.map(p=>p.toObject()));

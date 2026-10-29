@@ -1,5 +1,6 @@
 import {MODULE_ID} from "./settings.js";
-import {pinningEnabled} from "./map-pins-data.js";
+import {pinningEnabled,pinningChanged} from "./map-pins-data.js";
+import {changesSeatFields} from "./vehicle-seat-changes.js";
 
 function linkedNotes(page:JournalEntryPage):NoteDocument[] {
   return ((game.scenes?.contents??[]) as Scene[]).filter(scene=>pinningEnabled(scene)).flatMap(scene=>scene.notes.contents.filter(note=>note.entryId===page.parent?.id && note.pageId===page.id));
@@ -45,7 +46,8 @@ export function addPinJournalButton(page:JournalEntryPage,root:HTMLElement):void
 }
 
 export function registerPinJournal():void {
-  for(const hook of ['createNote','updateNote','deleteNote','createScene','updateScene','deleteScene'])Hooks.on(hook,()=>{linkedPages=undefined;});
+  for(const hook of ['createNote','updateNote','deleteNote','createScene','deleteScene'])Hooks.on(hook,()=>{linkedPages=undefined;});
+  Hooks.on('updateScene',(_scene:Scene,changes:object)=>{if(pinningChanged(changes)||changesSeatFields(changes,['notes']))linkedPages=undefined;});
   Hooks.on('renderJournalPageSheet',(app:{object:JournalEntryPage},html:JQuery)=>{
     if(html[0])addPinJournalButton(app.object,html[0]);
   });

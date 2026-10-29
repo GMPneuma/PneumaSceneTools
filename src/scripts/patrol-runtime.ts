@@ -6,7 +6,7 @@ import {isVehicleToken} from "./vehicle-rotation.js";
 import {getVehicleBaseSize} from "./vehicle-footprint.js";
 import {driveFootprint,driveHull,driveSweeps,type DriveSweep,vehicleWallHull,DriveSearch,headingOf,headingDelta,artworkPose,hullsOverlap,type DrivePose} from "./patrol-vehicle.js";
 
-interface State {trafficUntil?:number; trafficReroute?:boolean; driveSearch?:DriveSearch; driveRevision?:number; drivePath?:DrivePose[]; reservedHull?:Point[];signature:string; path:Point[]; goal?:Point; reservedGoal?:Point; detour?:Point; index:number; direction:number; lastStop:number; waitUntil:number; moveUntil:number; travelSeconds:number; safe?:Point; status:string}
+interface State {worldRevision?:number; pauseRevision?:string; trafficUntil?:number; trafficReroute?:boolean; driveSearch?:DriveSearch; driveRevision?:number; drivePath?:DrivePose[]; reservedHull?:Point[];signature:string; path:Point[]; goal?:Point; reservedGoal?:Point; detour?:Point; index:number; direction:number; lastStop:number; waitUntil:number; moveUntil:number; travelSeconds:number; safe?:Point; status:string}
 const states=new Map<string,State>();
 const faults=new Map<string,string>();
 interface PatrolOperation {time:number; message:string}
@@ -53,6 +53,7 @@ let timer:ReturnType<typeof setTimeout>|undefined;
 let ticking=false;
 let drivePlansRemaining=1;
 let geometryRevision=0;
+let occupancyRevision=0;
 let patrolCursor=0;
 export function patrolConfig(token:TokenDocument):PatrolConfig {
   return structuredClone({...defaults(), ...((foundry.utils.getProperty(token,`flags.${MODULE_ID}.patrol`) ?? {}) as Partial<PatrolConfig>)});
@@ -304,12 +305,17 @@ async function advance(token:TokenDocument, now:number):Promise<void> {
   if(!state||state.signature!==signature){state={signature,path:[],index:0,direction:1,lastStop:-1,waitUntil:0,moveUntil:0,travelSeconds:0,status:"Starting"};states.set(token.uuid,state);}
   if(now<state.moveUntil||(isVehicleToken(token)&&now<state.waitUntil))return;
   if(config.squareSteps&&!isVehicleToken(token)&&token.parent!.grid.type!==1){state.status="Waiting: square-to-square patrol requires a square grid";return;}
-  const world=routingWorld(token,config);
-  if(!world){state.status="Waiting: Region or canvas unavailable";state.goal=undefined;state.reservedGoal=undefined;state.path=[];return;}
+  const pauseRevision=geometryRevision+":"+occupancyRevision;
+  if(now<state.waitUntil&&state.pauseRevision===pauseRevision)return;
   const origin=center(token);
   const clearHere=destinationClear(token,origin);
   if(clearHere)state.safe=origin;
-  if(now<state.waitUntil&&clearHere){state.status="Pausing";return;}
+  if(now<state.waitUntil&&clearHere&&state.worldRevision===geometryRevision){state.pauseRevision=pauseRevision;state.status="Pausing";return;}
+  state.pauseRevision=undefined;
+  const world=routingWorld(token,config);
+  if(!world){state.status="Waiting: Region or canvas unavailable";state.goal=undefined;state.reservedGoal=undefined;state.path=[];return;}
+  state.worldRevision=geometryRevision;
+  if(now<state.waitUntil&&clearHere){state.pauseRevision=pauseRevision;state.status="Pausing";return;}
   // Occupied pauses are cancelled; select somewhere else instead of dwelling on a token.
   state.waitUntil=0;
 
@@ -413,7 +419,9 @@ export async function tickPatrols(now=Date.now()):Promise<void> {
       if(!patrolConfig(token).enabled)continue;
       if(faults.get(token.uuid)===JSON.stringify(patrolConfig(token)))continue;
       const previous=states.get(token.uuid)?.status;
+      const priorReservation=states.get(token.uuid)?.reservedGoal;
       try {await advance(token,now);
+        if(states.get(token.uuid)?.reservedGoal!==priorReservation)occupancyRevision++;
         const status=states.get(token.uuid)?.status;
         if(status&&status!==previous&&!["Moving","Reversing","Turning in place"].includes(status))recordOperation(token,status);
       }catch(error){
@@ -461,10 +469,14 @@ export function registerPatrolRuntime():void {
   Hooks.on("updateToken",(token:TokenDocument,changes:Record<string,unknown>,options:{patrolMove?:boolean;vehicleSeats?:boolean})=>{
     if(token.parent?.id!==canvas.scene?.id)return;
     if(changesSeatFields(changes,[`flags.${MODULE_ID}.patrol`,`flags.${MODULE_ID}.vehicleSeat`])){if(initialized)rebuildPatrols();start();}
+    if(changesSeatFields(changes,["x","y","width","height","rotation",`flags.${MODULE_ID}.patrol`,`flags.${MODULE_ID}.vehicleSeat`]))occupancyRevision++;
     // Seat placement follows its vehicle; it is dynamic movement, not a scene geometry edit.
     // Boarding/exiting and patrol configuration changes must still invalidate existing plans.
     if(options.vehicleSeats&&!changesSeatFields(changes,[`flags.${MODULE_ID}.vehicleSeat`,`flags.${MODULE_ID}.patrol`]))return;
     if(!options.patrolMove&&changesSeatFields(changes,["x","y","width","height","elevation","rotation",`flags.${MODULE_ID}.patrol`,`flags.${MODULE_ID}.vehicleSeat`])){states.delete(token.uuid);faults.delete(token.uuid);invalidate();}
+  });
+  Hooks.on("refreshToken",(_token:Token,flags:Record<string,unknown>={})=>{
+    if(flags.refreshPosition||flags.refreshSize||flags.refreshRotation)occupancyRevision++;
   });
   Hooks.on("preUpdateToken",(token:TokenDocument,changes:{x?:number;y?:number;rotation?:number;width?:number;height?:number},options:{patrolMove?:boolean})=>{
     if(!options.patrolMove)return;

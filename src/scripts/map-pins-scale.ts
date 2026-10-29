@@ -1,4 +1,4 @@
-import {pinningEnabled} from "./map-pins-data.js";
+import {pinningEnabled,pinningChanged} from "./map-pins-data.js";
 
 const originalScales=new WeakMap<Note,{x:number;y:number}>();
 /** Limit screen size above 100% zoom; scale icon, label, and hit target together. */
@@ -27,6 +27,6 @@ export function installPinScaling():void {
   Hooks.on("refreshNote",refreshPinScale);
   Hooks.on("canvasReady",refreshScenePins);
   Hooks.on("canvasPan",refreshScenePins);
-  Hooks.on("updateScene",(scene:Scene)=>{if(scene.id===canvas.scene?.id)refreshScenePins();});
+  Hooks.on("updateScene",(scene:Scene,changes:object)=>{if(scene.id===canvas.scene?.id&&pinningChanged(changes))refreshScenePins();});
   installed=true;
 }

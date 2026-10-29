@@ -7,7 +7,7 @@ import {installPinContextMenu,openPinJournal,pinPermissionDocument,pinPermission
 import {MODULE_ID} from "./settings.js";
 import {syncPinImage,pinImagePath,managedPinPage} from "./map-pins-image.js";
 import {installPinVisibility} from "./map-pins-visibility.js";
-import {createMapPin,DEFAULT_PIN,getPinDefaults,pinVisualDefaults,validatePinDefaults,EMPTY_TEMPLATE,ensurePinTemplate,getPinTemplate,poiPageContent,pinInfo,pinningEnabled,validateTemplate} from "./map-pins-data.js";
+import {createMapPin,DEFAULT_PIN,getPinDefaults,pinVisualDefaults,validatePinDefaults,EMPTY_TEMPLATE,ensurePinTemplate,getPinTemplate,poiPageContent,pinInfo,pinningEnabled,pinningChanged,validateTemplate} from "./map-pins-data.js";
 import {parseHoverPage,selectedHoverFields,registerPinHover} from "./map-pins-hover.js";
 
 const escape=(value:string)=>value.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]!));
@@ -530,7 +530,7 @@ export function registerMapPins():void {
     if(!pinningEnabled(note.parent))return;
     for(const key of ["x","y"] as const)if(typeof change[key]==="number"&&Number.isFinite(change[key]))change[key]=Math.round(change[key]);
   });
-  Hooks.on("updateScene",(scene:Scene)=>{if(canvas.scene?.id===scene.id)ui.controls?.initialize();if(!pinningEnabled(scene)){if(placementSceneId===scene.id)placementSceneId=undefined;void managers.get(scene.id!)?.close();void creationSheets.get(scene.id!)?.close();}});
+  Hooks.on("updateScene",(scene:Scene,changes:object)=>{if(!pinningChanged(changes))return;if(canvas.scene?.id===scene.id)ui.controls?.initialize();if(!pinningEnabled(scene)){if(placementSceneId===scene.id)placementSceneId=undefined;void managers.get(scene.id!)?.close();void creationSheets.get(scene.id!)?.close();}});
   Hooks.on("deleteScene",(scene:Scene)=>{if(placementSceneId===scene.id)placementSceneId=undefined;void managers.get(scene.id!)?.close();void creationSheets.get(scene.id!)?.close();});
   registerPinHover();
 }

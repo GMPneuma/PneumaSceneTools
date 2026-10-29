@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.3 - 2026-10-28
+
+- Scan hazard chat history once per target batch and avoid unchanged movement-progress writes.
+- Restrict map-pin and access-point refreshes to relevant document changes.
+- Reuse paused patrol state until occupancy, reservations or geometry changes.
+- Clean up deleted-token hazard progress and unused generated hazard actors.
+
+Validation: production build and automated checks. Live Foundry multiplayer verification remains pending.
+
 ## 0.8.2 - 2026-10-28
 
 - Prevent access point tokens and actors from being newly added to combat; hide their native combat toggle. Leave existing combat entries unchanged.

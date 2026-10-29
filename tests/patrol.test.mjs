@@ -148,6 +148,23 @@ test('occupied arrival is approached without dwelling on a token',async()=>{
     assert.notEqual(a.x,300);assert.equal(destinationClear(a,p(a.x+50,a.y+50)),true);
   }finally{Math.random=old;}
 });
+
+test('unchanged walking pauses skip routing and occupancy scans, but new blockers cancel them',async()=>{
+ const {token,scene}=setup();
+ const a=token('walker',100,100,{...route,pauseMin:30,pauseMax:30,sideTracks:false});
+ const blocker=token('blocker',800,800);
+ for(let time=0;time<=2000;time+=250)await tickPatrols(time);
+ assert.equal(patrolStatus(a),'Pausing');
+ let walls=0,sizes=0;
+ const wallContents=scene.walls.contents;
+ Object.defineProperty(scene.walls,'contents',{get(){walls++;return wallContents;}});
+ blocker.object.getSize=()=>{sizes++;return {width:100,height:100};};
+ await tickPatrols(2025);const baseline=sizes;
+ for(let time=2050;time<4550;time+=25)await tickPatrols(time);
+ assert.equal(walls,0);assert.equal(sizes,baseline,'100 idle ticks do not scan other token footprints');
+ await blocker.update({x:a.x,y:a.y});await tickPatrols(4575);
+ assert.ok(sizes>baseline);assert.ok(walls>0);assert.notEqual(patrolStatus(a),'Pausing');
+});
 test('deleted Region and changed walls stop stale paths; no off-scene writes',async()=>{
   const {token,scene}=setup();const a=token('a',100,100,route);await tickPatrols(0);const before=a.x;
   scene.walls.contents.push({c:[200,0,200,1000],move:20,door:0,ds:0});await tickPatrols(300);assert.equal(a.x,before);

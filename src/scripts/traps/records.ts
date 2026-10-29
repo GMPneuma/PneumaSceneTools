@@ -22,7 +22,9 @@ export async function updateTrap(d: Hazard, changes: Record<string, unknown>): P
   // Native no-diff updates may return undefined; verify the saved values instead.
   const config=d.config;
   const retained = !!config && Object.entries(changes).every(([key, value]) =>
-    JSON.stringify(foundry.utils.getProperty(config, key)) === JSON.stringify(value));
+    key.split('.').at(-1)?.startsWith('-=')
+      ? foundry.utils.getProperty(config, key.replace(/(^|\.)-=/, '$1')) === undefined
+      : JSON.stringify(foundry.utils.getProperty(config, key)) === JSON.stringify(value));
   if (!retained) throw Error(result ? "Foundry did not retain the hazard changes. Your draft is still in the editor." : "Hazard save was cancelled before the changes were stored. Your draft is still in the editor.");
 }
 export const authority = () => hazardsAvailable() && !!game.user?.isGM && activeGM()?.id === game.user.id;
