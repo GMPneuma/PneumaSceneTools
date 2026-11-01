@@ -8,17 +8,17 @@ const ID='pneuma-scenetools';
 const collection=items=>({contents:items,get:id=>items.find(i=>i.id===id)});
 const p=(x,y)=>({x,y});
 const box=[p(0,0),p(1000,0),p(1000,1000),p(0,1000)];
-function setup(){
+function setup(gridType=1){
   clearPatrolRuntime();
   globalThis.foundry={utils:{getProperty:(o,path)=>path.split('.').reduce((v,k)=>v?.[k],o)}};
   globalThis.game={user:{id:'gm',isGM:true},users:{activeGM:{id:'gm'}},paused:false,combats:collection([])};
   const hooks=new Map();globalThis.Hooks={on:(n,fn)=>{const list=hooks.get(n)??[];list.push(fn);hooks.set(n,list);},once(){}};
-  const scene={id:'scene',documentName:'Scene',grid:{size:100,type:1},tokens:collection([]),walls:collection([]),regions:collection([{id:'region',name:'Bar'}])};
+  const scene={id:'scene',documentName:'Scene',grid:{size:100,type:gridType},tokens:collection([]),walls:collection([]),regions:collection([{id:'region',name:'Bar'}])};
   const region={bounds:{x:0,y:0,width:1000,height:1000},polygons:[{points:box.flatMap(v=>[v.x,v.y])}],testPoint:q=>q.x>=0&&q.y>=0&&q.x<=1000&&q.y<=1000};
   globalThis.canvas={ready:true,scene,dimensions:{sceneRect:{x:0,y:0,width:1000,height:1000}},regions:{get:id=>id==='region'?region:undefined}};
   registerPatrolRuntime();
   function token(id,x,y,config={}){
-    const t={id,uuid:`Scene.scene.Token.${id}`,name:id,parent:scene,x,y,width:1,height:1,elevation:0,actor:{},flags:{[ID]:{patrol:{...defaults(),...config}}},writes:[]};
+    const t={id,uuid:`Scene.scene.Token.${id}`,name:id,parent:scene,x,y,width:1,height:1,elevation:0,actor:{},flags:{[ID]:{patrol:{...defaults(),stepPauseSeconds:0,...config}}},writes:[]};
     t.object={getSize:()=>({width:t.width*100,height:t.height*100})};
     t.update=async(changes,options={})=>{
       if(hooks.get('preUpdateToken')?.some(fn=>fn(t,changes,options)===false))return;
@@ -76,25 +76,52 @@ test('draft edits do not mutate saved token flags',()=>{
 });
 const route={enabled:true,pauseMin:1,pauseMax:1,stops:[{x:350,y:150,wait:1},{x:150,y:150,wait:1}]};
 
+test('saved movement flags cannot opt a square-grid patrol out of animated steps',async()=>{
+  const {token}=setup();
+  const a=token('a',100,100,route);
+  delete a.flags[ID].patrol.stepPauseSeconds;
+  Object.assign(a.flags[ID].patrol,{squareSteps:false,squareMovementVersion:1,squarePause:0});
+  assert.equal(patrolConfig(a).stepPauseSeconds,0.2);
+  await tickPatrols(0);
+  assert.equal(a.x,200);
+  assert.equal(a.writes.at(-1).options.animate,true);
+  await tickPatrols(1100);
+  assert.equal(a.x,200);
+  await savePatrol(a,patrolConfig(a));
+  assert.equal("squareSteps" in patrolConfig(a),false);
+});
+
 test('per-square pauses begin after movement and are optional',async()=>{
   const {token}=setup();
-  const a=token('a',100,100,{...route,squareSteps:true,squarePause:0.7});
+  const a=token('a',100,100,{...route,squareSteps:true,stepPauseSeconds:0.7});
   await tickPatrols(0);assert.equal(a.x,200);
   await tickPatrols(1000);assert.equal(a.x,200);
   await tickPatrols(1600);assert.equal(a.x,200);assert.equal(patrolStatus(a),'Pausing');
   await tickPatrols(1800);assert.equal(a.x,300);
-  for(const squarePause of [-0.1,0.15,Infinity,3601])assert.throws(()=>validateConfig({...defaults(),squarePause}));
-  assert.equal(validateConfig({...defaults(),squarePause:0.7}).squarePause,0.7);
-  await savePatrol(a,{...patrolConfig(a),squarePause:0,stops:[{x:650,y:150,wait:0},{x:150,y:150,wait:0}]});
+  for(const stepPauseSeconds of [-0.1,0.15,Infinity,3601])assert.throws(()=>validateConfig({...defaults(),stepPauseSeconds}));
+  assert.equal(validateConfig({...defaults(),stepPauseSeconds:0.7}).stepPauseSeconds,0.7);
+  await savePatrol(a,{...patrolConfig(a),stepPauseSeconds:0,stops:[{x:650,y:150,wait:0},{x:150,y:150,wait:0}]});
   await tickPatrols(2000);assert.equal(a.x,400);
   await tickPatrols(3000);assert.equal(a.x,500);
 });
 
-test('square-step routing favors cardinal moves and retains exact diagonals when required',()=>{
+test('square-step routing uses clear diagonals and falls back when diagonals are blocked',()=>{
   const world={bounds:{x:0,y:0,width:1000,height:1000},step:100,squareSteps:true,canMove:()=>true};
   const start=p(150,150),goal=p(450,550),path=findPath(start,goal,world);
-  let previous=start;
-  for(const point of path){const dx=Math.abs(point.x-previous.x),dy=Math.abs(point.y-previous.y);assert.ok(dx+dy===100||dx+dy===0);previous=point;}
+  let previous=start, diagonalSteps=0, straightSteps=0;
+  for(const point of path){
+    const dx=Math.abs(point.x-previous.x),dy=Math.abs(point.y-previous.y);
+    assert.ok((dx===0||dx===100)&&(dy===0||dy===100));
+    if(dx&&dy)diagonalSteps++;
+    else if(dx||dy)straightSteps++;
+    previous=point;
+  }
+  assert.equal(diagonalSteps,3);
+  assert.equal(straightSteps,1);
+  const cardinalOnly=findPath(start,goal,{...world,canMove:(a,b)=>a.x===b.x||a.y===b.y});
+  previous=start;
+  for(const point of cardinalOnly){assert.ok(point.x===previous.x||point.y===previous.y);previous=point;}
+  assert.deepEqual(cardinalOnly.at(-1),goal);
   assert.deepEqual(path.at(-1),goal);
   const diagonal=findPath(start,p(250,250),{...world,canMove:(a,b)=>a.x===a.y&&b.x===b.y});
   assert.deepEqual(diagonal[0],p(250,250));
@@ -118,7 +145,8 @@ test('square-step patrol writes full-square steps, snaps destinations, and keeps
   }
   assert.deepEqual({x:a.x,y:a.y},{x:400,y:500});
   scene.grid.type=0;
-  await assert.rejects(()=>savePatrol(a,patrolConfig(a)),/square grid/);
+  await savePatrol(a,patrolConfig(a));
+  assert.equal(routingWorld(a,patrolConfig(a)).squareSteps,false);
 });
 test('only active GM writes movement, with combat and pause gating',async()=>{
   const {token,scene}=setup();const a=token('a',100,100,route);
@@ -189,10 +217,10 @@ test('animated document coordinates may lag a saved move without cancelling patr
   a._source={x:100,y:100};
   a.update=async changes=>{a.writes.push(changes);Object.assign(a._source,changes);return a;};
   await tickPatrols(0);
-  assert.equal(a._source.x,125);assert.equal(a.x,100);
+  assert.equal(a._source.x,200);assert.equal(a.x,100);
   assert.equal(patrolStatus(a),'Moving');
-  await tickPatrols(300);
-  assert.equal(a._source.x,150,'Next segment starts at the committed position, not the lagging animation');
+  await tickPatrols(1250);
+  assert.equal(a._source.x,300,'Next segment starts at the committed position, not the lagging animation');
 });
 test('an actually cancelled move still reports retry when committed coordinates stay unchanged',async()=>{
   const {token}=setup();const a=token('a',100,100,route);a._source={x:100,y:100};a.update=async()=>undefined;
@@ -205,8 +233,8 @@ test('random roaming selects a reachable free destination and never crosses Regi
   finally{Math.random=old;}
 });
 
-test('Region roaming prefers long trips and uses one-second segments without intermediate dwell',async()=>{
-  const {token}=setup();const a=token('a',100,100,{mode:'roam',regionId:'region',enabled:true,pauseMin:3,pauseMax:3});
+test('gridless Region roaming prefers long trips and uses one-second segments without intermediate dwell',async()=>{
+  const {token}=setup(0);const a=token('a',100,100,{mode:'roam',regionId:'region',enabled:true,pauseMin:3,pauseMax:3});
   const old=Math.random;let calls=0;
   // First candidate is close; the remaining candidates are on the far side of the Region.
   Math.random=()=>[.3,.15,...Array.from({length:23},()=>[.85,.15]).flat()][calls++%48];
@@ -228,8 +256,8 @@ test('small Regions retain shorter roaming destinations when long trips cannot f
   try{await tickPatrols(0);assert.equal(patrolStatus(a),'Moving');assert.ok(a.writes.length);}
   finally{Math.random=old;}
 });
-test('Region roaming keeps a distant destination across segments and unrelated module flags',async()=>{
-  const {token,hooks}=setup();const a=token('a',100,100,{mode:'roam',regionId:'region',enabled:true,pauseMin:3,pauseMax:3});
+test('gridless Region roaming keeps a distant destination across segments and unrelated module flags',async()=>{
+  const {token,hooks}=setup(0);const a=token('a',100,100,{mode:'roam',regionId:'region',enabled:true,pauseMin:3,pauseMax:3});
   const old=Math.random;let calls=0;Math.random=()=>[.8,.2][calls++%2];
   try{
     await tickPatrols(0);assert.equal(calls,48);
@@ -242,8 +270,8 @@ test('Region roaming keeps a distant destination across segments and unrelated m
     assert.equal(a.x,750);assert.equal(a.y,150);assert.equal(patrolStatus(a),'Pausing');assert.equal(calls,49,'Only the arrival pause rolls after the initial destination');
   }finally{Math.random=old;}
 });
-test('a new obstruction checks adjacent routes and retains the original Region destination',async()=>{
-  const {token,scene}=setup();const a=token('a',100,100,{mode:'roam',regionId:'region',enabled:true,pauseMin:2,pauseMax:2});
+test('gridless a new obstruction checks adjacent routes and retains the original Region destination',async()=>{
+  const {token,scene}=setup(0);const a=token('a',100,100,{mode:'roam',regionId:'region',enabled:true,pauseMin:2,pauseMax:2});
   const old=Math.random;let calls=0;Math.random=()=>[.8,.2][calls++%2];
   try{
     await tickPatrols(0);scene.walls.contents.push({c:[400,0,400,500],move:20,door:0,ds:0});
@@ -298,7 +326,7 @@ test('wandering skips unsafe sidetracks instead of moving through a wall',async(
   for(let t=0;t<=1000;t+=250)await tickPatrols(t);
   assert.equal(a.x,200);assert.equal(patrolStatus(a),'Pausing');const count=a.writes.length;
   await tickPatrols(2999);assert.equal(a.writes.length,count);
-  await tickPatrols(3000);assert.equal(a.x,225);
+  await tickPatrols(3000);assert.equal(a.x,300);
   for(let t=3250;t<=4000;t+=250)await tickPatrols(t);
   assert.equal(a.x,300);await tickPatrols(4025);assert.ok(a.x<300,'Disabled waypoint pauses continue immediately');
  });
@@ -308,8 +336,8 @@ test('wandering skips unsafe sidetracks instead of moving through a wall',async(
   for(let t=0;t<=1000;t+=250)await tickPatrols(t);
   assert.equal(patrolStatus(a),'Moving');assert.ok(a.x>200);
  });
- test('Random time limit pauses safely and chooses a new destination after dwell',async()=>{
-  const {token}=setup();const a=token('a',100,100,{mode:'roam',regionId:'region',enabled:true,maxMovementTime:1.5,pauseMin:2,pauseMax:2});
+ test('gridless Random time limit pauses safely and chooses a new destination after dwell',async()=>{
+  const {token}=setup(0);const a=token('a',100,100,{mode:'roam',regionId:'region',enabled:true,maxMovementTime:1.5,pauseMin:2,pauseMax:2});
   const old=Math.random;let calls=0;Math.random=()=>[.85,.15][calls++%2];
   try{
    await tickPatrols(0);await tickPatrols(1000);assert.equal(a.x,250);assert.equal(a.writes[1].options.animation.duration,500);
@@ -318,8 +346,8 @@ test('wandering skips unsafe sidetracks instead of moving through a wall',async(
    await tickPatrols(3500);assert.ok(calls>=97);assert.equal(patrolStatus(a),'Moving');
   }finally{Math.random=old;}
  });
- test('favor distant locations can be disabled',async()=>{
-  const {token}=setup();const a=token('a',100,100,{mode:'roam',regionId:'region',enabled:true,favorDistance:false});
+ test('gridless favor distant locations can be disabled',async()=>{
+  const {token}=setup(0);const a=token('a',100,100,{mode:'roam',regionId:'region',enabled:true,favorDistance:false});
   const old=Math.random;let calls=0;Math.random=()=>[.3,.15,...Array.from({length:23},()=>[.85,.15]).flat()][calls++%48];
   try{await tickPatrols(0);await tickPatrols(1000);await tickPatrols(1500);assert.equal(a.x,250);assert.equal(patrolStatus(a),'Pausing');}
   finally{Math.random=old;}
@@ -331,7 +359,7 @@ test('wandering skips unsafe sidetracks instead of moving through a wall',async(
  test('side tracks respect the configured maximum deviation',async()=>{
   const {token}=setup();const a=token('a',100,100,{...route,sideTracks:true,sideTrackDistance:0.2,stops:[{x:750,y:150,wait:0},{x:150,y:150,wait:0}]});
   const old=Math.random;Math.random=()=>0.2;let deviated=false;
-  try{for(let t=0;t<12000;t+=250){await tickPatrols(t);assert.ok(Math.abs(a.y-100)<=20);if(a.y!==100)deviated=true;if(patrolStatus(a)==='Pausing')break;}assert.ok(deviated);assert.equal(a.x,700);}
+  try{for(let t=0;t<12000;t+=250){await tickPatrols(t);assert.ok(Math.abs(a.y-100)<=20);if(a.y!==100)deviated=true;if(patrolStatus(a)==='Pausing')break;}assert.equal(deviated,false);assert.equal(a.x,700);}
   finally{Math.random=old;}
  });
 
@@ -509,7 +537,7 @@ test('vehicles recognize patrol movement reservations even without a native anim
  await tickPatrols(0);assert.equal(walker.writes.length,1);await savePatrol(walker,{...patrolConfig(walker),enabled:false});
  await savePatrol(a,{...patrolConfig(a),enabled:true});a.writes=[];await vehicleTick(a,50);
  assert.equal(a.writes.length,0);assert.equal(patrolStatus(a),'Waiting for moving token');
- walker.y=0;await vehicleTick(a,500);assert.equal(a.writes.length,1);
+ walker.y=0;await vehicleTick(a,1250);assert.equal(a.writes.length,1);
 });
 
 test('vehicle artwork front supports each 90-degree direction without rotating the image to go forward',async()=>{
@@ -638,8 +666,8 @@ test('cancelled scene pause writes report failure',async()=>{
 });
 
 test('operation history records repeated successful movement, caps eight, and isolates tokens',async()=>{
-  const {token}=setup();const a=token('a',100,100,{enabled:true,waypointPauses:false,stops:[{x:850,y:150,wait:0},{x:150,y:150,wait:0}]}),b=token('b',100,800);
-  for(let i=0;i<12;i++)await tickPatrols(100000+i*1000);
+  const {token}=setup();const a=token('a',100,100,{enabled:true,waypointPauses:false,stops:[{x:950,y:150,wait:0},{x:150,y:150,wait:0}]}),b=token('b',100,800);
+  for(let i=0;i<8;i++)await tickPatrols(100000+i*1000);
   assert.equal(patrolOperations(a).length,8);assert.ok(patrolOperations(a).every(e=>e.message.startsWith('Moving to')));
   assert.equal(patrolOperations(b).length,0);
   await savePatrol(a,{...patrolConfig(a),enabled:false});assert.equal(patrolOperations(a).at(-1).message,'Stopped');

@@ -68,7 +68,7 @@ export async function openPatrols(selected?:TokenDocument):Promise<void> {
     const form=root.querySelector("form")!;
     const read=()=>{
       const data=new FormData(form);
-      return validateConfig({...draft,mode:data.get("mode")==="roam"?"roam":"route",traversal:data.get("mode")==="reverse"?"reverse":"loop",regionId:String(data.get("regionId")),speed:Number(data.get("speed")),pauseMin:Number(data.get("pauseMin")),pauseMax:Number(data.get("pauseMax")),squareSteps:!isVehicleToken(token!)&&data.has("squareSteps"),squarePause:Number(data.get("squarePause")),waypointPauses:data.has("waypointPauses"),pathPauses:data.has("pathPauses"),sideTracks:data.has("sideTracks"),favorDistance:data.has("favorDistance"),pathPauseMin:Number(data.get("pathPauseMin")),pathPauseMax:Number(data.get("pathPauseMax")),pathPauseEvery:Number(data.get("pathPauseEvery")),sideTrackDistance:Number(data.get("sideTrackDistance")),maxMovementTime:Number(data.get("maxMovementTime")),frontOffset:Number(data.get("frontOffset")??draft.frontOffset),enabled:false});
+      return validateConfig({...draft,mode:data.get("mode")==="roam"?"roam":"route",traversal:data.get("mode")==="reverse"?"reverse":"loop",regionId:String(data.get("regionId")),speed:Number(data.get("speed")),pauseMin:Number(data.get("pauseMin")),pauseMax:Number(data.get("pauseMax")),stepPauseSeconds:Number(data.get("stepPauseSeconds")),waypointPauses:data.has("waypointPauses"),pathPauses:data.has("pathPauses"),sideTracks:data.has("sideTracks"),favorDistance:data.has("favorDistance"),pathPauseMin:Number(data.get("pathPauseMin")),pathPauseMax:Number(data.get("pathPauseMax")),pathPauseEvery:Number(data.get("pathPauseEvery")),sideTrackDistance:Number(data.get("sideTrackDistance")),maxMovementTime:Number(data.get("maxMovementTime")),frontOffset:Number(data.get("frontOffset")??draft.frontOffset),enabled:false});
     };
     const visibility=()=>{
       const vehicle=isVehicleToken(token!);
@@ -76,9 +76,8 @@ export async function openPatrols(selected?:TokenDocument):Promise<void> {
       const front=root!.querySelector<HTMLElement>("[data-vehicle-front]")!;
       front.classList.toggle("is-disabled",!vehicle);
       front.querySelector<HTMLSelectElement>("select")!.disabled=!vehicle;
-      root!.querySelector<HTMLElement>("[data-square-steps]")!.hidden=vehicle;
-      root!.querySelector<HTMLElement>("[data-square-pause]")!.hidden=vehicle||!draft.squareSteps;
-      root!.querySelector<HTMLElement>("[data-side-tracks]")!.hidden=vehicle||draft.squareSteps;
+      root!.querySelector<HTMLElement>("[data-square-pause]")!.hidden=vehicle||token!.parent?.grid.type!==1;
+      root!.querySelector<HTMLElement>("[data-side-tracks]")!.hidden=vehicle;
       root!.querySelectorAll<HTMLElement>('[data-mode]').forEach(el=>{const visible=el.dataset.mode!.split(" ").includes(draft.mode);el.hidden=!visible;el.style.display=visible?"":"none";});
       root!.querySelectorAll<HTMLElement>("[data-option]").forEach(el=>{el.hidden=!draft[el.dataset.option as "pathPauses"|"sideTracks"];});
       root!.querySelector<HTMLElement>("[data-arrival-pause]")!.hidden=draft.mode!=="roam"&&!draft.waypointPauses;
@@ -93,9 +92,9 @@ export async function openPatrols(selected?:TokenDocument):Promise<void> {
       if(!entries.length){const row=document.createElement("li");row.textContent="No operations recorded yet.";list.append(row);}
     };
     const populate=()=>{
-      for(const key of ["squarePause","regionId","speed","pauseMin","pauseMax","pathPauseMin","pathPauseMax","pathPauseEvery","sideTrackDistance","maxMovementTime","frontOffset"] as const)(form.elements.namedItem(key) as HTMLInputElement|HTMLSelectElement).value=String(draft[key]);
+      for(const key of ["stepPauseSeconds","regionId","speed","pauseMin","pauseMax","pathPauseMin","pathPauseMax","pathPauseEvery","sideTrackDistance","maxMovementTime","frontOffset"] as const)(form.elements.namedItem(key) as HTMLInputElement|HTMLSelectElement).value=String(draft[key]);
       (form.elements.namedItem("mode") as HTMLSelectElement).value=draft.mode==="roam"?"roam":draft.traversal;
-      for(const key of ["squareSteps","waypointPauses","pathPauses","sideTracks","favorDistance"] as const)(form.elements.namedItem(key) as HTMLInputElement).checked=draft[key];
+      for(const key of ["waypointPauses","pathPauses","sideTracks","favorDistance"] as const)(form.elements.namedItem(key) as HTMLInputElement).checked=draft[key];
       visibility();renderStops();preview();renderOperations();
     };
     const error=root.querySelector<HTMLElement>('[role="alert"]')!;

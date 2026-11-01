@@ -21,7 +21,7 @@ try{
   globalThis.game={user:{id:'gm',isGM:true},users:{activeGM:{id:'gm'}},combats:{contents:[]}};globalThis.ui={notifications:{warn(){}}};
   class Graphics{lineStyle(){return this}lineTo(){return this}moveTo(){return this}drawCircle(){return this}addChild(){}destroy(){this.destroyed=true}}
   globalThis.PIXI={Graphics,Point:class{constructor(x,y){this.x=x;this.y=y}},Text:class{position={set(){}}}};
-  const scene={id:'scene',tokens:{contents:[],get(id){return this.contents.find(t=>t.id===id)}},regions:{contents:[{id:'bar',name:'Busy bar'}],get(id){return this.contents.find(r=>r.id===id)}}};
+  const scene={id:'scene',grid:{type:1,size:100},tokens:{contents:[],get(id){return this.contents.find(t=>t.id===id)}},regions:{contents:[{id:'bar',name:'Busy bar'}],get(id){return this.contents.find(r=>r.id===id)}}};
   for(const id of ['Guard','Waiter'])scene.tokens.contents.push({id,name:id,uuid:id,parent:scene,actor:{},flags:{},async update(changes){this.flags[ID]??={};this.flags[ID].patrol=structuredClone(changes['flags.'+ID+'.patrol']);return this;}});
   scene.flags={};scene.update=async changes=>{scene.flags['pneuma-scenetools']??={};scene.flags['pneuma-scenetools'].patrolStopped=changes['flags.pneuma-scenetools.patrolStopped'];return scene;};
   globalThis.canvas={scene,ready:true,tokens:{controlled:[],addChild(){}},stage:{toLocal:p=>p}};
@@ -39,8 +39,8 @@ try{
  await page.addStyleTag({content:await readFile('dist/styles/mookmaker.css','utf8')});
  await page.evaluate(async()=>{globalThis.patrol=await import('/scripts/patrol-ui.js');await patrol.openPatrols();});
  assert.equal(await page.locator('[name=token]').inputValue(),'Guard');
- assert.equal(await page.locator('[name=squareSteps]').isVisible(),true);
- assert.equal(await page.locator('[name=squarePause]').isVisible(),false);
+ assert.equal(await page.locator('[name=squareSteps]').count(),0);
+ assert.equal(await page.locator('[name=stepPauseSeconds]').isVisible(),true);
  assert.equal(await page.locator('.pneuma-patrol [data-status]').count(),0);
  assert.equal(await page.locator('[data-operations] time').count(),0);
  assert.equal(await page.locator('[name=frontOffset]').isDisabled(),true);
@@ -96,13 +96,12 @@ try{
  await page.evaluate(()=>canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol.frontOffset=270);
  await page.locator('[name=token]').selectOption('Guard');assert.equal(await page.locator('[name=frontOffset]').isVisible(),true);assert.equal(await page.locator('[name=frontOffset]').isDisabled(),true);
  await page.locator('[data-action=save]').click();assert.equal(await page.locator('[name=frontOffset]').isDisabled(),true);assert.equal(await page.evaluate(()=>canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol.frontOffset),270);
- await page.locator('[name=squareSteps]').check();
- assert.equal(await page.locator('[name=squarePause]').isVisible(),true);
- assert.equal(await page.locator('[name=squarePause]').getAttribute('step'),'0.1');
- await page.locator('[name=squarePause]').fill('0.7');await page.locator('[data-action=save]').click();
- assert.equal(await page.evaluate(()=>canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol.squarePause),0.7);
- assert.equal(await page.evaluate(()=>canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol.squareSteps),true);
- assert.equal(await page.locator('[name=sideTracks]').isVisible(),false);
+ assert.equal(await page.locator('[name=stepPauseSeconds]').isVisible(),true);
+ assert.equal(await page.locator('[name=stepPauseSeconds]').getAttribute('step'),'0.1');
+ await page.locator('[name=stepPauseSeconds]').fill('0.7');await page.locator('[data-action=save]').click();
+ assert.equal(await page.evaluate(()=>canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol.stepPauseSeconds),0.7);
+ assert.equal(await page.evaluate(()=>canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol.squareSteps),undefined);
+ assert.equal(await page.locator('[name=sideTracks]').isVisible(),true);
  await page.locator('[name=token]').selectOption('Waiter');assert.equal(await page.locator('[name=frontOffset]').inputValue(),'180');
  await page.evaluate(()=>Hooks.callAll('canvasTearDown'));assert.equal(await page.locator('.pneuma-patrol').count(),0);
  await page.evaluate(()=>{patrol.registerPatrolUI();const controls=[{name:'token',tools:[]}];Hooks.callAll('getSceneControlButtons',controls);globalThis.patrolTool=controls[0].tools.find(t=>t.name==='patrol');patrolTool.onClick();});

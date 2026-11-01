@@ -56,7 +56,12 @@ let geometryRevision=0;
 let occupancyRevision=0;
 let patrolCursor=0;
 export function patrolConfig(token:TokenDocument):PatrolConfig {
-  return structuredClone({...defaults(), ...((foundry.utils.getProperty(token,`flags.${MODULE_ID}.patrol`) ?? {}) as Partial<PatrolConfig>)});
+  const config = defaults();
+  const saved = foundry.utils.getProperty(token, `flags.${MODULE_ID}.patrol`) as Partial<PatrolConfig> | undefined;
+  for (const key of Object.keys(config) as (keyof PatrolConfig)[]) {
+    if (saved?.[key] !== undefined) Object.assign(config, {[key]: saved[key]});
+  }
+  return structuredClone(config);
 }
 export const patrolAuthority=()=>!!game.user?.isGM && game.users?.activeGM?.id===game.user.id;
 export const scenePatrolStopped=(scene:Scene)=>foundry.utils.getProperty(scene,`flags.${MODULE_ID}.patrolStopped`)===true;
@@ -126,7 +131,8 @@ export function routingWorld(token:TokenDocument, config:PatrolConfig):PatrolWor
     const sweeps=driveSweeps(a,b,base,scene.grid.size,scene.grid.type===1);
     return sweeps.every(s=>clearHull(s.hull,s.a,s.b,[s],false,ignoreMoving))&&(distance(a,b)<0.001||!token.object?.checkCollision?.(b,{origin:a,type:"move",mode:"any"}));
   };
-  return {bounds:rect,squareSteps:config.squareSteps&&!vehicle&&scene.grid.type===1,step:config.squareSteps&&!vehicle&&scene.grid.type===1?scene.grid.size:Math.max(8,scene.grid.size/2),clearHull,canDrive,canMove:(a,b)=>clearHull(sweptHull(a,b,size.width,size.height),a,b)};
+  const squareSteps = !vehicle && scene.grid.type === 1;
+  return {bounds:rect,squareSteps,step:squareSteps?scene.grid.size:Math.max(8,scene.grid.size/2),clearHull,canDrive,canMove:(a,b)=>clearHull(sweptHull(a,b,size.width,size.height),a,b)};
 }
 function canRun(token:TokenDocument):boolean {
   return patrolAuthority() && !!canvas.ready && canvas.scene?.id===token.parent?.id && token.parent?.tokens.get(token.id!)===token && !patrolPaused(token.parent) && patrolConfig(token).enabled && !foundry.utils.getProperty(token,`flags.${MODULE_ID}.vehicleSeat`);
@@ -134,7 +140,6 @@ function canRun(token:TokenDocument):boolean {
 export async function savePatrol(token:TokenDocument, config:PatrolConfig):Promise<void> {
   if(!game.user?.isGM || token.parent?.tokens.get(token.id!)!==token)throw new Error("Only a GM can configure an existing scene token.");
   const value=validateConfig(config);
-  if(value.enabled&&value.squareSteps&&!isVehicleToken(token)&&token.parent!.grid.type!==1)throw new Error("Square-to-square patrol requires a square grid.");
   if(value.enabled&&isVehicleToken(token)){
     if(token.lockRotation)throw new Error("Unlock vehicle rotation before starting Patrol.");
     if(![0,1].includes(token.parent!.grid.type))throw new Error("Vehicle Patrol requires a square or gridless scene.");
@@ -158,6 +163,38 @@ function wanderingDetour(origin:Point,path:Point[],world:RoutingWorld,grid:numbe
     const point={x:Math.round(origin.x+dx*along-dy*offset*sign),y:Math.round(origin.y+dy*along+dx*offset*sign)};
     if(world.canMove(origin,point)&&world.canMove(point,visible))return point;
   }
+}
+/** Replace one route edge with a checked excursion through an adjacent square. */
+function addSquareSideTrack(origin:Point, path:Point[], world:RoutingWorld, maxSquares:number):Point[] {
+  if (maxSquares < 1 || path.length < 3 || Math.random() >= 0.65) return path;
+  const index = Math.floor((path.length - 1) / 2);
+  const start = path[index - 1] ?? origin;
+  const end = path[index]!;
+  const dx = (end.x - start.x) / world.step;
+  const dy = (end.y - start.y) / world.step;
+  const diagonal = dx !== 0 && dy !== 0;
+  const preferredSide = Math.random() < 0.5 ? -1 : 1;
+  const route = [origin, ...path];
+  const depth = diagonal ? 1 : 1 + Math.floor(Math.random() * Math.floor(maxSquares));
+  for (const side of [preferredSide, -preferredSide]) {
+    const offset = diagonal
+      ? {x: side > 0 ? dx : 0, y: side > 0 ? 0 : dy}
+      : {x: -side * dy, y: side * dx};
+    const outward:Point[] = [];
+    const returning:Point[] = [];
+    for (let n = 1; n <= depth; n++) {
+      const shift = {x: offset.x * world.step * n, y: offset.y * world.step * n};
+      outward.push({x: start.x + shift.x, y: start.y + shift.y});
+      if (n < depth) returning.unshift({x: end.x + shift.x, y: end.y + shift.y});
+    }
+    const steps = [...outward, ...returning];
+    if (steps.some(point => route.some(p => distance(p, point) < 0.01))) continue;
+    const excursion = [start, ...steps, end];
+    if (excursion.slice(1).every((point, i) => world.canMove(excursion[i]!, point))) {
+      return [...path.slice(0, index), ...steps, ...path.slice(index)];
+    }
+  }
+  return path;
 }
 function claimDestination(token:TokenDocument,state:State,end:Point|undefined):void {
   if(end&&destinationClear(token,end))state.reservedGoal=end;
@@ -185,7 +222,11 @@ function chooseGoal(token:TokenDocument, config:PatrolConfig, state:State, world
     if(path){
       state.goal=candidate.point;state.index=candidate.index;claimDestination(token,state,path[path.length-1]??origin);
       state.detour=!world.squareSteps&&config.mode!=="roam"&&config.sideTracks&&config.sideTrackDistance>0?wanderingDetour(origin,path,world,token.parent!.grid.size,config.sideTrackDistance*token.parent!.grid.size):undefined;
-      state.path=state.detour?[state.detour]:path;return true;
+      state.path = state.detour ? [state.detour] : path;
+      if (world.squareSteps && config.mode === "route" && config.sideTracks) {
+        state.path = addSquareSideTrack(origin, path, world, config.sideTrackDistance);
+      }
+      return true;
     }
     if(++searches>=3)break;
   }
@@ -304,7 +345,6 @@ async function advance(token:TokenDocument, now:number):Promise<void> {
   let state=states.get(token.uuid);
   if(!state||state.signature!==signature){state={signature,path:[],index:0,direction:1,lastStop:-1,waitUntil:0,moveUntil:0,travelSeconds:0,status:"Starting"};states.set(token.uuid,state);}
   if(now<state.moveUntil||(isVehicleToken(token)&&now<state.waitUntil))return;
-  if(config.squareSteps&&!isVehicleToken(token)&&token.parent!.grid.type!==1){state.status="Waiting: square-to-square patrol requires a square grid";return;}
   const pauseRevision=geometryRevision+":"+occupancyRevision;
   if(now<state.waitUntil&&state.pauseRevision===pauseRevision)return;
   const origin=center(token);
@@ -394,10 +434,10 @@ async function advance(token:TokenDocument, now:number):Promise<void> {
   const saved=position(token);
   if(saved.x!==x||saved.y!==y){cancelPassage(token,passage);state.path=[];state.status="Movement cancelled; retrying";state.waitUntil=now+2000;}
   else {recordOperation(token,`Moving to ${Math.round(actual.x)}, ${Math.round(actual.y)}`);state.travelSeconds+=duration/1000;passage.until=now+duration+(performance.now()-started);
-    if(world.squareSteps&&config.squarePause>0){
+    if(world.squareSteps&&config.stepPauseSeconds>0){
       state.moveUntil=movementEnd(token,now,duration,started);
       passage.until=state.moveUntil;
-      state.waitUntil=state.moveUntil+config.squarePause*1000;
+      state.waitUntil=state.moveUntil+config.stepPauseSeconds*1000;
     }
   }
 }

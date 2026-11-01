@@ -30,7 +30,7 @@
 
 - Square-to-square patrols offer a per-square pause in seconds with one decimal place; 0 disables it. The pause begins after the step animation finishes.
 
-- Regular token patrols offer Square-to-square movement: full grid steps, a preference for horizontal/vertical routes, and exact 45-degree diagonals when needed. Available for routes and roaming on square grids; vehicle steering is unchanged. Destinations snap to the token's grid spacing, side tracks are disabled, and collision checks remain active.
+- All non-vehicle patrols on square grids animate one square at a time in eight directions. Routes use clear diagonals when they shorten travel, with collision checks on every step. Loop and Back & Forth support side tracks. The adjustable pause after each square defaults to 0.2 seconds.
 
 - POI right-click menus dismiss the hover preview and suppress it until the menu closes.
 

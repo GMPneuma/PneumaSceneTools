@@ -2,8 +2,7 @@
 export interface Point {x: number; y: number}
 export interface Stop extends Point {wait: number}
 export interface PatrolConfig {
-  squareSteps: boolean;
-  squarePause: number;
+  stepPauseSeconds: number;
   mode: "route" | "roam";
   traversal: "loop" | "reverse";
   regionId: string;
@@ -24,9 +23,9 @@ export interface PatrolConfig {
   enabled: boolean;
 }
 export interface Rect extends Point {width: number; height: number}
-export const defaults = (): PatrolConfig => ({squareSteps:false,squarePause:0,mode: "route", traversal: "loop", regionId: "", speed: 1, pauseMin: 2, pauseMax: 6, waypointPauses:true,pathPauses:false,pathPauseMin:2,pathPauseMax:6,pathPauseEvery:10,sideTracks:false,sideTrackDistance:1,favorDistance:true,maxMovementTime:0,frontOffset:0,stops: [], enabled: false});
+export const defaults = (): PatrolConfig => ({stepPauseSeconds:0.2,mode: "route", traversal: "loop", regionId: "", speed: 1, pauseMin: 2, pauseMax: 6, waypointPauses:true,pathPauses:false,pathPauseMin:2,pathPauseMax:6,pathPauseEvery:10,sideTracks:false,sideTrackDistance:1,favorDistance:true,maxMovementTime:0,frontOffset:0,stops: [], enabled: false});
 export function validateConfig(value: PatrolConfig): PatrolConfig {
-  if (!Number.isFinite(value.squarePause)||value.squarePause<0||value.squarePause>3600||Math.abs(value.squarePause*10-Math.round(value.squarePause*10))>1e-8)throw new Error("Square pause must be between 0 and 3600 seconds with at most one decimal place.");
+  if (!Number.isFinite(value.stepPauseSeconds)||value.stepPauseSeconds<0||value.stepPauseSeconds>3600||Math.abs(value.stepPauseSeconds*10-Math.round(value.stepPauseSeconds*10))>1e-8)throw new Error("Square pause must be between 0 and 3600 seconds with at most one decimal place.");
   if (!["route", "roam"].includes(value.mode) || !["loop", "reverse"].includes(value.traversal)) throw new Error("Choose a valid patrol mode.");
   if (!Number.isFinite(value.speed) || value.speed < 0.1 || value.speed > 5) throw new Error("Speed must be between 0.1 and 5 grid spaces per second.");
   if (![value.pauseMin, value.pauseMax].every(n => Number.isFinite(n) && n >= 0 && n <= 3600) || value.pauseMax < value.pauseMin) throw new Error("Pause range must be between 0 and 3600 seconds, with maximum at least minimum.");
@@ -35,7 +34,7 @@ export function validateConfig(value: PatrolConfig): PatrolConfig {
   if (!Number.isFinite(value.sideTrackDistance)||value.sideTrackDistance<0||value.sideTrackDistance>20)throw new Error("Side track distance must be between 0 and 20 grid spaces.");
   if (!Number.isFinite(value.maxMovementTime)||value.maxMovementTime<0||value.maxMovementTime>3600)throw new Error("Maximum movement time must be between 0 and 3600 seconds (0 means unlimited).");
   if (![0,90,180,270].includes(value.frontOffset))throw new Error("Choose an artwork front direction in 90-degree increments.");
-  if (![value.squareSteps,value.waypointPauses,value.pathPauses,value.sideTracks,value.favorDistance].every(v=>typeof v==="boolean"))throw new Error("Choose valid patrol options.");
+  if (![value.waypointPauses,value.pathPauses,value.sideTracks,value.favorDistance].every(v=>typeof v==="boolean"))throw new Error("Choose valid patrol options.");
   if (!Array.isArray(value.stops) || value.stops.length > 100 || value.stops.some(p => ![p.x, p.y, p.wait].every(Number.isFinite) || p.wait < 0 || p.wait > 3600)) throw new Error("Use at most 100 stops with valid coordinates and pauses from 0 to 3600 seconds.");
   if (value.enabled && value.mode === "roam" && !value.regionId) throw new Error("Choose a roaming Region.");
   if (value.enabled && value.mode !== "roam" && value.stops.length < 2) throw new Error("Place at least two stops.");
@@ -93,8 +92,8 @@ export function findPath(start: Point, goal: Point, world: RoutingWorld, limit=2
       if(!dx&&!dy)continue;
       const p={x:current.p.x+dx*world.step,y:current.p.y+dy*world.step};
       if(p.x<world.bounds.x||p.y<world.bounds.y||p.x>world.bounds.x+world.bounds.width||p.y>world.bounds.y+world.bounds.height)continue;
-      // Prefer cardinal steps; diagonals remain available for tighter routes.
-      const cost=world.squareSteps && dx && dy ? world.step*2.05 : distance(current.p,p);
+      // Match movement distance so clear diagonals beat two cardinal steps.
+      const cost=distance(current.p,p);
       const g=current.g+cost, k=key(p);
       if(g>=(costs.get(k)??Infinity)||!world.canMove(current.p,p))continue;
       const node={p,g,f:g+distance(p,goal),parent:current};

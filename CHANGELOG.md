@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.4 - 2026-11-01
+
+- Replace optional square walking with animated eight-direction steps for all non-vehicle patrols on square grids.
+- Use clear diagonals when they shorten travel.
+- Support collision-checked grid side tracks for Loop and Back & Forth.
+- Default the adjustable pause after each square to 0.2 seconds.
+- Keep vehicle driving behavior unchanged.
+
+Validation: production build and automated checks. Live Foundry verification remains pending.
+
 ## 0.8.3 - 2026-10-28
 
 - Scan hazard chat history once per target batch and avoid unchanged movement-progress writes.
