@@ -1,5 +1,5 @@
 import {MODULE_ID} from "./settings.js";
-import {patrolConfig,savePatrol} from "./patrol-runtime.js";
+import {patrolAvailable,patrolConfig,savePatrol} from "./patrol-runtime.js";
 import {styleVehicleHud} from "./vehicle-hud-style.js";
 
 export function registerPatrolHud(edit:(token:TokenDocument)=>Promise<void>):void {
@@ -9,7 +9,7 @@ export function registerPatrolHud(edit:(token:TokenDocument)=>Promise<void>):voi
     if(!root||!token)return;
     root.querySelectorAll('[data-patrol-hud]').forEach(button=>button.remove());
     refresh=changed=>{if(changed.uuid===token.uuid&&root.isConnected)mount(hud,html);};
-    if(!game.user?.isGM||!foundry.utils.getProperty(token,`flags.${MODULE_ID}.patrol`))return;
+    if(!game.user?.isGM||!patrolAvailable(token))return;
     let controls=root.querySelector<HTMLElement>('.pneuma-vehicle-controls');
     if(!controls){
       controls=document.createElement('div');controls.className='pneuma-vehicle-controls';

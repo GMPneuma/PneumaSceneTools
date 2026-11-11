@@ -2,9 +2,10 @@ import {openPatrolController} from "./patrol-controller.js";
 import {registerPatrolHud} from "./patrol-hud.js";
 import {isVehicleToken} from "./vehicle-rotation.js";
 import {MODULE_ID} from "./settings.js";
-import {patrolConfig, patrolOperations, savePatrol, setScenePatrolStopped} from "./patrol-runtime.js";
+import {patrolConfig, patrolOperations, savePatrol, deletePatrol, hasPatrol, patrolAvailable, setPatrolAvailable} from "./patrol-runtime.js";
 import {validateConfig, type PatrolConfig} from "./patrol-model.js";
 
+const MAX_EDITOR_WAYPOINTS=10;
 let active:Dialog|undefined;
 export async function openPatrols(selected?:TokenDocument):Promise<void> {
   if(!game.user?.isGM||!canvas.scene)return;
@@ -13,13 +14,14 @@ export async function openPatrols(selected?:TokenDocument):Promise<void> {
   let token=selected??canvas.tokens?.controlled[0]?.document??scene.tokens.contents.find(t=>!!t.actor);
   if(!token){ui.notifications?.warn("Place a token on this scene first.");return;}
   let draft=patrolConfig(token), dirty=false, busy=false, picking=false;
+  let available=patrolAvailable(token);
   let marker:PIXI.Graphics|undefined;
   let logTimer:ReturnType<typeof setInterval>|undefined;
   let root:HTMLElement|undefined;
   const board=document.getElementById("board");
   const clearMarker=()=>{if(marker&&!marker.destroyed)marker.destroy({children:true});marker=undefined;};
   const preview=()=>{
-    clearMarker();if(!canvas.ready||canvas.scene?.id!==scene.id||!canvas.tokens||draft.mode==="roam")return;
+    clearMarker();if(!available||!canvas.ready||canvas.scene?.id!==scene.id||!canvas.tokens||draft.mode==="roam")return;
     marker=new PIXI.Graphics();marker.eventMode="none";marker.lineStyle(2,0x48c5d8,0.9);
     draft.stops.forEach((stop,i)=>{
       if(i)marker!.lineTo(stop.x,stop.y);else marker!.moveTo(stop.x,stop.y);
@@ -38,13 +40,17 @@ export async function openPatrols(selected?:TokenDocument):Promise<void> {
   const onPick=(event:PointerEvent)=>{
     if(!picking||event.button!==0||!canvas.stage||!board||busy)return;
     event.preventDefault();event.stopImmediatePropagation();
-    if(draft.stops.length>=100){ui.notifications?.warn("A patrol can have at most 100 stops.");return;}
+    if(draft.stops.length>=MAX_EDITOR_WAYPOINTS){stopPicking();return;}
     const bounds=board.getBoundingClientRect();
     const point=canvas.stage.toLocal(new PIXI.Point(event.clientX-bounds.left,event.clientY-bounds.top));
     draft.stops.push({x:Math.round(point.x),y:Math.round(point.y),wait:3});dirty=true;renderStops();preview();
+    if(draft.stops.length>=MAX_EDITOR_WAYPOINTS)stopPicking();
   };
   function renderStops(){
     const body=root?.querySelector('tbody[data-stops]');if(!body)return;body.replaceChildren();
+    const pick=root!.querySelector<HTMLButtonElement>('[data-action="pick"]')!;
+    pick.disabled=draft.stops.length>=MAX_EDITOR_WAYPOINTS;
+    pick.title=pick.disabled?'Remove a waypoint to place another (limit 10).':'';
     draft.stops.forEach((stop,index)=>{
       const row=document.createElement("tr"), label=document.createElement("td");label.textContent=String(index+1);row.append(label);
       for(const field of ["x","y"] as const){
@@ -66,11 +72,19 @@ export async function openPatrols(selected?:TokenDocument):Promise<void> {
   const dialog=new Dialog({title:"Patrol",content,buttons:{},render:html=>{
     root=(html as JQuery)[0]!;
     const form=root.querySelector("form")!;
+    const master=form.querySelector<HTMLInputElement>('[name="available"]')!;
+    const actionButton=(action:string)=>form.querySelector<HTMLButtonElement>(`footer [data-action="${action}"]`)!;
     const read=()=>{
       const data=new FormData(form);
-      return validateConfig({...draft,mode:data.get("mode")==="roam"?"roam":"route",traversal:data.get("mode")==="reverse"?"reverse":"loop",regionId:String(data.get("regionId")),speed:Number(data.get("speed")),pauseMin:Number(data.get("pauseMin")),pauseMax:Number(data.get("pauseMax")),stepPauseSeconds:Number(data.get("stepPauseSeconds")),waypointPauses:data.has("waypointPauses"),pathPauses:data.has("pathPauses"),sideTracks:data.has("sideTracks"),favorDistance:data.has("favorDistance"),pathPauseMin:Number(data.get("pathPauseMin")),pathPauseMax:Number(data.get("pathPauseMax")),pathPauseEvery:Number(data.get("pathPauseEvery")),sideTrackDistance:Number(data.get("sideTrackDistance")),maxMovementTime:Number(data.get("maxMovementTime")),frontOffset:Number(data.get("frontOffset")??draft.frontOffset),enabled:false});
+      return validateConfig({...draft,available,mode:data.get("mode")==="roam"?"roam":"route",traversal:data.get("mode")==="reverse"?"reverse":"loop",regionId:String(data.get("regionId")),speed:Number(data.get("speed")),pauseMin:Number(data.get("pauseMin")),pauseMax:Number(data.get("pauseMax")),stepPauseSeconds:Number(data.get("stepPauseSeconds")),waypointPauses:data.has("waypointPauses"),pathPauses:data.has("pathPauses"),sideTracks:data.has("sideTracks"),favorDistance:data.has("favorDistance"),pathPauseMin:Number(data.get("pathPauseMin")),pathPauseMax:Number(data.get("pathPauseMax")),pathPauseEvery:Number(data.get("pathPauseEvery")),sideTrackDistance:Number(data.get("sideTrackDistance")),maxMovementTime:Number(data.get("maxMovementTime")),frontOffset:Number(data.get("frontOffset")??draft.frontOffset),enabled:false});
     };
     const visibility=()=>{
+      master.checked=available;
+      form.querySelectorAll<HTMLFieldSetElement>(".patrol-columns fieldset").forEach(field=>field.disabled=!available);
+      actionButton("start").disabled=!available;
+      actionButton("stop").disabled=!available || !hasPatrol(token!);
+      actionButton("save").disabled=!available && !hasPatrol(token!);
+      actionButton("delete").disabled=!hasPatrol(token!);
       const vehicle=isVehicleToken(token!);
       root!.querySelector("[data-vehicle-status]")!.textContent=vehicle?"Yes":"No";
       const front=root!.querySelector<HTMLElement>("[data-vehicle-front]")!;
@@ -97,6 +111,7 @@ export async function openPatrols(selected?:TokenDocument):Promise<void> {
       for(const key of ["waypointPauses","pathPauses","sideTracks","favorDistance"] as const)(form.elements.namedItem(key) as HTMLInputElement).checked=draft[key];
       visibility();renderStops();preview();renderOperations();
     };
+    const reload=()=>{draft=patrolConfig(token!);available=patrolAvailable(token!);dirty=false;populate();};
     const error=root.querySelector<HTMLElement>('[role="alert"]')!;
     const run=async(action:()=>Promise<void>)=>{
       if(busy)return;busy=true;stopPicking();form.querySelectorAll<HTMLInputElement|HTMLButtonElement|HTMLSelectElement>('input,button,select').forEach(el=>el.disabled=true);
@@ -108,13 +123,26 @@ export async function openPatrols(selected?:TokenDocument):Promise<void> {
     form.addEventListener("input",event=>{
       const input=event.target as HTMLInputElement;
       if(!input.name||input.name==="token")return;
+      if(input===master){
+        const checked=master.checked;
+        const target=token!;
+        if(hasPatrol(target)){
+          void run(async()=>{
+            try{await setPatrolAvailable(target,checked);}
+            finally{available=patrolAvailable(target);if(active===dialog)preview();}
+          });
+        }else{
+          available=checked;dirty=true;stopPicking();visibility();preview();error.textContent="";
+        }
+        return;
+      }
       dirty=true;try{draft=read();visibility();if(draft.mode==="roam")stopPicking();preview();error.textContent="";}catch(e){error.textContent=String(e);}
     });
     form.querySelector('[name="token"]')!.addEventListener("change",event=>void run(async()=>{
       const select=event.target as HTMLSelectElement, next=scene.tokens.get(select.value);
       if(!next){select.value=token!.id!;throw new Error("That token no longer exists.");}
       if(dirty&&!await Dialog.confirm({title:"Discard patrol edits?",content:"<p>Discard unsaved edits and select another token?</p>",defaultYes:false})){select.value=token!.id!;return;}
-      token=next;draft=patrolConfig(token);dirty=false;populate();
+      token=next;reload();
     }));
     root.querySelector('[data-action="pick"]')!.addEventListener("click",()=>{
       if(picking){stopPicking();return;}picking=true;
@@ -122,11 +150,20 @@ export async function openPatrols(selected?:TokenDocument):Promise<void> {
       root!.querySelector('[data-action="pick"]')!.textContent="Done placing stops";
     });
     for(const action of ["save","start"]){root.querySelector(`[data-action="${action}"]`)!.addEventListener("click",()=>{
-      let value:PatrolConfig;try{value=read();}catch(e){error.textContent=String(e);return;}
-      void run(async()=>{await savePatrol(token!,{...value,enabled:action==="start"});draft=patrolConfig(token!);dirty=false;});
+      let value:PatrolConfig;try{value=available?read():{...draft,available:false,enabled:false};}catch(e){error.textContent=String(e);return;}
+      void run(async()=>{await savePatrol(token!,{...value,enabled:action==="start"});reload();});
     });}
     root.querySelector('[data-action="stop"]')!.addEventListener("click",()=>void run(async()=>{await savePatrol(token!,{...patrolConfig(token!),enabled:false});}));
-    root.querySelector('[data-action="stop-all"]')!.addEventListener("click",()=>void run(async()=>{await setScenePatrolStopped(scene,true);}));
+    actionButton("cancel").addEventListener("click",()=>void run(async()=>{reload();}));
+    actionButton("delete").addEventListener("click",()=>void run(async()=>{
+      const target=token!;
+      const message=document.createElement("p");
+      message.textContent=`Delete all patrol settings for ${target.name}? This cannot be undone.`;
+      const confirmed=await Dialog.confirm({title:"Delete patrol?",content:message.outerHTML,defaultYes:false});
+      if(!confirmed || active!==dialog || canvas.scene!==scene)return;
+      await deletePatrol(target);
+      reload();
+    }));
     populate();
     if(logTimer)clearInterval(logTimer);
     logTimer=setInterval(renderOperations,500);

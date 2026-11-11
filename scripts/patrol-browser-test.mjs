@@ -19,19 +19,19 @@ try{
   const ID='pneuma-scenetools';globalThis.foundry={utils:{getProperty:(o,path)=>path.split('.').reduce((v,k)=>v?.[k],o)}};
   const callbacks=new Map();globalThis.Hooks={on:(n,fn)=>{const a=callbacks.get(n)??[];a.push(fn);callbacks.set(n,a);},off:(n,fn)=>callbacks.set(n,(callbacks.get(n)??[]).filter(f=>f!==fn)),callAll:(n,...args)=>callbacks.get(n)?.forEach(fn=>fn(...args))};
   globalThis.game={user:{id:'gm',isGM:true},users:{activeGM:{id:'gm'}},combats:{contents:[]}};globalThis.ui={notifications:{warn(){}}};
-  class Graphics{lineStyle(){return this}lineTo(){return this}moveTo(){return this}drawCircle(){return this}addChild(){}destroy(){this.destroyed=true}}
+  class Graphics{lineStyle(){return this}drawRoundedRect(){return this}lineTo(){return this}moveTo(){return this}drawCircle(){return this}addChild(){}destroy(){this.destroyed=true}}
   globalThis.PIXI={Graphics,Point:class{constructor(x,y){this.x=x;this.y=y}},Text:class{position={set(){}}}};
   const scene={id:'scene',grid:{type:1,size:100},tokens:{contents:[],get(id){return this.contents.find(t=>t.id===id)}},regions:{contents:[{id:'bar',name:'Busy bar'}],get(id){return this.contents.find(r=>r.id===id)}}};
-  for(const id of ['Guard','Waiter'])scene.tokens.contents.push({id,name:id,uuid:id,parent:scene,actor:{},flags:{},async update(changes){this.flags[ID]??={};this.flags[ID].patrol=structuredClone(changes['flags.'+ID+'.patrol']);return this;}});
+  for(const id of ['Guard','Waiter'])scene.tokens.contents.push({id,name:id,uuid:id,parent:scene,actor:{},flags:{},async update(changes){this.flags[ID]??={};if(("flags."+ID+".-=patrol") in changes){delete this.flags[ID].patrol;return this;}if(('flags.'+ID+'.patrol.available') in changes){Object.assign(this.flags[ID].patrol,{available:changes['flags.'+ID+'.patrol.available'],enabled:false});return this;}this.flags[ID].patrol=structuredClone(changes['flags.'+ID+'.patrol']);return this;}});
   scene.flags={};scene.update=async changes=>{scene.flags['pneuma-scenetools']??={};scene.flags['pneuma-scenetools'].patrolStopped=changes['flags.pneuma-scenetools.patrolStopped'];return scene;};
   globalThis.canvas={scene,ready:true,tokens:{controlled:[],addChild(){}},stage:{toLocal:p=>p}};
   globalThis.renderTemplate=(_path,data)=>renderPatrol(data);
   globalThis.Dialog=class{
    constructor(data,options={}){this.options=options;this.data=data;globalThis.latestDialog=this}
    render(){const root=document.createElement('div');root.style='position:absolute;right:0;top:0;width:560px;background:#ddd;padding:12px';root.style.width=(this.options.width??560)+'px';root.id=this.options.id??'';root.className='app window-app dialog';root.style.height='200px';if(this.options.id==='pneuma-patrol-controller'){root.style.removeProperty('background');}root.innerHTML=`<section class="window-content"><div class="dialog-content">${this.data.content}</div></section>`;document.body.append(root);this.root=root;this.element=[root];this.data.render([root]);return this}
-   setPosition(position={}){this.position={left:0,top:0,width:160,height:200,...this.position,...position};return this.position}
+   setPosition(position={}){if(position.width && this.root)this.root.style.width=position.width+'px';this.position={left:0,top:0,width:160,height:200,...this.position,...position};return this.position}
    bringToTop(){}async close(){this.data.close();this.root.remove()}
-   static async confirm(){return globalThis.confirmAnswer??true}
+   static async confirm(options){globalThis.confirmOptions=options;return globalThis.confirmAnswer??true}
   };
  });
  await page.addStyleTag({content:'.window-app{display:flex;flex-direction:column;max-height:95vh;overflow:hidden}.window-content{flex:1;overflow:auto}'});
@@ -39,6 +39,9 @@ try{
  await page.addStyleTag({content:await readFile('dist/styles/mookmaker.css','utf8')});
  await page.evaluate(async()=>{globalThis.patrol=await import('/scripts/patrol-ui.js');await patrol.openPatrols();});
  assert.equal(await page.locator('[name=token]').inputValue(),'Guard');
+ assert.deepEqual(await page.locator('footer button').allTextContents(),[' Start',' Stop',' Cancel',' Save',' Delete']);
+ assert.equal(await page.locator('[name=speed]').isDisabled(),true);
+ await page.getByLabel('Enable Patrol for this token').check();
  assert.equal(await page.locator('[name=squareSteps]').count(),0);
  assert.equal(await page.locator('[name=stepPauseSeconds]').isVisible(),true);
  assert.equal(await page.locator('.pneuma-patrol [data-status]').count(),0);
@@ -68,7 +71,7 @@ try{
  await page.evaluate(async()=>{const r=await import('/scripts/patrol-runtime.js'),t=canvas.scene.tokens.get('Guard');for(let i=0;i<10;i++)await r.savePatrol(t,{...r.patrolConfig(t),enabled:!(i%2)});});
  await page.waitForFunction(()=>document.querySelectorAll('[data-operations] li').length===8);
  assert.equal(await page.locator('[data-operations] time').count(),0);
- await page.locator('[name=token]').selectOption('Waiter');assert.match(await page.locator('[data-operations]').innerText(),/No operations/);await page.locator('[name=mode]').selectOption('roam');assert.equal(await page.locator('[data-action=pick]').isVisible(),false);
+ await page.locator('[name=token]').selectOption('Waiter');await page.getByLabel('Enable Patrol for this token').check();assert.match(await page.locator('[data-operations]').innerText(),/No operations/);await page.locator('[name=mode]').selectOption('roam');assert.equal(await page.locator('[data-action=pick]').isVisible(),false);
  for(const name of ['waypointPauses','pathPauses','sideTracks','sideTrackDistance'])assert.equal(await page.locator(`[name=${name}]`).isVisible(),false);
  for(const name of ['regionId','favorDistance','maxMovementTime','pauseMin','pauseMax'])assert.equal(await page.locator(`[name=${name}]`).isVisible(),true);
  await page.locator('[data-action=start]').click();assert.match(await page.locator('[role=alert]').innerText(),/Region/);
@@ -78,7 +81,8 @@ try{
  await page.locator('[name=pauseMax]').fill('8');await page.locator('[data-action=start]').click();
  await page.waitForFunction(()=>canvas.scene.tokens.get('Waiter').flags['pneuma-scenetools']?.patrol.enabled,{},{timeout:3000}).catch(async error=>{console.log(await page.evaluate(()=>({error:document.querySelector('[role=alert]').textContent,selected:document.querySelector('[name=token]').value,tokens:canvas.scene.tokens.contents.map(t=>({id:t.id,flags:t.flags})),form:[...new FormData(document.querySelector('form'))]})));throw error;});
  assert.deepEqual(await page.evaluate(()=>{const c=canvas.scene.tokens.get('Waiter').flags['pneuma-scenetools'].patrol;return [c.favorDistance,c.maxMovementTime]}),[false,12]);
- await page.locator('[data-action=stop-all]').click();await page.waitForFunction(()=>canvas.scene.flags['pneuma-scenetools'].patrolStopped===true);
+ assert.equal(await page.locator('[data-action=stop-all]').count(),0);
+ await page.evaluate(()=>canvas.scene.update({'flags.pneuma-scenetools.patrolStopped':true}));
  await page.locator('[name=mode]').selectOption('loop');assert.equal(await page.locator('[name=mode] option:checked').innerText(),'Loop');assert.equal(await page.locator('[name=mode]').isVisible(),true);await page.locator('[data-action=pick]').click();await page.locator('#board').click({position:{x:200,y:300}});await page.locator('#board').click({position:{x:400,y:300}});await page.locator('[data-action=pick]').click();
  await page.locator('[data-action=start]').click();await page.waitForFunction(()=>canvas.scene.tokens.get('Waiter').flags['pneuma-scenetools'].patrol.mode==='route');
  await page.getByLabel('Move stop up 2',{exact:true}).click();assert.equal(await page.getByLabel('Stop 1 x',{exact:true}).inputValue(),'400');
@@ -108,31 +112,54 @@ try{
  assert.equal(await page.evaluate(()=>patrolTool.title),'Scene Tools - Patrol');
  assert.equal(await page.locator('.patrol-controller-row').count(),2);assert.equal(await page.locator('#pneuma-patrol-controller').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(12, 14, 18, 0.78)');
  assert.equal(await page.locator('[data-scene-toggle] .fa-play').count(),1);
+ assert.ok(await page.locator('.patrol-controller-row button').evaluateAll(buttons=>buttons.length>0 && buttons.every(button=>getComputedStyle(button).filter==='grayscale(1)')));
  assert.equal(await page.locator('[data-scene-toggle]').getAttribute('aria-label'),'Play scene patrols');
- assert.equal(await page.locator('[data-scene-edit] .fa-pen').count(),1);
- await page.locator('[data-scene-edit]').click();assert.equal(await page.locator('.pneuma-patrol').count(),1);
+ assert.equal(await page.locator('[data-scene-add] .fa-plus').count(),1);
+ await page.locator('[data-scene-add]').click();assert.equal(await page.locator('.pneuma-patrol').count(),1);
  await page.evaluate(()=>latestDialog.close());
  assert.equal(await page.locator('[data-configure]').count(),0);
  assert.equal(await page.locator('[data-token-id=Guard] [data-action=edit] i.fa-pen').count(),1);
- assert.equal(await page.locator('#pneuma-patrol-controller').evaluate(el=>getComputedStyle(el).width),'160px');
- assert.equal(await page.locator('[data-token-id=Guard] [data-action=toggle] strong').innerText(),'Guard');
+ assert.equal(await page.locator('#pneuma-patrol-controller').evaluate(el=>getComputedStyle(el).width),'240px');
+ const guard=page.locator('[data-token-id=Guard]');
+ assert.equal(await guard.locator('[data-action=toggle] .fa-stop').count(),1);
+ assert.equal(await guard.locator('button').count(),2);
+ assert.equal(await guard.locator('[data-action=toggle] img').count(),1);
+ assert.equal(await guard.locator('.patrol-token-name').innerText(),'Guard');
+ await page.getByRole('button',{name:'Switch to narrow view'}).click();
+ assert.equal(await guard.locator('.patrol-token-name').isVisible(),true);
+ assert.equal(await guard.locator('img').isVisible(),true);
+ assert.equal(await page.evaluate(()=>document.querySelector('#pneuma-patrol-controller').style.width),'136px');
+ await page.getByRole('button',{name:'Switch to wide view'}).click();
+ assert.equal(await guard.locator('.patrol-token-name').isVisible(),true);
+ await page.evaluate(()=>{
+   canvas.scene.tokens.get('Guard').object={w:100,h:100,addChild(graphic){graphic.parent=this;globalThis.guardOutline=graphic;}};
+ });
+ await guard.hover();
+ assert.equal(await guard.locator('.patrol-tooltip').innerText(),'Guard · Stopped');
+ assert.equal(await page.evaluate(()=>!!globalThis.guardOutline && !guardOutline.destroyed),true);
+ await page.locator('[data-scene-toggle]').hover();
+ assert.equal(await page.evaluate(()=>guardOutline.destroyed),true);
  assert.equal(await page.locator('[data-token-id=Guard] [data-action=toggle]').getAttribute('aria-pressed'),'false');
- assert.equal(await page.locator('[data-scene-toggle]').evaluate(el=>getComputedStyle(el).backgroundColor),await page.locator('[data-token-id=Guard] [data-action=toggle]').evaluate(el=>getComputedStyle(el).backgroundColor));
- await page.locator('[data-token-id=Guard] [data-action=toggle]').click();await page.locator('[data-token-id=Guard] [data-action=toggle]').click();
+ assert.equal(await guard.evaluate(el=>getComputedStyle(el).borderBottomWidth),'0px');
+ await guard.locator('[data-action=toggle]').click();await guard.locator('.patrol-token-name').click();
  await page.locator('[data-token-id=Waiter] [data-action=toggle]').click();
  await page.locator('[data-scene-toggle]').click();
  assert.equal(await page.locator('[data-scene-toggle] .fa-pause').count(),1);
+ assert.ok(await page.locator('.patrol-controller-row button').evaluateAll(buttons=>buttons.length>0 && buttons.every(button=>getComputedStyle(button).filter==='none')));
  assert.equal(await page.evaluate(()=>canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol.enabled),false);
  assert.equal(await page.evaluate(()=>canvas.scene.tokens.get('Waiter').flags['pneuma-scenetools'].patrol.enabled),true);
  await page.locator('[data-scene-toggle]').click();await page.locator('[data-scene-toggle]').click();
  assert.equal(await page.evaluate(()=>canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol.enabled),false);
  await page.locator('[data-token-id=Waiter] [data-action=edit]').click();assert.equal(await page.locator('[name=token]').inputValue(),'Waiter');
  await page.evaluate(()=>document.querySelector('[data-token-id=Guard] [data-action=edit]').click());await page.waitForFunction(()=>document.querySelector('[name=token]').value==='Guard');assert.equal(await page.locator('[name=token]').inputValue(),'Guard');
- const editorBefore=await page.locator('#pneuma-patrol-editor').evaluate(el=>el.getBoundingClientRect().height);
+
  await page.locator('[data-action=pick]').click();
  await page.evaluate(()=>{const board=document.querySelector('#board');for(let i=0;i<24;i++)board.dispatchEvent(new PointerEvent('pointerdown',{button:0,clientX:150+i,clientY:150,bubbles:true}));});
  await page.keyboard.press('Escape');
- assert.ok(await page.locator('#pneuma-patrol-editor').evaluate(el=>el.getBoundingClientRect().height)>editorBefore);
+ assert.equal(await page.locator('[data-stops] tr').count(),10);
+ assert.equal(await page.locator('[data-action=pick]').isDisabled(),true);
+ await page.getByLabel('Remove stop 10',{exact:true}).click();
+ assert.equal(await page.locator('[data-action=pick]').isEnabled(),true);
  const controllerBefore=await page.locator('#pneuma-patrol-controller').evaluate(el=>el.getBoundingClientRect().height);
  await page.evaluate(()=>{const base=canvas.scene.tokens.get('Guard');for(let i=0;i<25;i++)canvas.scene.tokens.contents.push({...base,id:'extra'+i,uuid:'extra'+i,name:'Extra '+i,flags:structuredClone(base.flags)});});
  await page.waitForFunction(()=>document.querySelectorAll('.patrol-controller-row').length===27);
@@ -141,6 +168,26 @@ try{
  assert.equal(scrolling,0,'Both windows and their lists grow instead of adding scrollbars');
  assert.equal(await page.locator('.patrol-waypoints').evaluate(el=>el.scrollHeight<=el.clientHeight+1),true);
  assert.equal(await page.locator('[data-patrol-list]').evaluate(el=>el.scrollHeight<=el.clientHeight+1),true);
+ await page.locator('[data-action=cancel]').click();
+ assert.equal(await page.locator('[data-stops] tr').count(),2);
+ await page.locator('[data-action=start]').click();
+ await page.getByLabel('Enable Patrol for this token').uncheck();
+ await page.waitForFunction(()=>!document.querySelector('[data-token-id=Guard]'));
+ assert.equal(await page.evaluate(()=>canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol.stops.length),2);
+ await page.getByLabel('Enable Patrol for this token').check();
+ await page.waitForSelector('[data-token-id=Guard]');
+ assert.equal(await page.evaluate(()=>canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol.enabled),false);
+ for(const [action,icon] of [['cancel','fa-rotate-left'],['save','fa-floppy-disk'],['delete','fa-trash']]){
+   assert.equal(await page.locator('[data-action='+action+'] i.'+icon).count(),1);
+ }
+ await page.evaluate(()=>{globalThis.confirmAnswer=false});
+ await page.locator('[data-action=delete]').click();
+ assert.deepEqual(await page.evaluate(()=>[confirmOptions.defaultYes,confirmOptions.content.includes('Guard'),!!canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol]),[false,true,true]);
+ await page.evaluate(()=>{globalThis.confirmAnswer=true});
+ await page.locator('[data-action=delete]').click();
+ await page.waitForFunction(()=>!document.querySelector('[data-token-id=Guard]'));
+ assert.equal(await page.evaluate(()=>canvas.scene.tokens.get('Guard').flags['pneuma-scenetools'].patrol),undefined);
+ assert.equal(await page.locator('[name=speed]').isDisabled(),true);
  await page.evaluate(async()=>{
    Hooks.callAll('canvasTearDown');
    patrolTool.onClick();
@@ -150,7 +197,7 @@ try{
    const stored=JSON.parse(localStorage.getItem('pneuma-scenetools:patrol-position:world:gm'));
    if(stored.left!==240||stored.top!==180)throw Error('Patrol position was not persisted');
    latestDialog.setPosition({left:9999,top:9999});await latestDialog.close();patrolTool.onClick();
-   if(latestDialog.options.left>innerWidth-160||latestDialog.options.top>innerHeight-40)throw Error('Restored widget is off screen');
+   if(latestDialog.options.left>innerWidth-240||latestDialog.options.top>innerHeight-40)throw Error('Restored widget is off screen');
    Hooks.callAll('canvasTearDown');
  });assert.equal(await page.locator('.patrol-controller').count(),0);
  await page.evaluate(async()=>{game.user.isGM=false;await patrol.openPatrols();patrolTool.onClick()});assert.equal(await page.locator('.pneuma-patrol').count(),0);

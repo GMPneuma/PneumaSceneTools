@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.5 - 2026-11-11
+
+- Add wide and narrow Patrol controller views, flat token rows, status icons, and a map highlight on hover.
+- Separate scene controls from token actions. Disabling a saved patrol immediately stops it and hides its row while retaining its settings.
+- Add Cancel and confirmed Delete to the patrol editor. Limit new waypoint placement to 10 per patrol.
+
 ## 0.8.4 - 2026-11-01
 
 - Replace optional square walking with animated eight-direction steps for all non-vehicle patrols on square grids.

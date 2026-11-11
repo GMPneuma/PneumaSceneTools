@@ -63,6 +63,25 @@ export function patrolConfig(token:TokenDocument):PatrolConfig {
   }
   return structuredClone(config);
 }
+export function hasPatrol(token:TokenDocument):boolean {
+  return foundry.utils.getProperty(token,`flags.${MODULE_ID}.patrol`)!=null;
+}
+export function patrolAvailable(token:TokenDocument):boolean {
+  return hasPatrol(token) && foundry.utils.getProperty(token,`flags.${MODULE_ID}.patrol.available`)!==false;
+}
+export async function setPatrolAvailable(token:TokenDocument,available:boolean):Promise<void> {
+  if(!game.user?.isGM || token.parent?.tokens.get(token.id!)!==token || !hasPatrol(token))throw new Error("Select an existing token patrol.");
+  const prefix=`flags.${MODULE_ID}.patrol`;
+  await token.update({[prefix+".available"]:available,[prefix+".enabled"]:false},
+    {stopPatrolAnimation:!available && patrolConfig(token).enabled} as object);
+  if(patrolAvailable(token)!==available || patrolConfig(token).enabled)throw new Error("Patrol switch was not saved. Try again.");
+}
+export async function deletePatrol(token:TokenDocument):Promise<void> {
+  if(!game.user?.isGM || token.parent?.tokens.get(token.id!)!==token)throw new Error("Only a GM can delete an existing token patrol.");
+  await token.update({[`flags.${MODULE_ID}.-=patrol`]:null} as object);
+  if(hasPatrol(token))throw new Error("Patrol settings were not removed.");
+  states.delete(token.uuid);faults.delete(token.uuid);operations.delete(token.uuid);activePatrols?.delete(token.uuid);
+}
 export const patrolAuthority=()=>!!game.user?.isGM && game.users?.activeGM?.id===game.user.id;
 export const scenePatrolStopped=(scene:Scene)=>foundry.utils.getProperty(scene,`flags.${MODULE_ID}.patrolStopped`)===true;
 export async function setScenePatrolStopped(scene:Scene,stopped:boolean):Promise<void> {
@@ -139,7 +158,7 @@ function canRun(token:TokenDocument):boolean {
 }
 export async function savePatrol(token:TokenDocument, config:PatrolConfig):Promise<void> {
   if(!game.user?.isGM || token.parent?.tokens.get(token.id!)!==token)throw new Error("Only a GM can configure an existing scene token.");
-  const value=validateConfig(config);
+  const value=validateConfig({...config,enabled:config.available!==false && config.enabled});
   if(value.enabled&&isVehicleToken(token)){
     if(token.lockRotation)throw new Error("Unlock vehicle rotation before starting Patrol.");
     if(![0,1].includes(token.parent!.grid.type))throw new Error("Vehicle Patrol requires a square or gridless scene.");
@@ -506,8 +525,9 @@ export function registerPatrolRuntime():void {
   Hooks.on("createToken",(token:TokenDocument)=>{if(token.parent?.id!==canvas.scene?.id)return;if(initialized)rebuildPatrols();invalidate(token);start();});
   Hooks.on("updateScene",(scene:Scene,changes:object)=>{if(scene.id!==canvas.scene?.id)return;if(changesSeatFields(changes,['grid','width','height','padding']))geometryRevision++;start();});
   Hooks.on("deleteToken",(token:TokenDocument)=>{states.delete(token.uuid);operations.delete(token.uuid);activePatrols?.delete(token.uuid);invalidate(token);start();});
-  Hooks.on("updateToken",(token:TokenDocument,changes:Record<string,unknown>,options:{patrolMove?:boolean;vehicleSeats?:boolean})=>{
+  Hooks.on("updateToken",(token:TokenDocument,changes:Record<string,unknown>,options:{patrolMove?:boolean;vehicleSeats?:boolean;stopPatrolAnimation?:boolean})=>{
     if(token.parent?.id!==canvas.scene?.id)return;
+    if(options.stopPatrolAnimation && !patrolAvailable(token))token.object?.stopAnimation({reset:true});
     if(changesSeatFields(changes,[`flags.${MODULE_ID}.patrol`,`flags.${MODULE_ID}.vehicleSeat`])){if(initialized)rebuildPatrols();start();}
     if(changesSeatFields(changes,["x","y","width","height","rotation",`flags.${MODULE_ID}.patrol`,`flags.${MODULE_ID}.vehicleSeat`]))occupancyRevision++;
     // Seat placement follows its vehicle; it is dynamic movement, not a scene geometry edit.

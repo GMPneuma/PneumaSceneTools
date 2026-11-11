@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {defaults,validateConfig,findPath,footprint,overlaps,nextStop,sweptHull,segmentInsideHull,regionContainsSweep} from '../dist/scripts/patrol-model.js';
-import {patrolOperations,patrolConfig,patrolStatus,destinationClear,routingWorld,savePatrol,tickPatrols,clearPatrolRuntime,registerPatrolRuntime,scenePatrolStopped,setScenePatrolStopped} from '../dist/scripts/patrol-runtime.js';
+import {patrolOperations,patrolConfig,patrolStatus,destinationClear,routingWorld,savePatrol,setPatrolAvailable,patrolAvailable,tickPatrols,clearPatrolRuntime,registerPatrolRuntime,scenePatrolStopped,setScenePatrolStopped} from '../dist/scripts/patrol-runtime.js';
 import {DriveSearch,driveSweeps,driveHull,vehicleWallHull,driveFootprint,findDrivePath,headingDelta,artworkPose,hullsOverlap} from '../dist/scripts/patrol-vehicle.js';
 import {prepareVehicleRotation} from '../dist/scripts/vehicle-rotation.js';
 const ID='pneuma-scenetools';
@@ -23,12 +23,27 @@ function setup(gridType=1){
     t.update=async(changes,options={})=>{
       if(hooks.get('preUpdateToken')?.some(fn=>fn(t,changes,options)===false))return;
       t.writes.push({changes,options});
-      for(const [key,value] of Object.entries(changes)){if(key.startsWith(`flags.${ID}.`))t.flags[ID][key.slice(`flags.${ID}.`.length)]=structuredClone(value);else t[key]=value;}
+      for(const [key,value] of Object.entries(changes)){if(key.startsWith(`flags.${ID}.patrol.`))t.flags[ID].patrol[key.split(".").pop()]=value;else if(key.startsWith(`flags.${ID}.`))t.flags[ID][key.slice(`flags.${ID}.`.length)]=structuredClone(value);else t[key]=value;}
       hooks.get('updateToken')?.forEach(fn=>fn(t,changes,options));return t;
     };scene.tokens.contents.push(t);return t;
   }
   return {scene,region,token,hooks};
 }
+test('master switch stops movement, hides the patrol and restores its saved route stopped',async()=>{
+  const {token}=setup();
+  const guard=token('guard',0,0,{enabled:true,speed:2,stops:[{x:50,y:50,wait:0},{x:250,y:50,wait:0}]});
+  const saved=patrolConfig(guard);
+  let interrupted=false;
+  guard.object.stopAnimation=({reset})=>{interrupted=reset;};
+  await setPatrolAvailable(guard,false);
+  assert.equal(interrupted,true);
+  assert.equal(patrolAvailable(guard),false);
+  await tickPatrols(1000);
+  assert.equal(guard.writes.length,1);
+  await setPatrolAvailable(guard,true);
+  assert.equal(patrolAvailable(guard),true);
+  assert.deepEqual(patrolConfig(guard),{...saved,enabled:false});
+});
 test('route traversal loops and reverses without repeating endpoints',()=>{
   let index=0,direction=1;const order=[index];for(let i=0;i<6;i++){({index,direction}=nextStop(index,direction,3,'reverse'));order.push(index);}
   assert.deepEqual(order,[0,1,2,1,0,1,2]);assert.deepEqual(nextStop(2,1,3,'loop'),{index:0,direction:1});

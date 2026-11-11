@@ -20,10 +20,11 @@ export interface PatrolConfig {
   maxMovementTime: number;
   frontOffset: number;
   stops: Stop[];
+  available: boolean;
   enabled: boolean;
 }
 export interface Rect extends Point {width: number; height: number}
-export const defaults = (): PatrolConfig => ({stepPauseSeconds:0.2,mode: "route", traversal: "loop", regionId: "", speed: 1, pauseMin: 2, pauseMax: 6, waypointPauses:true,pathPauses:false,pathPauseMin:2,pathPauseMax:6,pathPauseEvery:10,sideTracks:false,sideTrackDistance:1,favorDistance:true,maxMovementTime:0,frontOffset:0,stops: [], enabled: false});
+export const defaults = (): PatrolConfig => ({stepPauseSeconds:0.2,mode: "route", traversal: "loop", regionId: "", speed: 1, pauseMin: 2, pauseMax: 6, waypointPauses:true,pathPauses:false,pathPauseMin:2,pathPauseMax:6,pathPauseEvery:10,sideTracks:false,sideTrackDistance:1,favorDistance:true,maxMovementTime:0,frontOffset:0,stops: [], available:true, enabled: false});
 export function validateConfig(value: PatrolConfig): PatrolConfig {
   if (!Number.isFinite(value.stepPauseSeconds)||value.stepPauseSeconds<0||value.stepPauseSeconds>3600||Math.abs(value.stepPauseSeconds*10-Math.round(value.stepPauseSeconds*10))>1e-8)throw new Error("Square pause must be between 0 and 3600 seconds with at most one decimal place.");
   if (!["route", "roam"].includes(value.mode) || !["loop", "reverse"].includes(value.traversal)) throw new Error("Choose a valid patrol mode.");
