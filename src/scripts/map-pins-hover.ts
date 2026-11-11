@@ -30,9 +30,10 @@ export function parseHoverPage(html:string):HoverSection[] {
 let hideTimer:ReturnType<typeof setTimeout>|undefined;
 const cancelHide=()=>{if(hideTimer)clearTimeout(hideTimer);hideTimer=undefined;};
 let generation=0;
+let hoveredNote:Note|undefined;
 let card:HTMLElement|undefined;
 let pointer={x:20,y:20};
-export function hidePinHover():void {cancelHide();generation++;card?.remove();card=undefined;}
+export function hidePinHover():void {cancelHide();generation++;hoveredNote=undefined;card?.remove();card=undefined;}
 function position():void {
   if(!card) return;
   const width=card.offsetWidth,height=card.offsetHeight;
@@ -57,11 +58,18 @@ export async function showPinHover(note:Note):Promise<void> {
   };
   const image=permitted(imagePageId,"image"),description=permitted(descriptionPageId,"text");
   if(!image && !description) return;
-  const content=description ? await TextEditor.enrichHTML(description.text.content??"",{secrets:true}) : "";
-  if(request!==generation || document.querySelector(".pneuma-pin-context") || !pinningEnabled(note.document.parent) || !access.testUserPermission(game.user,"OBSERVER")) return;
+  hoveredNote=note;
+  await new Promise<void>(resolve=>setTimeout(resolve,500));
+  if(request!==generation)return;
+  const canPreview=()=>!document.querySelector(".pneuma-pin-context") && pinningEnabled(note.document.parent) && game.user && access.testUserPermission(game.user,"OBSERVER");
+  if(!canPreview()){hidePinHover();return;}
+  const readable=permitted(descriptionPageId,"text");
+  const content=readable ? await TextEditor.enrichHTML(readable.text.content??"",{secrets:true}) : "";
+  if(request!==generation)return;
+  if(!canPreview()){hidePinHover();return;}
   // Permissions may have changed while enrichment was pending.
   const allowedDescription=permitted(descriptionPageId,"text"),allowedImage=permitted(imagePageId,"image");
-  if(!allowedDescription && !allowedImage) return;
+  if(!allowedDescription && !allowedImage){hidePinHover();return;}
   card=document.createElement("aside");card.className="app window-app pneuma-pin-hover";card.setAttribute("role","tooltip");
   const body=document.createElement("div");body.className="window-content";card.append(body);
   const title=document.createElement("h3");title.textContent=note.document.text||journal.name;body.append(title);
@@ -117,7 +125,14 @@ export async function showPinHover(note:Note):Promise<void> {
 }
 export function registerPinHover():void {
   document.addEventListener("pointermove",event=>{if(card?.contains(event.target as Node))return;pointer={x:event.clientX,y:event.clientY};if(!hideTimer)position();});
-  Hooks.on("hoverNote",(note:Note,hovered:boolean)=>{if(hovered) void showPinHover(note).catch(()=>hidePinHover());else {generation++;cancelHide();hideTimer=setTimeout(hidePinHover,180);}});
+  Hooks.on("hoverNote",(note:Note,hovered:boolean)=>{
+    if(hovered){
+      void showPinHover(note).catch(()=>{if(hoveredNote===note)hidePinHover();});
+    }else if(hoveredNote===note){
+      if(!card)hidePinHover();
+      else {generation++;cancelHide();hideTimer=setTimeout(hidePinHover,180);}
+    }
+  });
   for(const hook of ["canvasTearDown","updateJournalEntry","updateJournalEntryPage","deleteJournalEntry","deleteJournalEntryPage","updateNote","deleteNote","updateUser"]) Hooks.on(hook,hidePinHover);
   Hooks.on('updateScene',(scene:Scene,changes:object)=>{if(scene.id===canvas.scene?.id&&(pinningChanged(changes)||changesSeatFields(changes,['notes','ownership','grid','width','height','padding'])))hidePinHover();});
 }

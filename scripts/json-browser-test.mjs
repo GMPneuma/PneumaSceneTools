@@ -80,6 +80,7 @@ try {
   await modified.page.locator('button[type="submit"]').click();await modified.page.locator('[name="scene0-name"]').waitFor();
   await modified.page.locator('[name="scene0-name"]:enabled').waitFor();
   await modified.page.locator('[name="scene0-name"]').fill("Adjusted Scene");
+  await modified.page.locator('[data-scene="0"] summary').filter({hasText:'Scene lighting and vision'}).click();
   await modified.page.locator('[name="scene0-darkness"]').fill("0.2");
   await modified.page.locator('[name="scene0-fogExploration"]').check();
   await modified.page.locator('[data-scene="0"] details summary').filter({hasText:'Imported image paths'}).click();
@@ -173,6 +174,7 @@ await cancelled.page.locator('[name="scene0-name"]:enabled').waitFor();
   const appearance=await fixture(browser,{selected:image(1),files,imports});
   await appearance.page.locator('[name="allVariants"]').check();
   await appearance.page.locator('button[type="submit"]').click();
+  await appearance.page.locator('[data-scene="0"] summary').filter({hasText:'Grid appearance and padding'}).click();
   await appearance.page.locator('[name="scene0-Padding"]').waitFor();
   assert.equal(await appearance.page.locator('[name="scene0-Padding"]').inputValue(),'25');
   assert.equal(await appearance.page.locator('[name="scene0-Color"]').inputValue(),'#000000');

@@ -6,8 +6,13 @@
 .pneuma-scenetools fieldset { margin: 10px 0; }
 .pneuma-scenetools .pneuma-scene-fields { border: 0; margin: 0; padding: 0; }
 .pneuma-scenetools li { overflow-wrap: anywhere; }
-.pneuma-scenetools .pneuma-wizard-steps {display:flex;gap:24px;padding:8px 0;border-bottom:1px solid var(--color-border-light-primary,currentColor);}
-.pneuma-scenetools .pneuma-wizard-steps [aria-current] {font-weight:bold;}
+.pneuma-scenetools .pneuma-selection-body {container:scene-map-selection / inline-size;flex:1 1 auto;min-height:0;overflow:auto;}
+.pneuma-scenetools .pneuma-map-plans {display:grid;grid-template-columns:minmax(0,1fr);gap:8px 12px;align-items:start;margin:8px 0;}
+.pneuma-map-plans > fieldset[data-plan] {min-width:0;margin:0;}
+.pneuma-map-plans > fieldset > legend {max-width:100%;overflow-wrap:anywhere;}
+@container scene-map-selection (min-width: 900px) {
+  .pneuma-scenetools .pneuma-map-plans {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
 .pneuma-scenetools [data-plan] .form-group {display:grid;grid-template-columns:145px minmax(0,1fr) 64px;align-items:center;gap:8px;}
 .pneuma-scenetools [data-plan] .form-group > label {display:flex;align-items:center;gap:4px;white-space:nowrap;}
 .pneuma-scenetools [data-plan] > legend,.pneuma-scenetools [data-plan] > legend > label {font-weight:bold;}
@@ -15,7 +20,14 @@
 .pneuma-scenetools [data-plan]:disabled > .form-group button {cursor:not-allowed;}
 .pneuma-scenetools [data-plan] select {width:100%;min-width:0;}
 .pneuma-scenetools .pneuma-file-button {width:64px;flex:0 0 64px;line-height:24px;padding:0 4px;margin:0;font-size:12px;}
-.pneuma-scenetools .pneuma-source-file {display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0;}
+.pneuma-scenetools .pneuma-selection-toolbar,
+.pneuma-scenetools .pneuma-source-file,
+.pneuma-scenetools .pneuma-selection-options {display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;}
+.pneuma-scenetools .pneuma-selection-toolbar {margin:8px 0;}
+.pneuma-scenetools .pneuma-source-file button {width:auto;margin:0;}
+.pneuma-scenetools .pneuma-selection-options {margin-left:auto;justify-content:flex-end;}
+.pneuma-scenetools .pneuma-selection-options label {display:inline-flex;align-items:center;gap:5px;}
+.pneuma-scenetools .pneuma-selection-options input {flex:none;margin:0;}
 .pneuma-scenetools .pneuma-review-layout {display:grid;grid-template-columns:160px minmax(0,1fr);gap:16px;}
 .pneuma-scenetools .pneuma-scene-list {display:flex;flex-direction:column;gap:4px;align-self:start;max-height:48vh;overflow-y:auto;}
 .pneuma-scenetools .pneuma-scene-list button {text-align:left;white-space:normal;overflow-wrap:anywhere;line-height:1.4;padding:6px;margin:0;}
@@ -26,15 +38,13 @@
 .pneuma-scenetools .pneuma-scene-main {display:grid;grid-template-columns:350px minmax(260px,1fr);gap:0 20px;align-content:start;align-items:start;}
 .pneuma-scenetools .pneuma-scene-main > h3 {grid-column:1 / -1;}
 .pneuma-scenetools .pneuma-scene-main > .pneuma-scene-fields {grid-column:1;grid-row:2;min-width:0;}
-.pneuma-scenetools .pneuma-scene-notes {display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;margin-top:16px;padding-top:12px;border-top:1px solid var(--color-border-light-primary,currentColor);font-size:13px;line-height:1.5;overflow-wrap:anywhere;}
+.pneuma-scenetools .pneuma-scene-notes {display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin-top:8px;padding-top:6px;border-top:1px solid var(--color-border-light-primary,currentColor);font-size:13px;line-height:1.5;overflow-wrap:anywhere;}
 .pneuma-scenetools .pneuma-scene-notes p {margin:6px 0;}
 .pneuma-scenetools .pneuma-preview-panel {grid-column:2;grid-row:2;min-width:0;}
 .pneuma-scenetools .pneuma-scene-editor .pneuma-grid-preview {display:block;max-height:46vh;width:100%;height:auto;object-fit:contain;}
 .pneuma-scenetools [data-scene][hidden] {display:none;}
 .pneuma-scenetools [data-scene-title] {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 0 14px;padding-bottom:6px;}
-.pneuma-scenetools .pneuma-shared-settings {display:flex;flex-direction:column;gap:10px;padding:10px 12px 12px;}
-.pneuma-scenetools .pneuma-wizard-footer {display:flex;gap:8px;position:sticky;bottom:0;padding-top:8px;background:var(--cpr-background-window,transparent);}
-.pneuma-scenetools .pneuma-wizard-footer [data-back] {flex:0 0 90px;}
+.pneuma-scenetools .pneuma-shared-settings {display:flex;flex-direction:column;gap:6px;padding:4px 12px 8px;}
 .pneuma-scenetools .pneuma-scene-fields .form-group {display:grid;grid-template-columns:115px minmax(0,1fr);align-items:center;gap:8px;justify-content:start;}
 .pneuma-scenetools .pneuma-scene-fields .form-group[hidden] {display:none;}
 .pneuma-scenetools .pneuma-scene-fields .form-group > input[type="number"] {width:90px;}
@@ -141,8 +151,6 @@
 .pneuma-folder-artwork-grid img {width:100%;height:90px;object-fit:contain;border:0;}
 .pneuma-folder-artwork-grid figcaption {font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-.pneuma-scene-folder-step .pneuma-wizard-steps {display:flex;gap:24px;padding:8px 0;border-bottom:1px solid var(--color-border-light-primary,currentColor);}
-.pneuma-scene-folder-step [aria-current="step"] {font-weight:bold;}
 .pneuma-scene-folder-step [data-native-folder] {position:static;width:auto;height:auto;max-height:55vh;overflow-y:auto;}
 .pneuma-scene-folder-step [data-native-folder] button[hidden],.pneuma-scene-folder-step [data-cancel-scan][hidden] {display:none;}
 .pneuma-scene-creator-window .window-content {display:flex;flex-direction:column;min-height:0;overflow:hidden;}
@@ -336,26 +344,80 @@
 .pneuma-scene-creator-window .pneuma-review-form {display:flex;flex-direction:column;overflow:hidden;gap:12px;}
 .pneuma-scene-creator-window .pneuma-review-form > * {flex:0 0 auto;}
 .pneuma-scene-creator-window .pneuma-review-form > .pneuma-review-layout {flex:1 1 auto;min-height:0;}
-.pneuma-scenetools .pneuma-wizard-steps {margin:0;}
 .pneuma-scenetools .pneuma-shared-settings {margin:0;}
 .pneuma-scenetools h4 {font-size:14px;margin:0 0 8px;font-weight:bold;}
-.pneuma-scenetools .pneuma-scene-fields > h4 {margin-top:18px;}
+.pneuma-scenetools .pneuma-scene-fields > details {padding:6px 0;border-bottom:1px solid var(--color-border-light-primary,currentColor);}
+.pneuma-scene-fields > [data-review-group] > summary {
+  padding:3px 7px;
+  border-inline-start:3px solid transparent;
+  border-radius:2px;
+  background:color-mix(in srgb,currentColor 6%,transparent);
+}
+.pneuma-scene-fields > [data-review-group][open] > summary {
+  margin-bottom:6px;
+  border-inline-start-color:var(--wizard-accent);
+  background:color-mix(in srgb,var(--wizard-accent) 15%,transparent);
+}
 .pneuma-scenetools .pneuma-scene-fields .pneuma-name-field {display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:0 0 14px;}
 .pneuma-scenetools .pneuma-name-field > label {font-weight:bold;flex:0 0 auto;}
-.pneuma-scenetools .pneuma-scene-fields fieldset {padding:10px 12px;margin:16px 0;}
+.pneuma-scenetools .pneuma-scene-fields fieldset {padding:0;margin:0;border:0;}
 .pneuma-scenetools .pneuma-scene-fields fieldset > label {display:flex;align-items:center;gap:6px;margin:6px 0;}
 .pneuma-scenetools .pneuma-scene-fields fieldset > label input {flex:0 0 auto;margin:0;}
 .pneuma-scenetools .pneuma-import-details {grid-column:1 / -1;}
 .pneuma-scenetools summary {cursor:pointer;font-weight:bold;}
-.pneuma-scenetools .pneuma-import-counts {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 12px;margin:6px 0 10px;}
+.pneuma-scenetools .pneuma-import-counts {display:flex;flex-wrap:wrap;gap:2px 12px;margin:0;}
 .pneuma-scenetools .pneuma-import-counts div {display:flex;justify-content:space-between;gap:6px;}
 .pneuma-scenetools .pneuma-import-counts dd {margin:0;font-weight:bold;}
 .pneuma-scenetools .pneuma-shared-toggle {display:flex;align-items:center;gap:6px;}
 .pneuma-scenetools .pneuma-shared-toggle input {margin:0;flex:0 0 auto;}
 .pneuma-scenetools .pneuma-shared-row > strong {flex:0 0 60px;font-size:13px;}
-.pneuma-scenetools .pneuma-wizard-footer {margin-top:auto;padding-top:12px;border-top:1px solid var(--color-border-light-primary,currentColor);}
 @media (max-width:1050px) {
   .pneuma-scenetools .pneuma-review-layout {grid-template-columns:130px minmax(0,1fr);gap:12px;}
   .pneuma-scenetools .pneuma-scene-main {grid-template-columns:300px minmax(220px,1fr);gap:0 12px;}
   .pneuma-scenetools .pneuma-scene-notes {grid-template-columns:1fr;}
+}
+.pneuma-scenetools select[data-field="gridChoice"], .pneuma-scenetools select[data-field="gridChoice"] option {font-family:monospace;}
+
+.pneuma-scenetools :is(.pneuma-preview-heading,.pneuma-contents-summary) {display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 12px;}
+.pneuma-scenetools .pneuma-preview-heading {margin-bottom:6px;}
+.pneuma-scenetools :is(.pneuma-preview-heading,.pneuma-contents-summary) h4 {margin:0;}
+.pneuma-scenetools .pneuma-preview-heading span {font-size:0.9em;}
+.pneuma-scenetools .pneuma-preview-heading .pneuma-grid-count {margin-left:auto;}
+.pneuma-scenetools .pneuma-contents-summary p {margin:0;}
+/* Shared navigation for all three Quick Scene Importer steps. */
+:is(.pneuma-scene-folder-step, .pneuma-scenetools) {
+  --wizard-accent: var(--color-border-highlight, currentColor);
+}
+.pneuma-scene-creator-window form:has(> .pneuma-selection-body) {
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.pneuma-wizard-steps {
+  display:flex; align-items:center; flex-wrap:wrap; gap:6px 0;
+  padding:5px 4px 9px; margin:0 0 6px; border-bottom:1px solid var(--color-border-light-primary,currentColor);
+}
+.pneuma-wizard-steps > span {display:inline-flex; align-items:center; gap:6px;}
+.pneuma-wizard-steps > span + span::before {
+  content:""; width:clamp(12px,2vw,32px); height:1px; margin:0 6px;
+  background:color-mix(in srgb,currentColor 30%,transparent);
+}
+.pneuma-wizard-steps b {
+  display:inline-grid; place-items:center; width:1.55em; height:1.55em; border-radius:50%;
+  border:1px solid color-mix(in srgb,currentColor 35%,transparent); font-size:0.9em; line-height:1;
+}
+.pneuma-wizard-steps [aria-current="step"] {font-weight:bold;}
+.pneuma-wizard-steps [aria-current="step"] b {background:color-mix(in srgb,var(--wizard-accent) 18%,transparent); border-color:var(--wizard-accent);}
+:is(.pneuma-scene-folder-step,.pneuma-scenetools) .pneuma-wizard-footer {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; box-sizing:border-box;
+  gap:12px; flex:0 0 auto; margin-top:auto; padding:10px 8px 8px;
+  border-top:1px solid var(--color-border-light-primary,currentColor);
+  background:var(--cpr-background-window,transparent);
+}
+.pneuma-wizard-footer > button {width:100%; min-width:0; min-height:34px; margin:0;}
+.pneuma-wizard-footer > button[type="submit"] {grid-column:2; position:relative;}
+.pneuma-wizard-footer > button[type="submit"]::after {
+  content:""; position:absolute; inset:0; border-radius:inherit; background:rgba(0,0,0,0.09); pointer-events:none;
+}
+.pneuma-scenetools [data-plan]:has(> legend input:checked),
+.pneuma-scenetools .pneuma-scene-list button[aria-pressed="true"] {
+  border-inline-start:3px solid var(--wizard-accent); background-color:color-mix(in srgb,var(--wizard-accent) 9%,transparent);
 }

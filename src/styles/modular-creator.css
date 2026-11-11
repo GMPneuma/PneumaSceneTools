@@ -44,12 +44,20 @@
 #pneuma-modular-canvas [hidden] {display:none}
 
 
+#pneuma-new-modular {max-width:calc(100vw - 16px)}
 #pneuma-new-modular .window-content {padding:16px}
-#pneuma-new-modular .modular-new-intro h2 {margin:0 0 10px}
-#pneuma-new-modular .modular-new-intro p {margin:8px 0;line-height:1.45}
-#pneuma-new-modular .modular-new-pack {margin:16px 0;padding:12px 0;border-top:1px solid var(--color-border-light-primary);border-bottom:1px solid var(--color-border-light-primary)}
-#pneuma-new-modular .modular-new-pack h3 {margin:0 0 6px}
-#pneuma-new-modular .modular-new-name {display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:16px 0 0}
-#pneuma-new-modular .modular-new-name .form-fields {flex:0 0 auto}
+#pneuma-new-modular .modular-new-layout {
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,215px),1fr));gap:18px;align-items:start;
+}
+#pneuma-new-modular .modular-new-intro h2 {margin:0 0 8px}
+#pneuma-new-modular .modular-new-layout p {margin:0;line-height:1.45}
+#pneuma-new-modular .modular-new-name {display:grid;gap:5px;margin:18px 0 0}
+#pneuma-new-modular .modular-new-name label {font-weight:bold}
 #pneuma-new-modular .modular-new-name input {box-sizing:border-box;width:100%}
-#pneuma-new-modular .dialog-buttons {margin-top:18px;padding-top:12px;border-top:1px solid var(--color-border-light-primary)}
+#pneuma-new-modular .modular-new-guide {display:grid;gap:8px}
+#pneuma-new-modular .modular-new-guide section {padding:9px 11px;border-inline-start:3px solid var(--modular-accent);background:color-mix(in srgb,var(--modular-accent) 9%,transparent)}
+#pneuma-new-modular .modular-new-pack {--modular-accent:var(--color-border-highlight,currentColor)}
+#pneuma-new-modular .modular-new-warning {--modular-accent:#ae843e}
+#pneuma-new-modular .modular-new-guide h3 {margin:0 0 4px;border:0;font-size:1em;font-weight:bold}
+#pneuma-new-modular .modular-new-pack a {display:inline-block;margin-top:5px}
+#pneuma-new-modular .dialog-buttons {margin-top:16px;padding:8px 3px 3px;border-top:1px solid var(--color-border-light-primary)}

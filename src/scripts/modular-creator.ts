@@ -317,20 +317,27 @@ export async function promptModularScene() {
   try {
     requireGM();
     const name = await Dialog.prompt({title:'Modular Scene Creator', content:`
-      <section class="modular-new-intro">
-      <h2>Build a modular scene</h2>
-      <p>This creates a map that you can expand by adding more tiles to build a custom scene.</p>
-      <p>Use a set of consistently sized map images designed to fit together properly.</p>
-      <section class="modular-new-pack"><h3>Recommended map pack</h3>
-      <p>You can find four such sets from Solution Maps, one of the best mapmakers for Cyberpunk.</p>
-        <a href="https://www.drivethrurpg.com/en/product/472222/cyberpunk-modular-tile-pack-hd-print-edition-animated-battle-map-bundle?affiliate_id=445711" target="_blank" rel="noopener noreferrer">Solution Maps Modular Pack</a>
-      </section>
-      <section class="modular-new-warning"><h3><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Large scene performance</h3>
-        <p>If you want to build a large scene, it is highly recommended to:</p>
-        <ul><li>Use lower-resolution tiles.</li><li>Include only a few animated tiles.</li></ul>
-        <p>Huge maps at high resolution and multiple animated tiles may seriously impact performance on players with slower devices.</p>
-      </section></section>
-      <div class="form-group modular-new-name"><label for="pneuma-modular-scene-name">Scene name</label><div class="form-fields"><input id="pneuma-modular-scene-name" type="text" name="sceneName" autofocus maxlength="200"></div></div>`,
+      <div class="modular-new-layout">
+        <section class="modular-new-intro">
+          <h2>Build a modular scene</h2>
+          <p>Start with a scene name, then expand the map with consistently sized map images designed to fit together.</p>
+          <div class="form-group modular-new-name">
+            <label for="pneuma-modular-scene-name">Scene name</label>
+            <input id="pneuma-modular-scene-name" type="text" name="sceneName" autofocus maxlength="200">
+          </div>
+        </section>
+        <aside class="modular-new-guide">
+          <section class="modular-new-pack">
+            <h3>Recommended map pack</h3>
+            <p>Solution Maps offers four matching Cyberpunk tile sets.</p>
+            <a href="https://www.drivethrurpg.com/en/product/472222/cyberpunk-modular-tile-pack-hd-print-edition-animated-battle-map-bundle?affiliate_id=445711" target="_blank" rel="noopener noreferrer">Solution Maps Modular Pack</a>
+          </section>
+          <section class="modular-new-warning">
+            <h3><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> Large scene performance</h3>
+            <p>Use lower-resolution tiles and limit animated tiles to keep large maps responsive on slower devices.</p>
+          </section>
+        </aside>
+      </div>`,
       label:'Create Scene', options:{id:"pneuma-new-modular",width:560}, callback:html => String(html.find('[name=sceneName]').val() ?? '').trim(), rejectClose:false});
     if (!name) return;
     const scene = await createNamedModularScene(name);

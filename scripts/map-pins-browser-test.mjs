@@ -526,7 +526,14 @@ try {
     await hover.showPinHover(note);const noPages=!document.querySelector('.pneuma-pin-hover');
     template.pages.get('description').allowed=true;
     let finish;TextEditor.enrichHTML=()=>new Promise(resolve=>{finish=resolve});
-    const pending=hover.showPinHover(note);hover.hidePinHover();finish('Late content');await pending;
+    const quick=hover.showPinHover(note);
+    if(document.querySelector('.pneuma-pin-hover-name,.pneuma-pin-hover'))throw Error('A quick hover should show only the native label');
+    Hooks.fire('hoverNote',note,false);
+    await quick;
+    if(finish||document.querySelector('.pneuma-pin-hover-name,.pneuma-pin-hover'))throw Error('Leaving the POI should cancel expansion');
+    const pending=hover.showPinHover(note);
+    await new Promise(resolve=>setTimeout(resolve,510));
+    hover.hidePinHover();finish('Late content');await pending;
     const noLate=!document.querySelector('.pneuma-pin-hover');
     TextEditor.enrichHTML=async content=>content;
     game.user.isGM=true;await hover.showPinHover(note);

@@ -17,6 +17,7 @@ try {
   await page.locator('[name="scene0-name"]').fill("Edited scene");
   assert.equal(await page.locator('[data-image-asset]').count(),0);
   assert.equal(await page.getByText('Imported image paths',{exact:true}).count(),0);
+  await page.locator('[data-scene="0"] summary').filter({hasText:'Scene lighting and vision'}).click();
   await page.locator('[name="scene0-darkness"]').fill("0.7");
   await page.locator('[name="scene0-tokenVision"]').uncheck();
   await page.locator('[name="applyShared"]').check();
@@ -37,6 +38,13 @@ try {
   await page.locator('[name="sharedDarkness"]').fill("0.3");
   await page.locator('[data-select-scene="1"]').click();
   assert.equal(await page.locator('[data-scene="0"]').isVisible(),false);
+  const lighting = index => page.locator(`[data-scene="${index}"] [data-review-group="lighting"]`);
+  assert.equal(await lighting(1).evaluate(group=>group.open),true);
+  await lighting(1).locator('summary').click();
+  await page.locator('[data-select-scene="0"]').click();
+  assert.equal(await lighting(0).evaluate(group=>group.open),false);
+  assert.equal(await page.locator('[name="scene0-darkness"]').inputValue(),"0.7");
+  await page.locator('[data-select-scene="1"]').click();
   await page.locator('[name="scene1-name"]').fill("Second edit");
   await page.locator('[data-back]').click();
   await page.locator('[name="allVariants"]').waitFor();

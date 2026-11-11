@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.6 - 2026-11-11
+
+- Delay full POI previews until the pointer stays on a pin for half a second.
+- Refresh all three Quick Scene Importer steps with shared navigation, responsive variant selection, collapsible settings and compact grid choices.
+- Keep settings groups open or closed when switching variants. Group foreground selection with the scene name and compact the map preview details.
+- Simplify the Modular Scene Creator opening dialog and compact the Scanner, with scanner controls on the left and NetArch color on the right.
+
 ## 0.8.5 - 2026-11-11
 
 - Add wide and narrow Patrol controller views, flat token rows, status icons, and a map highlight on hover.

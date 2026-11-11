@@ -69,6 +69,24 @@ export async function prepareScene(map: string, selected: ImportFile | undefined
   const size = positive(grid.size, suggestions[0]?.size ?? 100), type = grid.type === 0 ? 0 : 1;
   const importedGrid = selected?.kind === "Foundry Scene" ? record(selected.data.grid) : {};
   const importedSize = typeof importedGrid.size === "number" && importedGrid.size > 0;
+  const rows = [...new Set([size, ...suggestions.map(s=>s.size)])].map(value=>{
+    const columns = width/value, heightInCells = height/value;
+    const hint = suggestions.find(s=>s.size===value)?.hintSource;
+    const notes = [value===size ? importedSize ? "Imported" : "Suggested" : "", hint,
+      Number.isInteger(columns) && Number.isInteger(heightInCells) ? "Exact fit" : ""];
+    return {size:value, pixels:`${value}px`, across:String(Number(columns.toFixed(1))),
+      down:String(Number(heightInCells.toFixed(1))), notes:notes.filter(Boolean).map(note=>`(${note})`).join(' ')};
+  });
+  const pixelsWidth = Math.max(...rows.map(row=>row.pixels.length));
+  const acrossWidth = Math.max(...rows.map(row=>row.across.length));
+  const downWidth = Math.max(...rows.map(row=>row.down.length));
+  // Native select options collapse normal padding spaces.
+  const space = '\u00a0', gap = space.repeat(2);
+  const gridOptions = rows.map(row=>{
+    const across = row.across.padStart(acrossWidth, space);
+    const end = row.notes ? row.down.padEnd(downWidth, space) + gap + row.notes : row.down;
+    return {size:row.size, selected:row.size===size, label:`${row.pixels.padEnd(pixelsWidth, space)}${gap}${across} x ${end}`};
+  });
   const unresolved = rematchAssets(data, files, mode === "edit", map, selected?.path);
   const types: [number,string][] = [[1,"Squares"],[0,"Gridless"]];
   return {map, data, source: selected?.kind === "Foundry Scene" ? structuredClone(selected.data) : undefined,
@@ -80,8 +98,7 @@ export async function prepareScene(map: string, selected: ImportFile | undefined
       globalLight: Boolean(record(environment.globalLight).enabled ?? game.settings!.get(MODULE_ID, "defaultGlobalLight")),
       tokenVision: Boolean(data.tokenVision ?? true), fogExploration: Boolean(record(data.fog).exploration ?? data.fogExploration ?? true)
     },
-    gridOptions: [...new Set([size, ...suggestions.map(s=>s.size)])].map(value=>({size: value, selected: value === size,
-      label: `${value} px - ${(width/value).toFixed(2)} x ${(height/value).toFixed(2)} squares${value === size ? importedSize ? " (Imported)" : " (Suggested)" : ""}${suggestions.find(s=>s.size===value)?.hintSource ? ` (${suggestions.find(s=>s.size===value)!.hintSource})` : ""}${Number.isInteger(width/value) && Number.isInteger(height/value) ? " (Exact fit)" : ""}`})),
+    gridOptions,
     gridTypes: types.map(([value,label])=>({value,label:label + (importedGrid.type === value ? " (Imported)" : ""),selected: value === type})),
     overlays: matchingOverlays(map, files).map((path,index)=>({index,path,label:basename(path),animated:isVideo(path)})),
     unresolved: [...new Set(unresolved)]

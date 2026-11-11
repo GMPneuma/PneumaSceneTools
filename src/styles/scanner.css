@@ -112,8 +112,7 @@
 .pneuma-scanner .ap-list-header { overflow: hidden; border: 1px solid var(--color-border-light-tertiary, #8886); border-bottom: 0; }
 .pneuma-scanner .ap-list-header, .pneuma-scanner .ap-list { scrollbar-gutter: stable; }
 
-.pneuma-scanner .ap-top { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 12px; }
-.pneuma-scanner .ap-top-with-roll { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pneuma-scanner .ap-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); align-items: start; gap: 8px; margin-bottom: 6px; }
 .pneuma-scanner .ap-top-controls { min-width: 0; }
 .pneuma-scanner .ap-runner-field { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
 .pneuma-scanner .ap-top-controls .ap-player-owned, .pneuma-scanner .ap-top-controls .ap-scene-color { margin-top: 12px; }
@@ -126,12 +125,10 @@
 .pneuma-scanner .ap-bulk-bar { display: block; overflow: hidden; scrollbar-gutter: stable; padding: 0; border: 1px solid var(--color-border-light-tertiary, #8886); border-top: 0; }
 .pneuma-scanner .ap-control-table .ap-bulk-apply { text-align: right; }
 .pneuma-scanner .ap-bulk-apply button { width: 80px; margin: 0; }
-/* The controls occupy the left column even without a roll card. */
 .pneuma-scanner .ap-top .ap-runner-field { width: 100%; }
-.pneuma-scanner .ap-top { margin-bottom: 8px; }
 .pneuma-scanner .ap-top-controls .ap-player-owned,
 .pneuma-scanner .ap-top-controls .ap-scene-color { margin-top: 8px; }
-.pneuma-scanner .ap-list .ap-control-table td { padding-top: 5px; padding-bottom: 5px; }
+.pneuma-scanner .ap-list .ap-control-table td { padding-top: 2px; padding-bottom: 2px; }
 
 /* Scanner-only section styling, using the Payouts palette. */
 .pneuma-scanner-panel {
@@ -184,7 +181,7 @@
 .pneuma-scanner-panel .ap-hint { margin-bottom: 0; background: #b779260b; }
 .pneuma-scanner-panel .ap-discovery-title {
   margin: 0;
-  padding: 7px 10px;
+  padding: 4px 10px;
   color: var(--ap-green);
   border: 1px solid var(--ap-rule);
   border-left: 3px solid var(--ap-green);
@@ -241,7 +238,7 @@ html[data-cpr-theme="darkmode"] .pneuma-scanner-panel {
 /* Place scene and list controls with the content they affect. */
 .pneuma-scanner-panel .ap-header { flex-wrap: wrap; }
 .pneuma-scanner-panel .ap-header .ap-scene-color { margin: 0 0 0 auto; }
-.pneuma-scanner-panel .ap-top-controls .ap-radius-field { margin-top: 10px; }
+.pneuma-scanner-panel .ap-top-controls .ap-radius-field { margin-top: 5px; }
 .pneuma-scanner-panel .ap-radius-field > span { white-space: nowrap; }
 .pneuma-scanner-panel .ap-radius-field small { font-size: 11px; font-weight: 400; margin-left: 8px; }
 .pneuma-scanner-panel .ap-discovery-title { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
@@ -264,7 +261,6 @@ html[data-cpr-theme="darkmode"] .pneuma-scanner-panel {
 .pneuma-scanner-panel .ap-footer-selection .ap-selection-tools { margin: 0; padding: 0; border: 0; flex-wrap: nowrap; align-items: center; gap: 6px; }
 .pneuma-scanner-panel .ap-footer-selection .ap-selection-tools button { font-size: 12px; padding: 0 6px; white-space: nowrap; }
 
-.pneuma-scanner-panel .ap-top-left { min-width: 0; }
 .pneuma-scanner-panel .ap-runner-row { display: flex; align-items: flex-end; gap: 12px; }
 .pneuma-scanner-panel .ap-runner-row .ap-runner-field { flex: 0 0 50%; min-width: 0; width: 50%; }
 .pneuma-scanner-panel .ap-runner-row .ap-player-owned { flex: 0 0 auto; margin: 0; min-height: 32px; white-space: nowrap; }
@@ -305,3 +301,8 @@ html[data-cpr-theme="darkmode"] .pneuma-scanner-panel {
 .pneuma-scanner-panel button.ap-hide-all { width: auto; padding: 3px 10px; background: #9b2335; color: #fff; border: 1px solid #741a28; border-radius: 4px; font-weight: 700; white-space: nowrap; }
 .pneuma-scanner-panel button.ap-hide-all:hover { background: #b62a40; }
 .pneuma-scanner-panel button.ap-hide-all:focus-visible { outline: 2px solid #9b2335; outline-offset: 2px; }
+
+.pneuma-scanner-panel .ap-top > .ap-header { margin: 0; }
+.pneuma-scanner-panel .ap-list-header th, .pneuma-scanner-panel .ap-bulk-bar td { padding-block: 3px; }
+.pneuma-scanner-panel .ap-name-edit > button { min-height: 22px; height: auto; line-height: 1.25; margin-block: 0; }
+.pneuma-scanner-panel .ap-scanner-body > .notes { margin: 3px 0; }

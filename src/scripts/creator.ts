@@ -125,7 +125,17 @@ export class SceneCreator extends FormApplication {
       }}).render(true));
       return;
     }
+    const groupStates = new Map<string, boolean>();
     const selectScene = (index: number) => {
+      const current = root.querySelector('[data-scene]:not([hidden])');
+      for (const group of current?.querySelectorAll<HTMLDetailsElement>('[data-review-group]') ?? []) {
+        groupStates.set(group.dataset.reviewGroup!, group.open);
+      }
+      const next = root.querySelector(`[data-scene="${index}"]`);
+      for (const group of next?.querySelectorAll<HTMLDetailsElement>('[data-review-group]') ?? []) {
+        const open = groupStates.get(group.dataset.reviewGroup!);
+        if (open !== undefined) group.open = open;
+      }
       this.selectedScene = index;
       for (const panel of root.querySelectorAll<HTMLElement>("[data-scene]")) panel.hidden = Number(panel.dataset.scene) !== index;
       for (const button of root.querySelectorAll<HTMLElement>("[data-select-scene]")) button.setAttribute("aria-pressed", String(Number(button.dataset.selectScene) === index));
