@@ -643,7 +643,7 @@ On scenes with Scene Tools Map POI enabled, the Notes layer stays visible and in
 
 - Map POI manager includes Export JSON and Import JSON for all scene Notes and their linked journals/pages. Files are indented, manually editable JSON; import adds fresh documents and remaps Note/hover page links without overwriting existing content. Native artwork paths and default permissions are retained; user-specific grants and media files are not transferred. See [format and example](docs/map-pin-transfer.md).
 
-- Pan to Note is inserted above each linked POI journal page without changing saved journal content. The associated Note is resolved on click. Players on another scene receive a message without moving their view; GMs view the destination scene first. Current-scene players must have journal access and a visible Note. Missing Notes produce a message.
+- Pan to Note is inserted above each linked POI page in the journal reader without changing saved journal content. The associated Note is resolved on click. Players on another scene receive a message without moving their view; GMs view the destination scene first. Current-scene players must have journal access and a visible Note. Missing Notes produce a message.
 
 - Upgrade cleanup removes GM Notes from existing module-created default POI templates on active-GM world startup and before template use. Other sections are retained; custom unflagged templates and existing scene POI journals are untouched. Repeated cleanup makes no further writes.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.8 - 2026-11-12
+
+- Keep Pan to Note in the journal reader and prevent the oversized duplicate button in the page editor.
+
 ## 0.8.7 - 2026-11-11
 
 - Show a thumbnail from each category’s artwork folder on Mook Artwork and Vehicle Artwork tiles.

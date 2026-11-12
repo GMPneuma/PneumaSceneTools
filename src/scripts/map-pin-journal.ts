@@ -49,7 +49,8 @@ export function registerPinJournal():void {
   for(const hook of ['createNote','updateNote','deleteNote','createScene','deleteScene'])Hooks.on(hook,()=>{linkedPages=undefined;});
   Hooks.on('updateScene',(_scene:Scene,changes:object)=>{if(pinningChanged(changes)||changesSeatFields(changes,['notes']))linkedPages=undefined;});
   Hooks.on('renderJournalPageSheet',(app:{object:JournalEntryPage},html:JQuery)=>{
-    if(html[0])addPinJournalButton(app.object,html[0]);
+    const pageRoot=html[0]?.closest<HTMLElement>('.journal-entry-page[data-page-id]');
+    if(pageRoot)addPinJournalButton(app.object,pageRoot);
   });
   Hooks.on('renderJournalSheet',(app:{object:JournalEntry},html:JQuery)=>{
     for(const root of html[0]?.querySelectorAll<HTMLElement>('.journal-entry-page[data-page-id]')??[]){
