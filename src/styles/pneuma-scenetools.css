@@ -93,7 +93,9 @@
 .pneuma-artwork-manager aside {display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--color-border-light-primary,currentColor);}
 .pneuma-artwork-manager aside>[data-count] {padding:7px 10px;border-top:1px solid var(--color-border-light-primary,currentColor);}
 .pneuma-artwork-manager .artwork-list {flex:1;overflow-y:auto;min-height:0;padding:4px;}
-.pneuma-artwork-manager .artwork-entry {height:auto;min-height:52px;display:flex;flex-direction:column;align-items:stretch;text-align:left;width:100%;padding:7px 9px;margin:0 0 3px;line-height:1.4;}
+.pneuma-artwork-manager .artwork-entry {height:auto;min-height:52px;display:flex;align-items:center;gap:8px;text-align:left;width:100%;padding:7px 9px;margin:0 0 3px;line-height:1.4;}
+.pneuma-artwork-manager .artwork-entry-label {display:flex;flex-direction:column;min-width:0;}
+.pneuma-artwork-manager .artwork-entry-thumbnail {width:36px;height:36px;flex:none;object-fit:contain;border:0;}
 .pneuma-artwork-manager .artwork-entry.selected {outline:2px solid currentColor;outline-offset:-2px;font-weight:bold;}
 .pneuma-artwork-manager .artwork-entry strong {flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pneuma-artwork-manager .artwork-entry small {flex-shrink:0;font-size:11px;opacity:.8;}

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.7 - 2026-11-11
+
+- Show a thumbnail from each category’s artwork folder on Mook Artwork and Vehicle Artwork tiles.
+
 ## 0.8.6 - 2026-11-11
 
 - Delay full POI previews until the pointer stays on a pin for half a second.

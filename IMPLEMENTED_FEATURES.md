@@ -421,6 +421,7 @@ Follow-up reliability fixes: promoted Actors drop default-template identity; pro
 
 ### Compact artwork categories with inline seats
 
+- Each Mook Artwork and Vehicle Artwork category tile shows a 36 px thumbnail from its configured folder when artwork is available.
 - Search and kind filtering sit above the category list. Category name and kind share a row; vehicle scale has a synchronized slider and numeric input.
 - The right pane previews sample folder artwork for both Mooks and Vehicles. Vehicle seats can be placed, selected and moved, renamed, and removed directly on the preview. Save categories persists the draft; vehicle capacity stays on the vehicle type.
 - Local browser checks cover inline editing, Mook previews, retained drafts and scale controls. Live Foundry verification pending.

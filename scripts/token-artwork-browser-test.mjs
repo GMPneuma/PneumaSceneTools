@@ -34,6 +34,7 @@ try {
   await page.addStyleTag({content:await readFile('dist/styles/pneuma-scenetools.css','utf8')});
   await page.addStyleTag({content:'body{font:14px Arial;background:#222;color:#ddd;margin:20px}body>.pneuma-artwork-manager{width:980px;height:600px;background:#303030;padding:14px;box-sizing:border-box}input,select,button{box-sizing:border-box;height:30px;color:inherit;background:#414141;border:1px solid #777;border-radius:3px}button{cursor:pointer}.dialog{position:absolute;left:820px;top:20px;width:400px;background:#333;padding:10px}'});
   assert.equal(await page.locator('.artwork-entry').count(),24);
+  assert.equal(await page.locator('.artwork-entry img.artwork-entry-thumbnail[src="/sample.svg"]').count(),24);
   assert.equal(await page.locator('[data-field="kind"], [data-filter]').count(),0);
   assert.deepEqual(await page.evaluate(()=>Object.keys(Menus)),['mookArtworkMenu','vehicleArtworkMenu']);
   assert.equal(await page.locator('.artwork-list').evaluate(node=>node.scrollHeight>node.clientHeight),true);
@@ -58,6 +59,7 @@ try {
   await page.locator('[data-field="folder"]').fill('tokens/old');await page.locator('[data-field="folder"]').fill('tokens/current');
   await page.evaluate(()=>pendingBrowse[1]({files:[]}));await page.waitForFunction(()=>document.querySelector('[data-preview-message]').textContent.includes('No artwork'));
   await page.evaluate(()=>pendingBrowse[0]({files:['/sample.svg']}));assert.equal(await page.locator('.vehicle-seat-image').isVisible(),false);
+  assert.equal(await page.locator('.artwork-entry.selected .artwork-entry-thumbnail').count(),0);
   await page.evaluate(()=>{FilePicker.browse=async()=>({files:['/sample.svg']});});await page.locator('[data-field="folder"]').fill('tokens/category-0');await page.waitForSelector('.vehicle-seat-marker');
   await page.evaluate(()=>form._updateObject());assert.equal(await page.evaluate(()=>saved.length),48);assert.equal(await page.evaluate(()=>saved.find(row=>row.name==='Cars').seatLayout.seats[0].name),'Driver');assert.equal(await page.evaluate(()=>saved.find(row=>row.name==='Cars').scale),.75);assert.equal(await page.evaluate(()=>saved.find(row=>row.name==='Cars').width),3);
   assert.equal(await page.evaluate(()=>formClosed),true);assert.equal(await page.evaluate(()=>window.error),undefined);
@@ -70,6 +72,7 @@ try {
   await page.waitForSelector('.vehicle-seat-image:not([hidden])');
   assert.equal(await page.locator('.vehicle-seat-image img').count(),1);
   assert.equal(await page.locator('.artwork-vehicle').isVisible(),false);assert.equal(await page.locator('[data-seat-controls]').isVisible(),false);
+  assert.equal(await page.locator('.artwork-entry.selected img.artwork-entry-thumbnail[src="/sample.svg"]').count(),1);
   await page.locator('[data-field="name"]').fill('Street Mooks');
   await page.locator('[data-action="add"]').click();await page.locator('[data-field="name"]').fill('Corporate Mooks');await page.locator('[data-action="browse"]').click();await page.waitForFunction(()=>document.querySelector('[data-field="folder"]').value==='tokens/ncpd');
   await page.waitForSelector('.vehicle-seat-image:not([hidden])');await page.screenshot({path:'docs/mook-artwork-manager-preview.png'});

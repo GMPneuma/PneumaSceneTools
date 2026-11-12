@@ -1,7 +1,7 @@
 import {MODULE_ID} from "./settings.js";
 import {defaultNameRecipe,editNameRecipe,validateNameRecipe,type NameRecipe} from './mookmaker/names.js';
 import {snapSeatPosition, validateSeatLayout, type SeatLayout} from "./vehicle-seats-model.js";
-import {listCategoryArtwork, artworkPreview} from "./artwork-media.js";
+import {listCategoryArtwork, artworkPreview, isArtworkVideo} from "./artwork-media.js";
 
 export type SpawnKind = "mook" | "vehicle";
 export interface ArtworkCategory {name: string; folder: string; kind: SpawnKind; width?: number; height?: number; scale?: number; seatLayout?: SeatLayout; nameRecipe?:NameRecipe}
@@ -61,6 +61,16 @@ class ArtworkCategoriesForm extends FormApplication {
     const slider = root.querySelector<HTMLInputElement>('[data-scale-slider]')!;
     let selectedSeat: string | undefined, previewRow: ArtworkCategory | undefined, previewLayout: SeatLayout | undefined;
     let request = 0;
+    const folders = new Map<string, Promise<string[]>>();
+    const folderFiles = (folder: string) => {
+      const key = folder.trim().replaceAll("\\", "/").replace(/\/+$/, "");
+      let files = folders.get(key);
+      if (!files) {
+        files = listCategoryArtwork(key).catch(error => {folders.delete(key); throw error;});
+        folders.set(key, files);
+      }
+      return files;
+    };
     const drawSeats = () => {
       picture.querySelectorAll('.vehicle-seat-marker').forEach(node => node.remove());seatRows.replaceChildren();
       const row = previewRow, layout = previewLayout;
@@ -94,7 +104,7 @@ class ArtworkCategoriesForm extends FormApplication {
       if (!row || !folder) {previewMessage.textContent = 'Choose an artwork folder to preview.';return;}
       previewMessage.textContent = 'Loading sample artwork…';
       try {
-        const files = await listCategoryArtwork(folder);
+        const files = await folderFiles(folder);
         if (ticket !== request) return;
         if (!files.length) throw new Error('No artwork found in this folder.');
         const image = files.includes(row.seatLayout?.image ?? '') ? row.seatLayout!.image : files[0]!;
@@ -130,10 +140,29 @@ class ArtworkCategoriesForm extends FormApplication {
         const button = document.createElement("button");button.type = "button";button.className = "artwork-entry";button.dataset.index = String(index);
         button.classList.toggle("selected", index === this.selected);button.setAttribute("aria-pressed", String(index === this.selected));
         const title = document.createElement("strong");title.textContent = row.name || "New category";
-        button.append(title);
+        const label = document.createElement("span");
+        label.className = "artwork-entry-label";
+        label.append(title);
+        button.append(label);
+        if (row.folder.trim()) {
+          void folderFiles(row.folder).then(files => {
+            if (!list.contains(button)) return;
+            const path = files.find(file => !isArtworkVideo(file)) ?? files[0];
+            if (!path) return;
+            const thumbnail = artworkPreview(path, "", true);
+            if (thumbnail instanceof HTMLVideoElement) {
+              thumbnail.autoplay = false;
+              thumbnail.preload = "metadata";
+            }
+            thumbnail.className = "artwork-entry-thumbnail";
+            thumbnail.setAttribute("aria-hidden", "true");
+            thumbnail.addEventListener("error", () => thumbnail.remove(), {once: true});
+            button.prepend(thumbnail);
+          }).catch(() => { /* The category remains selectable when browsing fails. */ });
+        }
         if(row.kind === "vehicle") {
           const summary = document.createElement("small");summary.textContent = `Vehicle · ${row.width ?? 2} × ${row.height ?? 3} · ${row.seatLayout?.seats.length ?? 0} seats`;
-          button.append(summary);
+          label.append(summary);
         }
         button.title = row.folder;button.addEventListener("click", () => {this.selected = index;refresh();});list.append(button);
       });
