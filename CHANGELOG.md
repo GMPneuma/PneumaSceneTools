@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.9 - 2026-11-14
+
+- Use collision-checked direct segments for clear square-grid patrol routes before falling back to A*, preserving individual grid steps.
+- Browse artwork-category folders as entries approach the visible list area, with at most four folder requests in flight per dialog. Skip queued obsolete requests after closing or rebuilding the dialog.
+
+Validation: build, automated tests, and artwork browser regression. Live Foundry verification remains pending.
+
 ## 0.8.8 - 2026-11-12
 
 - Keep Pan to Note in the journal reader and prevent the oversized duplicate button in the page editor.

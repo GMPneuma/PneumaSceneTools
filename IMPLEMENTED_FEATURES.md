@@ -1,5 +1,7 @@
 # Implemented features
 
+- Local performance fixes: clear square-grid patrol routes check swept segments before expanding into ordinary single-grid steps, falling back to A* when blocked. Artwork-category thumbnails browse folders as entries approach the visible list area, with at most four folder requests in flight per dialog. Closing or rebuilding a dialog cancels queued obsolete browsing. Automated unit/browser checks passed; live Foundry verification pending.
+
 - Walking patrol pauses reuse their occupancy check until token placement, destination reservations or scene geometry changes; idle pauses no longer rebuild routing worlds every 25 ms. Deleted tokens lose hazard movement-progress entries, and unused generated hazard Actors are removed on off-scene token or Scene deletion. Shared Actors and condition templates remain protected. v0.8.3; live Foundry verification pending.
 
 - Hazard camera, manual and device-turn activation batches expand region targets once and share one transient chat-history lookup. Pending-card and same-combat-event duplicate prevention remain intact, and triggering-token cards retain independent groups. Unchanged movement progress skips Scene writes. Hazard bookkeeping no longer rebuilds Map POI controls, note scaling/visibility or access-point presentation; relevant pin toggles, AP colors and scene geometry still refresh. v0.8.3; live Foundry verification pending.

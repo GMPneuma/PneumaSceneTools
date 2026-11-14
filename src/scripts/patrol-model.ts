@@ -75,6 +75,23 @@ export interface RoutingWorld {bounds: Rect; step: number; squareSteps?: boolean
 export function findPath(start: Point, goal: Point, world: RoutingWorld, limit=2500, approach=false,canStop:(p:Point)=>boolean=()=>true): Point[] | undefined {
   if (!world.canMove(start,start) || (!approach&&!world.canMove(goal,goal))) return;
   if (!world.squareSteps && canStop(goal)&&world.canMove(start,goal)) return [goal];
+  if (world.squareSteps && canStop(goal)) {
+    const dx=(goal.x-start.x)/world.step,dy=(goal.y-start.y)/world.step;
+    const steps=Math.max(Math.abs(dx),Math.abs(dy));
+    if(Number.isInteger(dx)&&Number.isInteger(dy)&&steps<=limit
+      &&goal.x>=world.bounds.x&&goal.y>=world.bounds.y&&goal.x<=world.bounds.x+world.bounds.width&&goal.y<=world.bounds.y+world.bounds.height) {
+      const diagonal=Math.min(Math.abs(dx),Math.abs(dy));
+      const corner={x:start.x+Math.sign(dx)*diagonal*world.step,y:start.y+Math.sign(dy)*diagonal*world.step};
+      // Test whole swept segments before expanding them into native one-square moves.
+      if((!diagonal||world.canMove(start,corner))&&(diagonal===steps||world.canMove(corner,goal))) {
+        if (!steps) return [goal];
+        return Array.from({length:steps},(_,i)=>({
+          x:start.x+Math.sign(dx)*Math.min(i+1,Math.abs(dx))*world.step,
+          y:start.y+Math.sign(dy)*Math.min(i+1,Math.abs(dy))*world.step,
+        }));
+      }
+    }
+  }
   type Node = {p: Point; g: number; f: number; parent?: Node};
   const key=(p:Point)=>`${Math.round((p.x-start.x)/world.step)},${Math.round((p.y-start.y)/world.step)}`;
   const first:Node={p:start,g:0,f:distance(start,goal)};

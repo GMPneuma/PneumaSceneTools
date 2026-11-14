@@ -42,7 +42,9 @@ class ArtworkCategoriesForm extends FormApplication {
   private rows: ArtworkCategory[];
   private selected = 0;
   private previewObserver?: ResizeObserver;
-  override async close(options?: Application.CloseOptions): Promise<void> {this.previewObserver?.disconnect();await super.close(options);}
+  private thumbnailObserver?: IntersectionObserver;
+  private artworkGeneration = 0;
+  override async close(options?: Application.CloseOptions): Promise<void> {this.artworkGeneration++;this.thumbnailObserver?.disconnect();this.previewObserver?.disconnect();await super.close(options);}
   constructor(private readonly kind: SpawnKind) {super({});this.rows = structuredClone(artworkCategories(kind));}
   static override get defaultOptions(): FormApplication.Options {
     return {...super.defaultOptions, title: "Token Artwork Categories", template: `modules/${MODULE_ID}/templates/token-artwork.hbs`, width: 1000, height: 620, resizable: true, closeOnSubmit: false};
@@ -62,11 +64,20 @@ class ArtworkCategoriesForm extends FormApplication {
     let selectedSeat: string | undefined, previewRow: ArtworkCategory | undefined, previewLayout: SeatLayout | undefined;
     let request = 0;
     const folders = new Map<string, Promise<string[]>>();
+    const generation = ++this.artworkGeneration;
+    let browsing = 0;
+    const waiting: (() => void)[] = [];
+    const browse = async (folder: string): Promise<string[]> => {
+      if (browsing >= 4) await new Promise<void>(resolve => waiting.push(resolve));
+      else browsing++;
+      try { return generation === this.artworkGeneration ? await listCategoryArtwork(folder) : []; }
+      finally { const next = waiting.shift(); if (next) next(); else browsing--; }
+    };
     const folderFiles = (folder: string) => {
       const key = folder.trim().replaceAll("\\", "/").replace(/\/+$/, "");
       let files = folders.get(key);
       if (!files) {
-        files = listCategoryArtwork(key).catch(error => {folders.delete(key); throw error;});
+        files = browse(key).catch(error => {folders.delete(key); throw error;});
         folders.set(key, files);
       }
       return files;
@@ -133,6 +144,14 @@ class ArtworkCategoriesForm extends FormApplication {
     const syncSlider = () => {slider.max = String(Math.max(5, Number(field('scale').value) || 1));slider.value = field('scale').value;};
     slider.addEventListener('input', () => {field('scale').value = slider.value;field('scale').dispatchEvent(new Event('input'));});
     const drawList = () => {
+      this.thumbnailObserver?.disconnect();
+      const thumbnails = new WeakMap<Element, () => void>();
+      this.thumbnailObserver = new IntersectionObserver(entries => {
+        for (const entry of entries) if (entry.isIntersecting && list.contains(entry.target)) {
+          this.thumbnailObserver?.unobserve(entry.target);
+          thumbnails.get(entry.target)?.();
+        }
+      }, {root:list, rootMargin:"80px"});
       list.replaceChildren();let count = 0;
       this.rows.map((row,index)=>({row,index})).sort((a,b)=>a.row.name.localeCompare(b.row.name,undefined,{numeric:true,sensitivity:"base"})).forEach(({row,index}) => {
         if (![row.name,row.folder].join(" ").toLowerCase().includes(search.value.toLowerCase())) return;
@@ -145,7 +164,7 @@ class ArtworkCategoriesForm extends FormApplication {
         label.append(title);
         button.append(label);
         if (row.folder.trim()) {
-          void folderFiles(row.folder).then(files => {
+          thumbnails.set(button, () => { void folderFiles(row.folder).then(files => {
             if (!list.contains(button)) return;
             const path = files.find(file => !isArtworkVideo(file)) ?? files[0];
             if (!path) return;
@@ -158,7 +177,8 @@ class ArtworkCategoriesForm extends FormApplication {
             thumbnail.setAttribute("aria-hidden", "true");
             thumbnail.addEventListener("error", () => thumbnail.remove(), {once: true});
             button.prepend(thumbnail);
-          }).catch(() => { /* The category remains selectable when browsing fails. */ });
+          }).catch(() => { /* The category remains selectable when browsing fails. */ }); });
+          this.thumbnailObserver!.observe(button);
         }
         if(row.kind === "vehicle") {
           const summary = document.createElement("small");summary.textContent = `Vehicle · ${row.width ?? 2} × ${row.height ?? 3} · ${row.seatLayout?.seats.length ?? 0} seats`;

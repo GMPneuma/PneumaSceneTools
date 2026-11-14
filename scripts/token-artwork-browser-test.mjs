@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import {resolve} from "node:path";
-import {chromium} from "playwright";
+const {chromium}=await import(process.env.PNEUMA_PLAYWRIGHT_MODULE||"playwright");
 const browser = await chromium.launch({headless: true, channel:process.env.PNEUMA_BROWSER_CHANNEL});
 try {
   const page = await browser.newPage();
@@ -13,6 +13,8 @@ try {
   await page.goto("https://artwork.test/");
   await page.addScriptTag({content:await readFile("node_modules/handlebars/dist/handlebars.js","utf8")});
   const template = await readFile("src/templates/token-artwork.hbs","utf8");
+  await page.addStyleTag({content:await readFile('dist/styles/pneuma-scenetools.css','utf8')});
+  await page.addStyleTag({content:'body{font:14px Arial;background:#222;color:#ddd;margin:20px}body>.pneuma-artwork-manager{width:980px;height:600px;background:#303030;padding:14px;box-sizing:border-box}input,select,button{box-sizing:border-box;height:30px;color:inherit;background:#414141;border:1px solid #777;border-radius:3px}button{cursor:pointer}.dialog{position:absolute;left:820px;top:20px;width:400px;background:#333;padding:10px}'});
   await page.evaluate(async template => {
     window.ImageHelper={hasImageExtension:path=>/\.(avif|bmp|gif|jpe?g|png|svg|webp)$/i.test(path)};
   window.VideoHelper={hasVideoExtension:path=>/\.(m4v|mp4|ogv|webm)$/i.test(path)};
@@ -21,7 +23,8 @@ try {
     window.game={user:{isGM:true},settings:{register() {},registerMenu(_id,_key,data) {(window.Menus??={})[_key]=data.type;},get() {return rows;},async set(_id,_key,value) {rows=value;window.saved=value;}}};
     window.ui={notifications:{error(message) {window.error=message;}}};
     window.FilePicker=class {constructor(options) {this.options=options;}render() {this.options.callback("tokens/ncpd");}};
-    window.FilePicker.browse=async()=>({files:["/sample.svg"]});
+    window.browseStats={active:0,max:0,calls:0};
+    window.FilePicker.browse=async()=>{browseStats.calls++;browseStats.active++;browseStats.max=Math.max(browseStats.max,browseStats.active);await new Promise(resolve=>setTimeout(resolve,40));browseStats.active--;return {files:["/sample.svg"]};};
     window.loadTexture=async()=>({width:200,height:300});window.foundry={utils:{randomID:()=>crypto.randomUUID()}};
     window.renderTemplate=async(path,data)=>Handlebars.compile(await(await fetch('/'+path)).text())(data);
     window.Dialog=class {constructor(data){this.data=data;}render(){this.element=document.createElement('div');this.element.className='dialog';this.element.innerHTML=this.data.content;document.body.append(this.element);this.data.render([this.element]);}async close(){this.element.remove();}};
@@ -31,10 +34,15 @@ try {
     form.element=[document.querySelector("form")];form.activateListeners(form.element);
   },template);
 
-  await page.addStyleTag({content:await readFile('dist/styles/pneuma-scenetools.css','utf8')});
-  await page.addStyleTag({content:'body{font:14px Arial;background:#222;color:#ddd;margin:20px}body>.pneuma-artwork-manager{width:980px;height:600px;background:#303030;padding:14px;box-sizing:border-box}input,select,button{box-sizing:border-box;height:30px;color:inherit;background:#414141;border:1px solid #777;border-radius:3px}button{cursor:pointer}.dialog{position:absolute;left:820px;top:20px;width:400px;background:#333;padding:10px}'});
   assert.equal(await page.locator('.artwork-entry').count(),24);
-  assert.equal(await page.locator('.artwork-entry img.artwork-entry-thumbnail[src="/sample.svg"]').count(),24);
+  await page.waitForSelector('.artwork-entry img.artwork-entry-thumbnail[src="/sample.svg"]');
+  await page.waitForTimeout(250);
+  const browseStats=await page.evaluate(()=>window.browseStats);
+  assert.ok(browseStats.calls<24,'offscreen categories do not browse every folder');
+  assert.ok(browseStats.max<=4,'folder browsing concurrency is bounded');
+  await page.locator('.artwork-entry').last().scrollIntoViewIfNeeded();
+  await page.waitForFunction(()=>document.querySelector('.artwork-entry:last-child img')?.getAttribute('src')==='/sample.svg');
+  await page.locator('.artwork-entry').first().scrollIntoViewIfNeeded();
   assert.equal(await page.locator('[data-field="kind"], [data-filter]').count(),0);
   assert.deepEqual(await page.evaluate(()=>Object.keys(Menus)),['mookArtworkMenu','vehicleArtworkMenu']);
   assert.equal(await page.locator('.artwork-list').evaluate(node=>node.scrollHeight>node.clientHeight),true);

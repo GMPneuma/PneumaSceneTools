@@ -8,6 +8,15 @@ const ID='pneuma-scenetools';
 const collection=items=>({contents:items,get:id=>items.find(i=>i.id===id)});
 const p=(x,y)=>({x,y});
 const box=[p(0,0),p(1000,0),p(1000,1000),p(0,1000)];
+test('clear square patrol routes avoid A* while retaining individual grid steps',()=>{
+  let checks=0;
+  const world={bounds:{x:0,y:0,width:10000,height:10000},step:100,squareSteps:true,canMove:()=>{checks++;return true;}};
+  for(const goal of [p(5050,50),p(5050,3050),p(50,5050)]){
+    checks=0;const path=findPath(p(50,50),goal,world);assert.equal(path.length,50);assert.deepEqual(path.at(-1),goal);
+    assert.ok(checks<=4,'only whole-route collision checks for a clear route');
+    let previous=p(50,50);for(const point of path){assert.equal(Math.max(Math.abs(point.x-previous.x),Math.abs(point.y-previous.y)),100);previous=point;}
+  }
+});
 function setup(gridType=1){
   clearPatrolRuntime();
   globalThis.foundry={utils:{getProperty:(o,path)=>path.split('.').reduce((v,k)=>v?.[k],o)}};
