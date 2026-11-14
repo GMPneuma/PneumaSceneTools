@@ -80,6 +80,7 @@ try {
   await page.waitForSelector('.vehicle-seat-image:not([hidden])');
   assert.equal(await page.locator('.vehicle-seat-image img').count(),1);
   assert.equal(await page.locator('.artwork-vehicle').isVisible(),false);assert.equal(await page.locator('[data-seat-controls]').isVisible(),false);
+  await page.waitForSelector('.artwork-entry.selected img.artwork-entry-thumbnail[src="/sample.svg"]');
   assert.equal(await page.locator('.artwork-entry.selected img.artwork-entry-thumbnail[src="/sample.svg"]').count(),1);
   await page.locator('[data-field="name"]').fill('Street Mooks');
   await page.locator('[data-action="add"]').click();await page.locator('[data-field="name"]').fill('Corporate Mooks');await page.locator('[data-action="browse"]').click();await page.waitForFunction(()=>document.querySelector('[data-field="folder"]').value==='tokens/ncpd');
