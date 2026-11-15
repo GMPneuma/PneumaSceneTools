@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.10 - 2026-11-15
+
+- Skip map-pin scans during translation-only panning and batch zoom-driven scaling updates once per animation frame.
+
+Validation: builds and relevant automated regression checks passed. Live Foundry verification remains pending.
+
 ## 0.8.9 - 2026-11-14
 
 - Use collision-checked direct segments for clear square-grid patrol routes before falling back to A*, preserving individual grid steps.

@@ -42,9 +42,20 @@ test('POI screen size caps at configured size while zoom-out, position and docum
   globalThis.foundry={utils:{getProperty:(object,path)=>path.split('.').reduce((value,key)=>value?.[key],object)}};
   const note={document:{parent:scene,iconSize:80,fontSize:24,x:400,y:300},position:{x:400,y:300},scale:{x:1,y:1,set(x,y){this.x=x;this.y=y;}}};
   globalThis.canvas={scene,stage:{scale:{x:1}},notes:{placeables:[note]}};
-  installPinScaling();installPinScaling();assert.equal(hooks.size,5);
+  const frames=new Map();let serial=0,reads=0;
+  globalThis.requestAnimationFrame=fn=>{frames.set(++serial,fn);return serial;};
+  globalThis.cancelAnimationFrame=id=>frames.delete(id);
+  const flush=()=>{const callbacks=[...frames.values()];frames.clear();callbacks.forEach(fn=>fn());};
+  Object.defineProperty(canvas.notes,'placeables',{get(){reads++;return [note];}});
+  installPinScaling();installPinScaling();assert.equal(hooks.size,6);
+  hooks.get('canvasReady')();reads=0;
+  for(let i=0;i<100;i++)hooks.get('canvasPan')();
+  assert.equal(reads,0);assert.equal(frames.size,0,'translation-only pans schedule no scan');
+  canvas.stage.scale.x=2;
+  for(let i=0;i<100;i++)hooks.get('canvasPan')();
+  assert.equal(frames.size,1);flush();assert.equal(reads,1,'zoom bursts share one scan');
   for(const zoom of [0.25,1,2,4,2,0.5]){
-    canvas.stage.scale.x=zoom;hooks.get('canvasPan')();
+    canvas.stage.scale.x=zoom;hooks.get('canvasPan')();flush();
     assert.equal(note.scale.x*zoom,Math.min(zoom,1));assert.equal(note.scale.y,note.scale.x);
     assert.deepEqual(note.position,{x:400,y:300});assert.equal(note.document.iconSize,80);assert.equal(note.document.fontSize,24);
   }

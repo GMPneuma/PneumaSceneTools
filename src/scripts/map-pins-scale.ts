@@ -17,16 +17,23 @@ export function refreshPinScale(note:Note):void {
   if(note.scale.x!==x||note.scale.y!==y)note.scale.set(x,y);
 }
 function refreshScenePins():void {
+  lastZoom=canvas.stage?.scale.x??1;
   for(const note of canvas.notes?.placeables??[])refreshPinScale(note);
   for(const note of canvas.notes?.preview?.children??[])if(note instanceof Note)refreshPinScale(note);
 }
 let installed=false;
+let lastZoom:number|undefined;
+let zoomFrame=0;
 export function installPinScaling():void {
   if(installed)return;
   Hooks.on("drawNote",refreshPinScale);
   Hooks.on("refreshNote",refreshPinScale);
   Hooks.on("canvasReady",refreshScenePins);
-  Hooks.on("canvasPan",refreshScenePins);
+  Hooks.on("canvasPan",()=>{
+    if((canvas.stage?.scale.x??1)===lastZoom||zoomFrame)return;
+    zoomFrame=requestAnimationFrame(()=>{zoomFrame=0;refreshScenePins();});
+  });
+  Hooks.on("canvasTearDown",()=>{cancelAnimationFrame(zoomFrame);zoomFrame=0;lastZoom=undefined;});
   Hooks.on("updateScene",(scene:Scene,changes:object)=>{if(scene.id===canvas.scene?.id&&pinningChanged(changes))refreshScenePins();});
   installed=true;
 }
