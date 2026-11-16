@@ -791,3 +791,5 @@ Validated with local compilation and automated regression fixtures; live Foundry
 
 Queued camera movement checks are batched and retain each passenger target. Scanner role qualification and passenger rendering membership are cached with document-hook invalidation. Patrol scheduling visits enabled patrols only, stops while idle or paused, and wakes on relevant lifecycle hooks; geometry invalidation is scene-scoped and ignores cosmetic wall/Region changes.
 - The Scanner places scanner controls on the left and scene settings with the NetArch color picker on the right when space permits. A roll preview uses an additional column when available. Access-point rows, headers, bulk actions and footer notes use compact vertical spacing.
+
+Settings search correction (v0.8.11, 2026-11-16): grouped native setting rows preserve their category on the immediate parent so Foundry v12 search keeps matching module categories visible. Labels, hints, menu buttons, nested groups, clear-search behavior and draft controls are covered by a browser regression using the native search method. Live Foundry validation remains pending.

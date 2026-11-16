@@ -42,6 +42,8 @@ export function groupRevealSettings(html: JQuery | HTMLElement) {
   if (!styleRow || !radiusRow) return;
   const group = document.createElement("fieldset");
   group.className = "pneuma-ap-reveal-settings";
+  // Preserve native settings-search category after nesting these rows.
+  group.dataset.category = MODULE_ID;
   const legend = document.createElement("legend");
   legend.textContent = "Access point visibility";
   group.append(legend);

@@ -547,3 +547,5 @@ Hazards layout correction (2026-10-13, local/unreleased): Hazard details are on 
 - Name-generator RollTable dropdowns (default/category recipes and manual generation) list only names beginning with Mook or Names, case-insensitively. Saved recipes are not rewritten.
 
 - MookMaker Hit Points includes Unchanged, selected by default. Applying with Unchanged omits current/max HP and related BODY/WILL writes; skill adjustments use current WILL. Explicit HP values retain their existing behavior.
+
+Settings search correction (v0.8.11, 2026-11-16): grouped native setting rows preserve their category on the immediate parent so Foundry v12 search keeps matching module categories visible. Labels, hints, menu buttons, nested groups, clear-search behavior and draft controls are covered by a browser regression using the native search method. Live Foundry validation remains pending.

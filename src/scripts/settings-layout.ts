@@ -21,7 +21,7 @@ export function groupFeatureSettings(html:JQuery|HTMLElement):void {
   if(!anchor)return;
   // Keep native controls and listeners intact, including settings-menu buttons.
   for(const group of groups){
-    const section=document.createElement("fieldset");section.className="pneuma-feature-settings";
+    const section=document.createElement("fieldset");section.className="pneuma-feature-settings";section.dataset.category=MODULE_ID;
     const legend=document.createElement("legend");legend.textContent=group.title;section.append(legend);
     anchor.before(section);
   }
