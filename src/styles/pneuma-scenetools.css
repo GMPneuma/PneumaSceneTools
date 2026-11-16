@@ -423,3 +423,6 @@
 .pneuma-scenetools .pneuma-scene-list button[aria-pressed="true"] {
   border-inline-start:3px solid var(--wizard-accent); background-color:color-mix(in srgb,var(--wizard-accent) 9%,transparent);
 }
+
+/* Native search hides rows; omit their empty group headings as well. */
+:is(.pneuma-feature-settings, .pneuma-ap-reveal-settings):not(:has(.form-group:not(.hidden):not([hidden]))) { display: none; }

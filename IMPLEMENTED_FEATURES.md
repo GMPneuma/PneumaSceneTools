@@ -793,3 +793,5 @@ Queued camera movement checks are batched and retain each passenger target. Scan
 - The Scanner places scanner controls on the left and scene settings with the NetArch color picker on the right when space permits. A roll preview uses an additional column when available. Access-point rows, headers, bulk actions and footer notes use compact vertical spacing.
 
 Settings search correction (v0.8.11, 2026-11-16): grouped native setting rows preserve their category on the immediate parent so Foundry v12 search keeps matching module categories visible. Labels, hints, menu buttons, nested groups, clear-search behavior and draft controls are covered by a browser regression using the native search method. Live Foundry validation remains pending.
+
+Settings-search layout follow-up (v0.8.12, 2026-11-16): hide empty group headings when native search filters out all descendant settings; nested groups with matches remain visible, and clearing the filter restores headings. Native category identifiers and draft controls are preserved. Browser regression reproduced the original empty groups and verifies the correction.
