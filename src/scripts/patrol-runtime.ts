@@ -1,12 +1,18 @@
 import {MODULE_ID} from "./settings.js";
 import {changesSeatFields} from "./vehicle-seat-changes.js";
-import {defaults, distance, findPath, nextStop, regionContainsSweep, segmentInsideHull, sweptHull, validateConfig, type PatrolConfig, type Point, type RoutingWorld} from "./patrol-model.js";
+import {defaults, distance, walkingRoute, nextStop, regionContainsSweep, segmentInsideHull, sweptHull, validateConfig, type PatrolConfig, type Point, type RoutingWorld} from "./patrol-model.js";
 
 import {isVehicleToken} from "./vehicle-rotation.js";
 import {getVehicleBaseSize} from "./vehicle-footprint.js";
 import {driveFootprint,driveHull,driveSweeps,type DriveSweep,vehicleWallHull,DriveSearch,headingOf,headingDelta,artworkPose,hullsOverlap,type DrivePose} from "./patrol-vehicle.js";
 
-interface State {worldRevision?:number; pauseRevision?:string; trafficUntil?:number; trafficReroute?:boolean; driveSearch?:DriveSearch; driveRevision?:number; drivePath?:DrivePose[]; reservedHull?:Point[];signature:string; path:Point[]; goal?:Point; reservedGoal?:Point; detour?:Point; index:number; direction:number; lastStop:number; waitUntil:number; moveUntil:number; travelSeconds:number; safe?:Point; status:string}
+interface WalkingStep {x:number;y:number;actual:Point;duration:number}
+interface WalkContext {world:PatrolWorld;now:number;clearHere:boolean}
+interface WalkPlan {
+  revision:number;context:WalkContext;
+  search:Generator<void,WalkingStep|undefined>;
+}
+interface State {walkPlan?:WalkPlan;worldRevision?:number; pauseRevision?:string; trafficUntil?:number; trafficReroute?:boolean; driveSearch?:DriveSearch; driveRevision?:number; drivePath?:DrivePose[]; reservedHull?:Point[];signature:string; path:Point[]; goal?:Point; reservedGoal?:Point; detour?:Point; index:number; direction:number; lastStop:number; waitUntil:number; moveUntil:number; travelSeconds:number; safe?:Point; status:string}
 const states=new Map<string,State>();
 const faults=new Map<string,string>();
 interface PatrolOperation {time:number; message:string}
@@ -52,17 +58,30 @@ function bodyHull(token:TokenDocument,displayed=false):Point[] {
 let timer:ReturnType<typeof setTimeout>|undefined;
 let ticking=false;
 let drivePlansRemaining=1;
+const WALK_BUDGET_MS=6;
+let walkBudgetMs=WALK_BUDGET_MS;
 let geometryRevision=0;
 let occupancyRevision=0;
 let patrolCursor=0;
-export function patrolConfig(token:TokenDocument):PatrolConfig {
-  const config = defaults();
-  const saved = foundry.utils.getProperty(token, `flags.${MODULE_ID}.patrol`) as Partial<PatrolConfig> | undefined;
-  for (const key of Object.keys(config) as (keyof PatrolConfig)[]) {
-    if (saved?.[key] !== undefined) Object.assign(config, {[key]: saved[key]});
+let configs=new WeakMap<TokenDocument,{source:unknown;config:PatrolConfig;signature:string}>();
+const savedPatrol=(token:TokenDocument)=>foundry.utils.getProperty(token,`flags.${MODULE_ID}.patrol`) as Partial<PatrolConfig>|undefined;
+function readConfig(saved:Partial<PatrolConfig>|undefined):PatrolConfig {
+  const config=defaults();
+  for(const key of Object.keys(config) as (keyof PatrolConfig)[]){
+    if(saved?.[key]!==undefined)Object.assign(config,{[key]:saved[key]});
   }
   return structuredClone(config);
 }
+function runtimeConfig(token:TokenDocument) {
+  const saved=savedPatrol(token),cached=configs.get(token);
+  if(cached&&cached.source===saved)return cached;
+  const config=readConfig(saved);
+  const entry={source:saved,config,signature:JSON.stringify(config)};
+  configs.set(token,entry);
+  return entry;
+}
+/** Start editor drafts from the current document, including unsaved in-memory corrections. */
+export function patrolConfig(token:TokenDocument):PatrolConfig {return readConfig(savedPatrol(token));}
 export function hasPatrol(token:TokenDocument):boolean {
   return foundry.utils.getProperty(token,`flags.${MODULE_ID}.patrol`)!=null;
 }
@@ -73,8 +92,9 @@ export async function setPatrolAvailable(token:TokenDocument,available:boolean):
   if(!game.user?.isGM || token.parent?.tokens.get(token.id!)!==token || !hasPatrol(token))throw new Error("Select an existing token patrol.");
   const prefix=`flags.${MODULE_ID}.patrol`;
   await token.update({[prefix+".available"]:available,[prefix+".enabled"]:false},
-    {stopPatrolAnimation:!available && patrolConfig(token).enabled} as object);
-  if(patrolAvailable(token)!==available || patrolConfig(token).enabled)throw new Error("Patrol switch was not saved. Try again.");
+    {stopPatrolAnimation:!available && runtimeConfig(token).config.enabled} as object);
+  configs.delete(token);
+  if(patrolAvailable(token)!==available || runtimeConfig(token).config.enabled)throw new Error("Patrol switch was not saved. Try again.");
 }
 export async function deletePatrol(token:TokenDocument):Promise<void> {
   if(!game.user?.isGM || token.parent?.tokens.get(token.id!)!==token)throw new Error("Only a GM can delete an existing token patrol.");
@@ -93,7 +113,7 @@ export function patrolPaused(scene:Scene):boolean {
   return scenePatrolStopped(scene) || !!game.paused || !!(game.combats?.contents as Combat[]|undefined)?.some(combat=>combat.started && (!combat.scene || combat.scene.id===scene.id));
 }
 export function patrolStatus(token:TokenDocument):string {
-  if(!patrolConfig(token).enabled)return "Stopped";
+  if(!runtimeConfig(token).config.enabled)return "Stopped";
   if(faults.has(token.uuid))return "Patrol error: save or start to retry";
   if(token.parent&&scenePatrolStopped(token.parent))return "Paused: scene stopped";
   if(token.parent && patrolPaused(token.parent))return "Paused: combat or game pause";
@@ -113,7 +133,7 @@ export function destinationClear(token:TokenDocument, point:Point,artHeading?:nu
   for(const other of token.parent!.tokens.contents){
     if(other.id===token.id||ownPassenger(token,other)||ignoreMoving&&tokenInMotion(other))continue;
     if(hullsOverlap(hull,bodyHull(other))||hullsOverlap(hull,bodyHull(other,true)))return false;
-    if(!patrolConfig(other).enabled)continue;
+    if(!runtimeConfig(other).config.enabled)continue;
     const state=states.get(other.uuid),reserved=state?.reservedGoal;
     if(reserved){const size=dimensions(other);if(hullsOverlap(hull,state?.reservedHull??sweptHull(reserved,reserved,size.width,size.height)))return false;}
   }
@@ -154,7 +174,7 @@ export function routingWorld(token:TokenDocument, config:PatrolConfig):PatrolWor
   return {bounds:rect,squareSteps,step:squareSteps?scene.grid.size:Math.max(8,scene.grid.size/2),clearHull,canDrive,canMove:(a,b)=>clearHull(sweptHull(a,b,size.width,size.height),a,b)};
 }
 function canRun(token:TokenDocument):boolean {
-  return patrolAuthority() && !!canvas.ready && canvas.scene?.id===token.parent?.id && token.parent?.tokens.get(token.id!)===token && !patrolPaused(token.parent) && patrolConfig(token).enabled && !foundry.utils.getProperty(token,`flags.${MODULE_ID}.vehicleSeat`);
+  return patrolAuthority() && !!canvas.ready && canvas.scene?.id===token.parent?.id && token.parent?.tokens.get(token.id!)===token && !patrolPaused(token.parent) && runtimeConfig(token).config.enabled && !foundry.utils.getProperty(token,`flags.${MODULE_ID}.vehicleSeat`);
 }
 export async function savePatrol(token:TokenDocument, config:PatrolConfig):Promise<void> {
   if(!game.user?.isGM || token.parent?.tokens.get(token.id!)!==token)throw new Error("Only a GM can configure an existing scene token.");
@@ -167,7 +187,8 @@ export async function savePatrol(token:TokenDocument, config:PatrolConfig):Promi
   if(value.enabled&&foundry.utils.getProperty(token,`flags.${MODULE_ID}.vehicleSeat`))throw new Error("Exit the vehicle before starting a patrol.");
   if(value.enabled&&value.mode==="roam"&&!token.parent.regions.get(value.regionId))throw new Error("The roaming Region no longer exists.");
   await token.update({[`flags.${MODULE_ID}.patrol`]:value} as object);
-  if(JSON.stringify(patrolConfig(token))!==JSON.stringify(value))throw new Error("Patrol settings were not saved. Try again.");
+  configs.delete(token);
+  if(runtimeConfig(token).signature!==JSON.stringify(value))throw new Error("Patrol settings were not saved. Try again.");
   states.delete(token.uuid);
   faults.delete(token.uuid);
   recordOperation(token,value.enabled?"Started":"Stopped");
@@ -218,10 +239,10 @@ function addSquareSideTrack(origin:Point, path:Point[], world:RoutingWorld, maxS
 function claimDestination(token:TokenDocument,state:State,end:Point|undefined):void {
   if(end&&destinationClear(token,end))state.reservedGoal=end;
 }
-function walkingPath(token:TokenDocument,origin:Point,goal:Point,world:RoutingWorld):Point[]|undefined {
-  return findPath(origin,goal,world,2500,true,p=>destinationClear(token,p));
+function walkingPath(token:TokenDocument,origin:Point,goal:Point,world:RoutingWorld) {
+  return walkingRoute(origin,goal,world,2500,true,p=>destinationClear(token,p));
 }
-function chooseGoal(token:TokenDocument, config:PatrolConfig, state:State, world:RoutingWorld):boolean {
+function* chooseGoal(token:TokenDocument, config:PatrolConfig, state:State, world:RoutingWorld):Generator<void,boolean> {
   const origin=center(token);
   let candidates:{point:Point;index:number}[]=[];
   if(config.mode==="roam") {
@@ -237,7 +258,7 @@ function chooseGoal(token:TokenDocument, config:PatrolConfig, state:State, world
   for(const candidate of candidates) {
     if(config.mode==="roam"&&distance(origin,candidate.point)<token.parent!.grid.size/2)continue;
     if(config.mode==="roam"&&(!destinationClear(token,candidate.point)||!world.canMove(candidate.point,candidate.point)))continue;
-    const path=walkingPath(token,origin,candidate.point,world);
+    const path=yield* walkingPath(token,origin,candidate.point,world);
     if(path){
       state.goal=candidate.point;state.index=candidate.index;claimDestination(token,state,path[path.length-1]??origin);
       state.detour=!world.squareSteps&&config.mode!=="roam"&&config.sideTracks&&config.sideTrackDistance>0?wanderingDetour(origin,path,world,token.parent!.grid.size,config.sideTrackDistance*token.parent!.grid.size):undefined;
@@ -359,10 +380,9 @@ async function advanceVehicle(token:TokenDocument,config:PatrolConfig,state:Stat
 }
 async function advance(token:TokenDocument, now:number):Promise<void> {
   if(!canRun(token))return;
-  const config=patrolConfig(token);validateConfig(config);
-  const signature=JSON.stringify(config);
+  const {config,signature}=runtimeConfig(token);
   let state=states.get(token.uuid);
-  if(!state||state.signature!==signature){state={signature,path:[],index:0,direction:1,lastStop:-1,waitUntil:0,moveUntil:0,travelSeconds:0,status:"Starting"};states.set(token.uuid,state);}
+  if(!state||state.signature!==signature){validateConfig(config);state={signature,path:[],index:0,direction:1,lastStop:-1,waitUntil:0,moveUntil:0,travelSeconds:0,status:"Starting"};states.set(token.uuid,state);}
   if(now<state.moveUntil||(isVehicleToken(token)&&now<state.waitUntil))return;
   const pauseRevision=geometryRevision+":"+occupancyRevision;
   if(now<state.waitUntil&&state.pauseRevision===pauseRevision)return;
@@ -371,27 +391,71 @@ async function advance(token:TokenDocument, now:number):Promise<void> {
   if(clearHere)state.safe=origin;
   if(now<state.waitUntil&&clearHere&&state.worldRevision===geometryRevision){state.pauseRevision=pauseRevision;state.status="Pausing";return;}
   state.pauseRevision=undefined;
+  if(state.walkPlan&&walkBudgetMs<=0)return;
   const world=routingWorld(token,config);
-  if(!world){state.status="Waiting: Region or canvas unavailable";state.goal=undefined;state.reservedGoal=undefined;state.path=[];return;}
+  if(!world){state.walkPlan=undefined;state.status="Waiting: Region or canvas unavailable";state.goal=undefined;state.reservedGoal=undefined;state.path=[];return;}
   state.worldRevision=geometryRevision;
   if(now<state.waitUntil&&clearHere){state.pauseRevision=pauseRevision;state.status="Pausing";return;}
   // Occupied pauses are cancelled; select somewhere else instead of dwelling on a token.
   state.waitUntil=0;
 
   if(isVehicleToken(token)){await advanceVehicle(token,config,state,world,now);return;}
+  let plan=state.walkPlan;
+  const resuming=plan?.revision===geometryRevision;
+  if(!plan||!resuming){
+    const context={now,clearHere,world};
+    plan={context,revision:geometryRevision,search:planWalkingStep(token,config,state,origin,context)};
+    state.walkPlan=plan;
+  }else{
+    plan.context.now=now;plan.context.clearHere=clearHere;
+    // Suspended searches keep this world object. Replace its collision queries with this tick's snapshot.
+    Object.assign(plan.context.world,world);
+  }
+  const startedPlanning=performance.now();
+  const deadline=startedPlanning+walkBudgetMs;
+  let step=plan.search.next();
+  while(!step.done&&performance.now()<deadline)step=plan.search.next();
+  walkBudgetMs=Math.max(0,walkBudgetMs-(performance.now()-startedPlanning));
+  if(!step.done){state.status="Planning walking route";return;}
+  state.walkPlan=undefined;
+  if(!step.value)return;
+  const {x,y,actual,duration}=step.value;
+  const size=dimensions(token);
+  // Occupancy can change while a search spans ticks. Validate before reserving a segment.
+  const end=state.path.at(-1);
+  if(resuming&&(!world.canMove(origin,actual)||(end&&!destinationClear(token,end)))){
+    state.path=[];state.status="Replanning around obstacles";return;
+  }
+  state.status="Moving";state.moveUntil=now+duration;
+  const passage=reservePassage(token,sweptHull(origin,actual,size.width,size.height),now+duration,false);
+  const started=performance.now();
+  await token.update({x,y},{patrolMove:true,animate:true,animation:{duration}} as object);
+  const saved=position(token);
+  if(saved.x!==x||saved.y!==y){cancelPassage(token,passage);state.path=[];state.status="Movement cancelled; retrying";state.waitUntil=now+2000;}
+  else {recordOperation(token,`Moving to ${Math.round(actual.x)}, ${Math.round(actual.y)}`);state.travelSeconds+=duration/1000;passage.until=now+duration+(performance.now()-started);
+    if(world.squareSteps&&config.stepPauseSeconds>0){
+      state.moveUntil=movementEnd(token,now,duration,started);
+      passage.until=state.moveUntil;
+      state.waitUntil=state.moveUntil+config.stepPauseSeconds*1000;
+    }
+  }
+}
+function* planWalkingStep(token:TokenDocument,config:PatrolConfig,state:State,origin:Point,
+  context:WalkContext):Generator<void,WalkingStep|undefined> {
+  const world=context.world;
   if(!state.goal) {
-    if(!chooseGoal(token,config,state,world)) {
-      if(!clearHere&&state.safe&&destinationClear(token,state.safe)) {
-        const path=findPath(origin,state.safe,world);if(path){state.goal=state.safe;state.path=path;}
+    if(!(yield* chooseGoal(token,config,state,world))) {
+      if(!context.clearHere&&state.safe&&destinationClear(token,state.safe)) {
+        const path=yield* walkingRoute(origin,state.safe,world);if(path){state.goal=state.safe;state.path=path;}
       }
-      if(!state.goal){state.status="Waiting for a reachable, unoccupied stop";state.waitUntil=now+2000;return;}
+      if(!state.goal){state.status="Waiting for a reachable, unoccupied stop";state.waitUntil=context.now+2000;return;}
     }
   }
   const travelLimit=config.mode==="roam"?config.maxMovementTime:(config.pathPauses?config.pathPauseEvery:0);
-  if(travelLimit>0&&state.travelSeconds>=travelLimit-0.01&&clearHere&&state.goal&&distance(origin,state.goal)>=1){
+  if(travelLimit>0&&state.travelSeconds>=travelLimit-0.01&&context.clearHere&&state.goal&&distance(origin,state.goal)>=1){
     const low=config.mode==="roam"?config.pauseMin:config.pathPauseMin;
     const high=config.mode==="roam"?config.pauseMax:config.pathPauseMax;
-    state.waitUntil=now+(low+Math.random()*(high-low))*1000;
+    state.waitUntil=context.now+(low+Math.random()*(high-low))*1000;
     state.travelSeconds=0;state.status="Pausing";
     if(config.mode==="roam"){state.goal=undefined;state.reservedGoal=undefined;state.detour=undefined;state.path=[];}
     return;
@@ -400,12 +464,12 @@ async function advance(token:TokenDocument, now:number):Promise<void> {
   if(state.detour&&distance(origin,state.detour)<1)state.detour=undefined;
   // Keep the destination when geometry changes. A* tests adjacent directions before any write.
   if(state.goal&&distance(origin,state.goal)>=1&&(!state.path.length||!world.canMove(origin,state.path[0]!)||!destinationClear(token,state.path[state.path.length-1]!))) {
-    let path=walkingPath(token,origin,state.detour??state.goal,world);
-    if(!path&&state.detour){state.detour=undefined;path=walkingPath(token,origin,state.goal,world);}
+    let path=yield* walkingPath(token,origin,state.detour??state.goal,world);
+    if(!path&&state.detour){state.detour=undefined;path=yield* walkingPath(token,origin,state.goal,world);}
     if(path){state.path=path;claimDestination(token,state,path[path.length-1]);}
     else {
       state.path=[];
-      state.status="Waiting for a clear route to the stop";state.waitUntil=now+2000;return;
+      state.status="Waiting for a clear route to the stop";state.waitUntil=context.now+2000;return;
     }
   }
   if(!state.path.length) {
@@ -414,7 +478,7 @@ async function advance(token:TokenDocument, now:number):Promise<void> {
     state.travelSeconds=0;
     state.lastStop=state.index;
     if(config.mode!=="roam")Object.assign(state,nextStop(state.index,state.direction,config.stops.length,config.traversal));
-    state.goal=undefined;state.reservedGoal=undefined;state.waitUntil=now+wait*1000;state.status="Pausing";return;
+    state.goal=undefined;state.reservedGoal=undefined;state.waitUntil=context.now+wait*1000;state.status="Pausing";return;
   }
   // Skip redundant search-grid corners wherever the full footprint has a clear straight segment.
   if(!world.squareSteps)for(let i=state.path.length-1;i>0;i--)if(world.canMove(origin,state.path[i]!)){state.path.splice(0,i);break;}
@@ -440,43 +504,32 @@ async function advance(token:TokenDocument, now:number):Promise<void> {
       const candidate={x:Math.round(origin.x+Math.cos(angle+offset)*stride-size.width/2),y:Math.round(origin.y+Math.sin(angle+offset)*stride-size.height/2)};
       const point={x:candidate.x+size.width/2,y:candidate.y+size.height/2};
       if(distance(origin,point)<1||!world.canMove(origin,point))continue;
-      const onward=walkingPath(token,point,state.detour??state.goal!,world);if(!onward)continue;
+      const onward=yield* walkingPath(token,point,state.detour??state.goal!,world);if(!onward)continue;
       x=candidate.x;y=candidate.y;actual=point;state.path=onward;alternative=true;break;
     }
     if(!alternative){state.path=[];state.status="Replanning around obstacles";return;}
   }
   const duration=Math.max(20,distance(origin,actual)/pixelsPerSecond*1000);
-  state.status="Moving";state.moveUntil=now+duration;
-  const passage=reservePassage(token,sweptHull(origin,actual,size.width,size.height),now+duration,false);
-  const started=performance.now();
-  await token.update({x,y},{patrolMove:true,animate:true,animation:{duration}} as object);
-  const saved=position(token);
-  if(saved.x!==x||saved.y!==y){cancelPassage(token,passage);state.path=[];state.status="Movement cancelled; retrying";state.waitUntil=now+2000;}
-  else {recordOperation(token,`Moving to ${Math.round(actual.x)}, ${Math.round(actual.y)}`);state.travelSeconds+=duration/1000;passage.until=now+duration+(performance.now()-started);
-    if(world.squareSteps&&config.stepPauseSeconds>0){
-      state.moveUntil=movementEnd(token,now,duration,started);
-      passage.until=state.moveUntil;
-      state.waitUntil=state.moveUntil+config.stepPauseSeconds*1000;
-    }
-  }
+  return {x,y,actual,duration};
 }
 let activePatrols: Map<string,TokenDocument>|undefined;
-function rebuildPatrols(){activePatrols=new Map((canvas.scene?.tokens.contents??[]).filter(token=>patrolConfig(token).enabled).map(token=>[token.uuid,token]));}
+function rebuildPatrols(){activePatrols=new Map((canvas.scene?.tokens.contents??[]).filter(token=>runtimeConfig(token).config.enabled).map(token=>[token.uuid,token]));}
 export async function tickPatrols(now=Date.now()):Promise<void> {
   if(ticking)return;
   ticking=true;
   drivePlansRemaining=1;
+  walkBudgetMs=WALK_BUDGET_MS;
   try {
     for(const [id,entries] of passages){const live=entries.filter(p=>p.until>now);if(live.length)passages.set(id,live);else passages.delete(id);}
     if(!patrolAuthority()||!canvas.ready||!canvas.scene){states.clear();return;}
-    const tokens=activePatrols ? [...activePatrols.values()] : canvas.scene.tokens.contents.filter(token=>patrolConfig(token).enabled);
+    const tokens=activePatrols ? [...activePatrols.values()] : canvas.scene.tokens.contents.filter(token=>runtimeConfig(token).config.enabled);
     const enabled=new Set(tokens.map(token=>token.uuid));
     for(const key of states.keys())if(!enabled.has(key))states.delete(key);
     if(patrolPaused(canvas.scene))return;
     const offset=patrolCursor++%Math.max(1,tokens.length);
     for(const token of [...tokens.slice(offset),...tokens.slice(0,offset)]) {
-      if(!patrolConfig(token).enabled)continue;
-      if(faults.get(token.uuid)===JSON.stringify(patrolConfig(token)))continue;
+      const {config,signature}=runtimeConfig(token);
+      if(!config.enabled||faults.get(token.uuid)===signature)continue;
       const previous=states.get(token.uuid)?.status;
       const priorReservation=states.get(token.uuid)?.reservedGoal;
       try {await advance(token,now);
@@ -485,7 +538,7 @@ export async function tickPatrols(now=Date.now()):Promise<void> {
         if(status&&status!==previous&&!["Moving","Reversing","Turning in place"].includes(status))recordOperation(token,status);
       }catch(error){
         console.error(`${MODULE_ID} | Patrol ${token.name}`,error);
-        faults.set(token.uuid,JSON.stringify(patrolConfig(token)));
+        faults.set(token.uuid,runtimeConfig(token).signature);
         const state=states.get(token.uuid);if(state){state.status="Patrol error; stopped";state.goal=undefined;state.reservedGoal=undefined;}
         // Avoid repeated writes/errors every timer tick after a malformed configuration or rejected write.
         await savePatrol(token,{...defaults(),...patrolConfig(token),enabled:false}).catch(()=>undefined);
@@ -494,7 +547,7 @@ export async function tickPatrols(now=Date.now()):Promise<void> {
     }
   } finally {ticking=false;}
 }
-export function clearPatrolRuntime():void {activePatrols=undefined;states.clear();faults.clear();passages.clear();operations.clear();patrolCursor=0;geometryRevision++;}
+export function clearPatrolRuntime():void {configs=new WeakMap();activePatrols=undefined;states.clear();faults.clear();passages.clear();operations.clear();patrolCursor=0;geometryRevision++;}
 export function registerPatrolRuntime():void {
   let generation=0,initialized=false;
   const stop=()=>{generation++;if(timer)clearTimeout(timer);timer=undefined;clearPatrolRuntime();};
@@ -526,6 +579,7 @@ export function registerPatrolRuntime():void {
   Hooks.on("updateScene",(scene:Scene,changes:object)=>{if(scene.id!==canvas.scene?.id)return;if(changesSeatFields(changes,['grid','width','height','padding']))geometryRevision++;start();});
   Hooks.on("deleteToken",(token:TokenDocument)=>{states.delete(token.uuid);operations.delete(token.uuid);activePatrols?.delete(token.uuid);invalidate(token);start();});
   Hooks.on("updateToken",(token:TokenDocument,changes:Record<string,unknown>,options:{patrolMove?:boolean;vehicleSeats?:boolean;stopPatrolAnimation?:boolean})=>{
+    if(changesSeatFields(changes,[`flags.${MODULE_ID}.patrol`]))configs.delete(token);
     if(token.parent?.id!==canvas.scene?.id)return;
     if(options.stopPatrolAnimation && !patrolAvailable(token))token.object?.stopAnimation({reset:true});
     if(changesSeatFields(changes,[`flags.${MODULE_ID}.patrol`,`flags.${MODULE_ID}.vehicleSeat`])){if(initialized)rebuildPatrols();start();}
@@ -547,11 +601,11 @@ export function registerPatrolRuntime():void {
       const heading=headingOf(changes.rotation??token.rotation),size=driveFootprint(base,heading,square);
       const target={x:(changes.x??position(token).x)+size.width*grid/2,y:(changes.y??position(token).y)+size.height*grid/2,heading};
       if((changes.width!==undefined&&changes.width!==size.width)||(changes.height!==undefined&&changes.height!==size.height))return false;
-      if(token.lockRotation||Math.abs(headingDelta(origin.heading,heading))>(distance(origin,target)<1?1:2)||!routingWorld(token,patrolConfig(token))?.canDrive(origin,target))return false;
+      if(token.lockRotation||Math.abs(headingDelta(origin.heading,heading))>(distance(origin,target)<1?1:2)||!routingWorld(token,runtimeConfig(token).config)?.canDrive(origin,target))return false;
       return;
     }
     const size=dimensions(token),p=position(token), target={x:(changes.x??p.x)+size.width/2,y:(changes.y??p.y)+size.height/2};
-    if(!routingWorld(token,patrolConfig(token))?.canMove(center(token),target))return false;
+    if(!routingWorld(token,runtimeConfig(token).config)?.canMove(center(token),target))return false;
     const state=states.get(token.uuid),stop=state?.path[state.path.length-1]??state?.goal;
     if(stop&&distance(stop,target)<1&&!destinationClear(token,target))return false;
   });

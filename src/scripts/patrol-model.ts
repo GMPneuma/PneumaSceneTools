@@ -73,6 +73,14 @@ export function regionContainsSweep(hull: Point[], contains: (p: Point)=>boolean
 export interface RoutingWorld {bounds: Rect; step: number; squareSteps?: boolean; canMove(a: Point,b: Point): boolean}
 /** Bounded A* with 8 neighbours. No path means wait/retry, never teleport through an obstacle. */
 export function findPath(start: Point, goal: Point, world: RoutingWorld, limit=2500, approach=false,canStop:(p:Point)=>boolean=()=>true): Point[] | undefined {
+  const search=walkingRoute(start,goal,world,limit,approach,canStop);
+  let result=search.next();
+  while(!result.done)result=search.next();
+  return result.value;
+}
+
+/** Yield at node boundaries so the patrol scheduler can share its planning budget. */
+export function* walkingRoute(start: Point, goal: Point, world: RoutingWorld, limit=2500, approach=false,canStop:(p:Point)=>boolean=()=>true): Generator<void,Point[]|undefined> {
   if (!world.canMove(start,start) || (!approach&&!world.canMove(goal,goal))) return;
   if (!world.squareSteps && canStop(goal)&&world.canMove(start,goal)) return [goal];
   if (world.squareSteps && canStop(goal)) {
@@ -99,6 +107,7 @@ export function findPath(start: Point, goal: Point, world: RoutingWorld, limit=2
   const routeTo=(last:Node)=>{const path:Point[]=[];let node:Node|undefined=last;while(node?.parent){path.unshift(node.p);node=node.parent;}return path;};
   const open=[first], costs=new Map([[key(start),0]]);
   for(let visited=0;open.length && visited<limit;visited++) {
+    yield;
     let best=0;for(let i=1;i<open.length;i++)if(open[i]!.f<open[best]!.f)best=i;
     const current=open.splice(best,1)[0]!;
     if(current.g>costs.get(key(current.p))!)continue;
@@ -115,7 +124,7 @@ export function findPath(start: Point, goal: Point, world: RoutingWorld, limit=2
       const g=current.g+cost, k=key(p);
       if(g>=(costs.get(k)??Infinity)||!world.canMove(current.p,p))continue;
       const node={p,g,f:g+distance(p,goal),parent:current};
-      if(approach&&canStop(p)&&distance(p,goal)<distance(closest?.p??start,goal)-0.01)closest=node;
+      if(approach&&distance(p,goal)<distance(closest?.p??start,goal)-0.01&&canStop(p))closest=node;
       costs.set(k,g);open.push(node);
     }
   }

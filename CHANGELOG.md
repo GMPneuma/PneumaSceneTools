@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.0 - 2026-11-18
+
+- Spread blocked walking patrol searches across ticks and reduce repeated occupancy checks while preserving collision checks before movement.
+- Reuse patrol configuration between edits and load fresh token data when opening the patrol editor.
+
 ## 0.8.12 - 2026-11-16
 
 - Hide empty settings-group headings when Foundry search filters out their settings. Groups with matching descendants remain visible; clearing search restores the headings.

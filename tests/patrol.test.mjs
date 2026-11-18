@@ -868,3 +868,42 @@ test('idle patrols schedule no timer and pause/resume/start/stop wake correctly'
   t.flags[ID].patrol.enabled=false;emit('updateToken',t,{['flags.'+ID+'.patrol.enabled']:false},{});assert.equal(scheduled.size,0);
  }finally{emit('canvasTearDown');globalThis.setTimeout=originalSet;globalThis.clearTimeout=originalClear;}
 });
+
+test('blocked walking search yields and rechecks edited walls before moving',async()=>{
+ const {scene,hooks,token}=setup();
+ const guard=token('guard',100,100,{...route,stops:[{x:850,y:150,wait:0},{x:150,y:150,wait:0}]});
+ const wall={parent:scene,c:[400,0,400,600],move:20,door:0,ds:0};
+ scene.walls.contents.push(wall);
+ const clock=Object.getOwnPropertyDescriptor(globalThis,'performance');
+ let time=0;
+ Object.defineProperty(globalThis,'performance',{configurable:true,value:{now:()=>time+=4}});
+ try{
+  await tickPatrols(0);
+  assert.equal(patrolStatus(guard),'Planning walking route');
+  assert.equal(guard.writes.length,0);
+  // Change the pending route to a fully blocked barrier before the next slice.
+  wall.c=[400,0,400,1000];hooks.get('updateWall').forEach(fn=>fn(wall,{c:wall.c}));
+  for(let tick=1;tick<=200&&!guard.writes.length;tick++)await tickPatrols(tick*25);
+  assert.equal(guard.writes.length,1,'blocked search resumes and reaches a safe approach');
+  assert(guard.x+100<=400);
+  scene.walls.contents=[];hooks.get('deleteWall').forEach(fn=>fn(wall));
+  for(let tick=0;tick<20&&guard.x!==800;tick++)await tickPatrols(6000+tick*1500);
+  assert.equal(guard.x,800,'route resumes after the wall is removed');
+ }finally{Object.defineProperty(globalThis,'performance',clock);}
+});
+
+test('moving patrols reuse configuration and editor drafts are isolated',async()=>{
+ const {token}=setup();const guard=token('guard',100,100,route);
+ await tickPatrols(0);
+ const draft=patrolConfig(guard);
+ draft.stops[0].x=999;
+ assert.notEqual(patrolConfig(guard).stops[0].x,999);
+ const clone=globalThis.structuredClone;let copies=0;
+ globalThis.structuredClone=(data,...rest)=>{if(data?.stops)copies++;return clone(data,...rest);};
+ try{
+  for(let i=1;i<=8;i++)await tickPatrols(i*25);
+  assert.equal(copies,0);
+  await guard.update({['flags.'+ID+'.patrol.speed']:2});
+  assert.equal(patrolConfig(guard).speed,2);
+ }finally{globalThis.structuredClone=clone;}
+});
