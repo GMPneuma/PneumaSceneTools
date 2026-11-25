@@ -1,5 +1,7 @@
 # Implemented features
 
+- Scene Tools editors and dialogs place Save and Apply in the bottom-right action area.
+
 - Map-pin scaling skips translation-only canvas pans and batches zoom-driven scene-pin updates once per animation frame. Note creation, refresh and scene pin-setting changes still update scaling. Live Foundry verification pending.
 
 - Local performance fixes: clear square-grid patrol routes check swept segments before expanding into ordinary single-grid steps, falling back to A* when blocked. Artwork-category thumbnails browse folders as entries approach the visible list area, with at most four folder requests in flight per dialog. Closing or rebuilding a dialog cancels queued obsolete browsing. Automated unit/browser checks passed; live Foundry verification pending.
@@ -675,7 +677,7 @@ On scenes with Scene Tools Map POI enabled, the Notes layer stays visible and in
 - MookMaker places Cancel on the left and Apply on the right. Its dialog fits the form without an unused native footer; vertical scrolling remains available when the window is constrained. Automated browser layout checks only; live Foundry verification pending.
 - Vehicle configuration shows an Artwork Category pick list above compact stats on the left, with a live artwork/seat preview on the right. Category entries include token width, height, and defined seat count. MookMaker uses the same Artwork Category label.
 - The preview includes a footprint grid, manual image/video selection, editable token width/height and artwork scale, and inline seat placement, naming, removal, and alignment snapping. Save applies the previewed image and local seat edits; template-save controls are omitted.
-- New vehicle templates use a basic top-down car outline. Existing templates keep their artwork.
+- Vehicle Templates use the bundled top-down car outline for the Actor portrait and prototype token. On the first active-GM startup after this update, Scene Tools applies the artwork to existing templates in that folder, carries over seat positions, and clears saved status effects from the Bike template. Later customizations persist.
 
 - Vehicle configuration preview includes one extra grid square on every side of the footprint. Seat alignment independently snaps X and Y within five percentage points of artwork dimensions, regardless of preview size; Shift and the Snap checkbox still bypass alignment.
 
@@ -685,7 +687,7 @@ On scenes with Scene Tools Map POI enabled, the Notes layer stays visible and in
 
 - Vehicle Enter/Exit HUD uses a side-view bucket-seat silhouette with a separate headrest, reclined back, cushion, and mounting rail, inheriting the native HUD icon color.
 
-- Vehicle HUD always opens its seat list, including without a selected character. Occupied seats show a muted rider name and disabled entry; the chosen passenger gets Exit on their current row. Seated-character HUD opens the same list. Enter on an empty seat switches an existing rider within the same vehicle, preserving their original exit appearance and rejecting occupied destinations.
+- Vehicle HUD always opens its seat list, including without a selected character. GM Exit removes the occupant of the clicked seat without using the passenger picker. Players can exit with their selected, owned occupant. Seated-character HUD opens the same list. Enter on an empty seat switches an existing rider within the same vehicle, preserving their original exit appearance and rejecting occupied destinations.
 
 - Player boarding requires the character footprint to touch or overlap the vehicle footprint (corners count, with one-pixel rounding tolerance). The authoritative seat request checks proximity; GMs bypass it. Existing riders may switch seats and exit normally.
 

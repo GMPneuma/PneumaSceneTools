@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 - 2026-11-25
+
+- Align Save and Apply at the bottom right in Scene Tools editors, including MookMaker Skill Classifications and Mook Name RollTables.
+- Let GMs exit a vehicle seat directly from its occupied row. The character picker is used for boarding.
+- Apply the bundled car artwork to existing Vehicle Templates at the first active-GM startup. Carry over seat positions and clear saved status effects from the Bike template.
+
 ## 1.0.0 - 2026-11-18
 
 - Spread blocked walking patrol searches across ticks and reduce repeated occupancy checks while preserving collision checks before movement.

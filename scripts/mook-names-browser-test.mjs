@@ -8,6 +8,7 @@ try {
  await page.route('https://names.test/**',async route=>{const path=new URL(route.request().url()).pathname.replace(/^\/modules\/pneuma-scenetools\//,'');if(path==='/')return route.fulfill({contentType:'text/html',body:'<html><body></body></html>'});return route.fulfill({contentType:path.endsWith('.js')?'text/javascript':'text/plain',body:await readFile(resolve('dist',path))});});
  await page.goto('https://names.test/');
  await page.addScriptTag({content:await readFile('node_modules/handlebars/dist/handlebars.js','utf8')});
+ await page.addStyleTag({content:await readFile('dist/styles/pneuma-scenetools.css','utf8')});
  await page.addStyleTag({content:await readFile('dist/styles/mookmaker.css','utf8')});
  await page.addStyleTag({content:'body{font:14px Arial}.dialog{width:580px;padding:12px;background:#ddd}.form-group{display:flex;gap:6px;margin:8px 0}input,select{min-width:0;flex:1}button{cursor:pointer}footer{display:flex}fieldset{margin:8px 0}'});
  await page.evaluate(async()=>{
@@ -41,11 +42,31 @@ try {
  await page.evaluate(()=>{window.cancelResult=undefined;void names.manualName(recipe,'Original').then(value=>cancelResult=value);});
  await page.locator('[data-cancel]').click();assert.equal(await page.evaluate(()=>cancelResult),null);
  await page.evaluate(()=>{window.configResult=undefined;void names.editNameRecipe(recipe).then(value=>configResult=value);});
- await page.waitForSelector('[name="0.tableId"]');assert.deepEqual(await page.locator('[name="0.tableId"] option').allTextContents(),['Skip this part','Mook First names','Names Last names','mook Handles']);await page.locator('[name="0.tableId"]').selectOption('last');await page.locator('[data-save]').click();
+ await page.waitForSelector('[name="0.tableId"]');
+ const assertSaveFooter = async (footer, save, secondary) => {
+  const [bounds, saveBounds, secondaryBounds] = await Promise.all([
+   footer.boundingBox(), footer.locator(save).boundingBox(), footer.locator(secondary).boundingBox(),
+  ]);
+  assert.ok(secondaryBounds.x + secondaryBounds.width <= saveBounds.x);
+  assert.ok(Math.abs(saveBounds.x + saveBounds.width - bounds.x - bounds.width) < 2);
+ };
+ await assertSaveFooter(page.locator('.mook-name-config footer'), '[data-save]', '[data-cancel]');
+ assert.deepEqual(await page.locator('[name="0.tableId"] option').allTextContents(),['Skip this part','Mook First names','Names Last names','mook Handles']);await page.locator('[name="0.tableId"]').selectOption('last');await page.locator('[data-save]').click();
  assert.deepEqual(await page.evaluate(()=>configResult[0]),{tableId:'last'});
  await page.evaluate(async()=>{const {normalizeCategories}=await import('/modules/pneuma-scenetools/scripts/token-artwork.js');const row={name:'NCPD',kind:'mook',folder:'art/ncpd',nameRecipe:configResult};if(JSON.stringify(normalizeCategories([row])[0].nameRecipe)!==JSON.stringify(configResult))throw Error('Override lost');});
  await page.evaluate(async()=>{
   Handlebars.registerHelper('localize',key=>key.split('.').at(-1));
+  const classifications = await renderTemplate('modules/pneuma-scenetools/templates/skill-classifications.hbs', {
+   skills: [{name: 'Accounting', key: 'accounting', isTertiary: true}],
+  });
+  const dialog = document.createElement('div');
+  dialog.style.width = '520px';
+  dialog.innerHTML = classifications;
+  document.body.append(dialog);
+ });
+ await assertSaveFooter(page.locator('.pneuma-mook-maker-skill-config-form footer'), 'button[type="submit"]', '[data-action="reset-skill-classifications"]');
+ await page.evaluate(async()=>{
+  document.querySelector('.pneuma-mook-maker-skill-config-form').parentElement.remove();
   const html=await renderTemplate('modules/pneuma-scenetools/templates/mook-maker.hbs',{name:'Joe Smith',noRole:true,activeRoleLevel:0,tokenFields:[{name:'displayName',label:'Display Name',choices:[{value:0,label:'Never'}]},{name:'tokenDisposition',label:'Token Disposition',choices:[{value:0,label:'Neutral'}]}]});
   const wrap=document.createElement('div');wrap.style.cssText='width:748px;padding:16px;background:#ddd';wrap.innerHTML=html;document.body.append(wrap);
   wrap.querySelectorAll('form > fieldset:not(:first-child),form > footer').forEach(el=>el.remove());

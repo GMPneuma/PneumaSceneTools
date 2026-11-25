@@ -4,5 +4,5 @@
   <p class="notes">Only RollTables whose names start with Mook or Names are listed. Duplicate a starter table for your own name lists.</p>
   <div class="mook-name-parts">{{#each parts}}<label>Part {{number}}<select name="{{index}}.tableId"><option value="">Skip this part</option>{{#if missing}}<option value="{{tableId}}" selected>Unavailable table</option>{{/if}}{{#each tables}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></label>{{/each}}</div>
   </fieldset>
-  <p role="alert"></p><footer class="pneuma-mook-maker-form-actions"><button type="button" data-save>Save</button><button type="button" data-cancel>Cancel</button></footer>
+  <p role="alert"></p><footer class="pneuma-scene-save-footer"><button type="button" data-cancel>Cancel</button><button type="button" data-save>Save</button></footer>
 </section>

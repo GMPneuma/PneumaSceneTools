@@ -3,13 +3,54 @@ import {ensureSceneToolsFolder, findSceneToolsFolder, WORLD_FOLDERS} from "./wor
 import {isTemplateActor} from "./mookmaker/folders.js";
 import type {SpawnKind} from "./token-artwork.js";
 import {armoredChassisData, ensureWorldChassis} from "./vehicle-chassis.js";
+import {seatFlag, type SeatLayout} from "./vehicle-seats-model.js";
 
 const DEFAULT_VEHICLE_IMAGE = `modules/${MODULE_ID}/assets/vehicle-outline.svg`;
+const VEHICLE_TEMPLATE_DEFAULTS_FLAG = "carArtworkAndCleanBike";
+declare global {
+  interface FlagConfig {
+    Folder: {"pneuma-scenetools": {carArtworkAndCleanBike?: boolean}};
+  }
+}
+
+async function updateVehicleTemplateDefaults(folder: Folder): Promise<void> {
+  if (foundry.utils.getProperty(folder, `flags.${MODULE_ID}.${VEHICLE_TEMPLATE_DEFAULTS_FLAG}`)) return;
+  const templates = game.actors?.filter(actor => actor.folder?.id === folder.id) ?? [];
+  for (const actor of templates) {
+    const prototype = actor.prototypeToken;
+    const previous = prototype.texture.src;
+    const changes: Record<string, unknown> = {};
+    if (actor.img !== DEFAULT_VEHICLE_IMAGE) changes.img = DEFAULT_VEHICLE_IMAGE;
+    if (previous !== DEFAULT_VEHICLE_IMAGE) {
+      changes["prototypeToken.texture.src"] = DEFAULT_VEHICLE_IMAGE;
+      const layoutPath = `prototypeToken.flags.${MODULE_ID}`;
+      const local = seatFlag(prototype, "vehicleSeats") as SeatLayout | undefined;
+      const layouts = (seatFlag(prototype, "vehicleSeatLayouts") as SeatLayout[] | undefined) ?? [];
+      const previousLayout = layouts.find(layout => layout.image === previous);
+      const forCar = (layout: SeatLayout): SeatLayout => ({...layout, image: DEFAULT_VEHICLE_IMAGE, imageWidth: 200, imageHeight: 300});
+      if (local && local.image === previous)
+        changes[`${layoutPath}.vehicleSeats`] = forCar(local);
+      if (previousLayout && !layouts.some(layout => layout.image === DEFAULT_VEHICLE_IMAGE))
+        changes[`${layoutPath}.vehicleSeatLayouts`] = [...layouts, forCar(previousLayout)];
+    }
+    if (Object.keys(changes).length && !await actor.update(changes as object))
+      throw new Error(`Could not update artwork on vehicle template ${actor.name}.`);
+    if (actor.name.trim().toLocaleLowerCase() === "bike") {
+      const statuses = actor.effects.filter(effect => effect.statuses.size > 0).map(effect => effect.id!);
+      if (statuses.length) {
+        await actor.deleteEmbeddedDocuments("ActiveEffect", statuses);
+        if (statuses.some(id => actor.effects.has(id))) throw new Error("Could not clear Bike template statuses.");
+      }
+    }
+  }
+  await folder.setFlag(MODULE_ID, VEHICLE_TEMPLATE_DEFAULTS_FLAG, true);
+}
 
 export async function ensureVehicleTemplate(): Promise<void> {
   if (!game.user?.isGM || game.users?.activeGM?.id !== game.user.id) return;
   await ensureWorldChassis();
   const folder = await ensureSceneToolsFolder("Actor", WORLD_FOLDERS.vehicleTemplates);
+  await updateVehicleTemplateDefaults(folder);
   const defaults = game.actors?.filter(actor => foundry.utils.getProperty(actor, `flags.${MODULE_ID}.defaultVehicleTemplate`) === true) ?? [];
   const existing = defaults.find(actor => ["mook", "character"].includes(String(actor.type)));
   if (existing) return;

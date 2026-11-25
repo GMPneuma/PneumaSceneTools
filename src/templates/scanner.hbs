@@ -26,11 +26,12 @@
   </div>
   <footer class="ap-bulk-bar" aria-label="Bulk access point controls">
     <table class="ap-control-table {{#unless showRevealAll}}ap-hide-reveal-all{{/unless}}"><colgroup><col class="ap-col-select"><col class="ap-col-name"><col class="ap-col-net"><col class="ap-col-distance"><col>{{#each bulkControls}}<col class="ap-col-toggle">{{/each}}</colgroup>
-      <tbody><tr><td colspan="2" class="ap-footer-selection"><div class="ap-selection-tools"><button type="button" data-action="select-visible">Select All Shown</button><button type="button" data-action="clear">Clear Selection</button></div></td><td colspan="2" class="ap-bulk-label"><strong>Apply to selected</strong></td><td class="ap-bulk-apply"><button type="button" data-action="apply" {{#unless canApply}}disabled{{/unless}}>Apply</button></td>
+      <tbody><tr><td colspan="2" class="ap-footer-selection"><div class="ap-selection-tools"><button type="button" data-action="select-visible">Select All Shown</button><button type="button" data-action="clear">Clear Selection</button></div></td><td colspan="2" class="ap-bulk-label"><strong>Apply to selected</strong></td><td></td>
         {{#each bulkControls}}<td class="ap-toggle"><input type="checkbox" data-control="{{key}}" data-group="{{group}}" title="{{label}} for selected access points" aria-label="{{label}} for selected access points" {{#if checked}}checked{{/if}}></td>{{/each}}
       </tr></tbody>
     </table>
   </footer>
   <p class="notes">{{visibleCount}} of {{totalCount}} APs in the radius filter. Row changes apply immediately. Uncheck to hide or stop. A dash means selected APs differ; Apply changes only the options you adjust.</p>
   <p class="notes">Pulses are visible to everyone who can see the AP.</p>
+  <footer class="ap-bulk-apply pneuma-scene-save-footer"><button type="button" data-action="apply" {{#unless canApply}}disabled{{/unless}}>Apply</button></footer>
 </section>

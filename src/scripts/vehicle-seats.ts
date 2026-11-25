@@ -83,7 +83,13 @@ export async function executeSeatRequest(token: TokenDocument, request: SeatActi
     return;
   }
   if (!isPassenger(token)) throw new Error("Choose a character token.");
-  if (request.action === "exit") {if(mode!=="validate")await exitSeat(token); return;}
+  if (request.action === "exit") {
+    const current = assignment(token);
+    if (request.vehicleId !== undefined && (current?.vehicleId !== request.vehicleId || current.seatId !== request.seatId))
+      throw new Error("This character is no longer in that seat. Reopen the seat list.");
+    if (mode !== "validate") await exitSeat(token);
+    return;
+  }
   if (request.action !== "board") throw new Error("Unknown seat action.");
   const vehicle = token.parent!.tokens.get(request.vehicleId ?? "");
   if (!vehicle || !isVehicleToken(vehicle) || vehicle.id === token.id || (!user.isGM && vehicle.hidden)) throw new Error("Choose a visible vehicle in this scene.");

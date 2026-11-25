@@ -33,21 +33,24 @@ export async function openVehicleSeats(vehicle: TokenDocument, preferred?: Token
     const passengerSelect = root.querySelector<HTMLSelectElement>('[name="passenger"]');
     const passengerId = () => game.user?.isGM ? passengerSelect?.value : selectedPassenger()?.id;
     const refreshSelection = () => {
+      if (game.user?.isGM) return;
       root.querySelectorAll<HTMLButtonElement>('[data-action="exit"]').forEach(button => {button.hidden = button.dataset.rider !== passengerId();});
     };
-    passengerSelect?.addEventListener('change', refreshSelection);refreshSelection();
+    refreshSelection();
     let busy = false;
     root.addEventListener("click", event => {
       const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-action]");if (!button || button.disabled || busy) return;
       event.preventDefault();
       if (button.dataset.action === "edit") {void openSeatEditor(vehicle).then(close).catch(error => {message.textContent = String(error);});return;}
-      const id = passengerId();
-      if (button.dataset.action === 'exit' && button.dataset.rider !== id) {refreshSelection();message.textContent = 'Select the character in this seat to exit.';return;}
+      const exiting = button.dataset.action === "exit";
+      const id = exiting && game.user?.isGM ? button.dataset.rider : passengerId();
+      if (exiting && button.dataset.rider !== id) {refreshSelection();message.textContent = 'Select the character in this seat to exit.';return;}
       const passenger = vehicle.parent?.tokens.get(id ?? "");
       if (!passenger) {message.textContent = "Select one character token on the scene.";return;}
+      const selection = exiting && game.user?.isGM ? vehicle.parent?.tokens.get(passengerSelect?.value ?? "") : passenger;
       busy = true;message.textContent = "Updating seat…";
-      void requestSeatAction(passenger, button.dataset.action === "exit" ? {action: "exit"} : {action: "board", vehicleId: vehicle.id!, seatId: button.dataset.seat})
-        .then(async () => {if (anchor && !root.isConnected) return;close(); await openVehicleSeats(vehicle, passenger, anchor);})
+      void requestSeatAction(passenger, {action: exiting ? "exit" : "board", vehicleId: vehicle.id!, seatId: button.dataset.seat})
+        .then(async () => {if (anchor && !root.isConnected) return;close(); await openVehicleSeats(vehicle, selection, anchor);})
         .catch(error => {message.textContent = String(error);}).finally(() => {busy = false;});
     });
   };

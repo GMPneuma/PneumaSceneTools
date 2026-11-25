@@ -56,6 +56,43 @@ test("vehicle category uses vehicle wording and selection survives native immedi
   env.select();assert.deepEqual(await result,category);
 });
 
+test("existing vehicle templates adopt car artwork once and only Bike loses saved statuses", async () => {
+  const env = setup([]);
+  const folder = await ensureSceneToolsFolder("Actor", WORLD_FOLDERS.vehicleTemplates);
+  const scopeFlags = {vehicleSeatLayouts: [{image: "bike.webp", imageWidth: 400, imageHeight: 300, seats: [{id:"driver", name:"Driver", x:.5, y:.5}]}]};
+  const template = (name, directory = folder) => ({
+    name, type: "mook", folder: directory, img: "bike.webp",
+    prototypeToken: {texture: {src: "bike.webp", scaleX: 1.6}, flags: {[scope]: structuredClone(scopeFlags)}},
+    effects: new Map([["status", {id:"status", statuses: new Set(["pneuma-needs-stabilization"])}], ["modifier", {id:"modifier", statuses: new Set()}]]),
+    async update(changes) { applyChanges(this, changes); return this; },
+    async deleteEmbeddedDocuments(type, ids) { assert.equal(type, "ActiveEffect"); for (const id of ids) this.effects.delete(id); },
+  });
+  const bike = template("Bike"), car = template("Sedan"), outside = template("Bike", null);
+  for (const actor of [bike, car, outside]) {
+    actor.effects.filter = callback => [...actor.effects.values()].filter(callback);
+  }
+  game.actors.set("bike", bike); game.actors.set("car", car); game.actors.set("outside", outside);
+  env.token.texture.src = "placed.webp";
+  await ensureVehicleTemplate();
+  const artwork = "modules/pneuma-scenetools/assets/vehicle-outline.svg";
+  for (const actor of [bike, car]) {
+    assert.equal(actor.img, artwork);
+    assert.equal(actor.prototypeToken.texture.src, artwork);
+    assert.equal(actor.prototypeToken.texture.scaleX, 1.6);
+    assert.deepEqual(actor.prototypeToken.flags[scope].vehicleSeatLayouts, [
+      ...scopeFlags.vehicleSeatLayouts, {...scopeFlags.vehicleSeatLayouts[0], image: artwork, imageWidth: 200, imageHeight: 300},
+    ]);
+  }
+  assert.deepEqual([...bike.effects.keys()], ["modifier"]);
+  assert.ok(car.effects.has("status"));
+  assert.ok(outside.effects.has("status"));
+  assert.equal(outside.img, "bike.webp");
+  assert.equal(env.token.texture.src, "placed.webp");
+  bike.prototypeToken.texture.src = "custom-after-setup.webp";
+  await ensureVehicleTemplate();
+  assert.equal(bike.prototypeToken.texture.src, "custom-after-setup.webp");
+});
+
 test('chassis world armor and equipped default copy provision once; existing templates keep custom equipment',async()=>{
  setup([]);await ensureVehicleTemplate();await ensureVehicleTemplate();
  assert.equal(game.items.size,1);const world=game.items.contents[0];assert.equal(world.name,'Armored Chassis (armor)');assert.equal(world.type,'armor');assert.equal(world.system.bodyLocation.sp,13);assert.equal(game.folders.get(world.folder).type,'Item');assert.equal(game.folders.get(world.folder).name,'SceneTools');

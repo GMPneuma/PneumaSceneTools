@@ -222,8 +222,15 @@ test('player seat requests round-trip through the GM without request flags',asyn
  assert.equal(assignment(f.rider),undefined);assert.equal(writes.length,0);
  await f.receive(f.requests()[0]);assert.equal(assignment(f.rider).seatId,'driver');
  await f.receive(f.replies()[0],f.player);await boarding;
- const exiting=requestSeatAction(f.rider,{action:'exit'});await f.receive(f.requests()[1]);await f.receive(f.replies().at(-1),f.player);await exiting;
+ const exiting=requestSeatAction(f.rider,{action:'exit',vehicleId:f.vehicle.id,seatId:'driver'});await f.receive(f.requests()[1]);await f.receive(f.replies().at(-1),f.player);await exiting;
  assert.equal(assignment(f.rider),undefined);assert.equal(writes.some(data=>JSON.stringify(data).includes('vehicleSeatRequest')),false);assert.ok(writers.every(user=>user===f.player.id),'Only the owner makes native writes');
+});
+
+test("a stale Exit row cannot remove a character from their new seat", async () => {
+ const {rider, vehicle} = setup();
+ await board(rider, "rear");
+ await assert.rejects(requestSeatAction(rider, {action:"exit", vehicleId:vehicle.id, seatId:"driver"}), /no longer in that seat/);
+ assert.equal(assignment(rider).seatId, "rear");
 });
 
 test('duplicate vehicle messages execute once and cannot replay a completed boarding',async()=>{

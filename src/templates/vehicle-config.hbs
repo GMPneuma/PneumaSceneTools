@@ -26,8 +26,8 @@
   </div>
   {{#if linked}}<p>Stats and player permissions apply to the linked Actor. Artwork and seat positions apply to this placed token.</p>{{/if}}
   <p data-config-error role="alert"></p>
-  <div class="pneuma-mook-maker-form-actions">
-    <button type="submit"><i class="fas fa-save"></i> Save</button>
+  <footer class="pneuma-scene-save-footer">
     {{#if canPromote}}<button class="pneuma-mook-maker-promote" type="button" data-action="promote"><i class="fas fa-user-graduate"></i> Promote</button>{{/if}}
-  </div>
+    <button type="submit"><i class="fas fa-save"></i> Save</button>
+  </footer>
 </form>

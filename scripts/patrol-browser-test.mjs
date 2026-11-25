@@ -39,7 +39,7 @@ try{
  await page.addStyleTag({content:await readFile('dist/styles/mookmaker.css','utf8')});
  await page.evaluate(async()=>{globalThis.patrol=await import('/scripts/patrol-ui.js');await patrol.openPatrols();});
  assert.equal(await page.locator('[name=token]').inputValue(),'Guard');
- assert.deepEqual(await page.locator('footer button').allTextContents(),[' Start',' Stop',' Cancel',' Save',' Delete']);
+ assert.deepEqual(await page.locator('footer button').allTextContents(),[' Start',' Stop',' Cancel',' Delete',' Save']);
  assert.equal(await page.locator('[name=speed]').isDisabled(),true);
  await page.getByLabel('Enable Patrol for this token').check();
  assert.equal(await page.locator('[name=squareSteps]').count(),0);

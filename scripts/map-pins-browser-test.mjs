@@ -15,6 +15,7 @@ try {
   });
   await page.goto('https://pins.test/');
   await page.addScriptTag({content:await readFile('node_modules/handlebars/dist/handlebars.js','utf8')});
+  await page.addStyleTag({content:await readFile('dist/styles/pneuma-scenetools.css','utf8')});
   await page.addStyleTag({content:await readFile('dist/styles/map-pins.css','utf8')});
   await page.addStyleTag({content:'.window-app .window-content > *{flex:1}body{font:14px system-ui;background:#15191e;color:#ddd}.dialog{width:700px;background:#282c32;padding:20px;margin:15px;border:1px solid #777;border-radius:5px}.form-group{display:flex;align-items:center;gap:12px;margin:10px 0}.form-group > label{min-width:0}.form-fields{display:flex;flex:1;min-width:0}.sheet-footer{display:flex}.sheet-footer button{flex:1}.window-app .window-content{background:#282c32;color:#ddd}input,select,button{background:#3c424b;color:#eee;border:1px solid #727b89;border-radius:3px;padding:5px}button{cursor:pointer}h3{border-bottom:1px solid #666;padding-bottom:5px}.pin-create>button{width:100%}.notes{font-size:12px;color:inherit}.pin-error{color:#ffb6b6!important}'});
   await page.evaluate(async()=>{
@@ -417,8 +418,13 @@ try {
   assert.equal(await page.locator('[name="textAnchor"]').inputValue(),'2');
   assert.equal(await page.locator('[data-action="visual-defaults"]').textContent(),'Load defaults');
   const loadBox=await page.locator('[data-action="visual-defaults"]').boundingBox();
-  const applyBox=await page.locator('[data-action="visual-apply"]').boundingBox();
-  assert.ok(loadBox.x+loadBox.width<=applyBox.x);
+  const actions=page.locator(".pneuma-poi-form > footer");
+  const applyBox=await actions.locator('[data-action="visual-apply"]').boundingBox();
+  const footerBox=await actions.boundingBox();
+  const submitBox=await actions.locator('button[type="submit"]').boundingBox();
+  assert.ok(loadBox.y+loadBox.height<=applyBox.y);
+  assert.ok(applyBox.x+applyBox.width<=submitBox.x);
+  assert.ok(Math.abs(submitBox.x+submitBox.width-(footerBox.x+footerBox.width))<2);
   await page.evaluate(()=>{
     window.appearanceWrites=[];
     noteApp.object.update=async changes=>{

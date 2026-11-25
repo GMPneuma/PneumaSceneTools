@@ -1,6 +1,6 @@
 {
   "name": "pneuma-scenetools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "description": "Scene importing, modular maps, POIs, patrols, vehicles, hazards, MookMaker, and access point tools for Cyberpunk RED in Foundry VTT.",

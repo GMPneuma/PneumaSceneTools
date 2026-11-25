@@ -4,7 +4,7 @@
     <section aria-label="Presets" class="hazard-preset-bar">
       <h3>Presets</h3>
       <div class="form-group"><div class="form-fields"><select name="preset">{{#each presetOptions}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></div></div>
-      <div class="hazard-actions"><button type="button" data-action="load">Load Preset</button><button type="button" data-action="presetSave">Save as preset</button></div>
+      <div class="hazard-actions"><button type="button" data-action="load">Load Preset</button></div>
     </section>
     <div class="hazard-editor-scroll">
       <header class="hazard-top"><div aria-label="Hazard"><h3>Hazard</h3><div class="hazard-header-columns">
@@ -36,7 +36,7 @@
     </div>
     <footer class="hazard-third">
       <section aria-label="Draft requirements" class="hazard-draft-requirements hazard-requirements"><h3>Draft requirements</h3>{{#if issues}}<ul>{{#each issues}}<li>{{message}}</li>{{/each}}</ul>{{else}}<p class="notes">No missing requirements.</p>{{/if}}</section>
-      <section aria-label="Save hazard" class="hazard-save-panel"><h3>Save</h3><button type="button" data-action="save" title="Save Hazard" aria-label="Save Hazard"><i class="fas fa-save" aria-hidden="true"></i> Save Hazard</button><button type="button" data-action="deleteHazard" title="Delete Hazard" aria-label="Delete Hazard" {{#unless canDelete}}disabled{{/unless}}><i class="fas fa-trash" aria-hidden="true"></i> Delete Hazard</button></section>
+      <section aria-label="Save hazard" class="hazard-save-panel"><h3>Save</h3><button type="button" data-action="deleteHazard" title="Delete Hazard" aria-label="Delete Hazard" {{#unless canDelete}}disabled{{/unless}}><i class="fas fa-trash" aria-hidden="true"></i> Delete Hazard</button><button type="button" data-action="presetSave">Save as preset</button><button type="button" data-action="save" title="Save Hazard" aria-label="Save Hazard"><i class="fas fa-save" aria-hidden="true"></i> Save Hazard</button></section>
     </footer>
   </div>
 </form>

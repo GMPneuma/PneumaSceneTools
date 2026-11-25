@@ -84,6 +84,7 @@ export function environment() {
   };
   globalThis.Folder = { create: async (data) => {
     const folder = { ...data, folder: game.folders.get(data.folder) ?? null, id: `folder-${game.folders.size}`, getFlag(scope, key) { return this.flags?.[scope]?.[key]; } };
+    folder.setFlag = async (scope, key, value) => setPath(folder, `flags.${scope}.${key}`, value);
     game.folders.set(folder.id, folder); return folder;
   } };
   return { gm, player, other, offline, values, notices, docs };

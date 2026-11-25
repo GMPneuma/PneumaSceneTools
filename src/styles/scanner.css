@@ -96,7 +96,6 @@
 .pneuma-type-manager .ap-type-image input { min-width: 0; flex: 1; }
 .pneuma-type-manager .ap-type-image button { width: 32px; flex: 0 0 32px; }
 .pneuma-type-manager .ap-type-footer { margin-top: 12px; flex-shrink: 0; }
-.pneuma-type-manager .ap-type-footer button { flex: 1; }
 
 
 .pneuma-scanner .ap-scene-color { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12px; }
@@ -123,8 +122,7 @@
 .pneuma-scanner-panel .ap-roll-preview { height: 280px; overflow: auto; margin: 0; }
 .pneuma-scanner-panel .ap-roll-card { width: 100%; margin: 0; }
 .pneuma-scanner .ap-bulk-bar { display: block; overflow: hidden; scrollbar-gutter: stable; padding: 0; border: 1px solid var(--color-border-light-tertiary, #8886); border-top: 0; }
-.pneuma-scanner .ap-control-table .ap-bulk-apply { text-align: right; }
-.pneuma-scanner .ap-bulk-apply button { width: 80px; margin: 0; }
+.pneuma-scanner .ap-bulk-apply > button { min-width: 80px; }
 .pneuma-scanner .ap-top .ap-runner-field { width: 100%; }
 .pneuma-scanner .ap-top-controls .ap-player-owned,
 .pneuma-scanner .ap-top-controls .ap-scene-color { margin-top: 8px; }

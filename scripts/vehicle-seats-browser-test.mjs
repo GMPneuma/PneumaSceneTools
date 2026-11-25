@@ -39,7 +39,7 @@ try {
   const scene={id:"scene",documentName:"Scene",grid:{size:100,type:1},tokens:new Collection()};game.scenes.set(scene.id,scene);
   function make(id,type){const token={id,name:id,parent:scene,isOwner:true,actor:{type,items:[]},texture:{src:"/car.svg",scaleX:1,scaleY:1},x:0,y:0,width:1,height:1,rotation:0,elevation:0,sort:0,flags:{[ID]:{}},canUserModify:()=>true,
    async update(changes){for(const [path,value] of Object.entries(changes)){const keys=path.split(".");let o=this;for(const k of keys.slice(0,-1))o=o[k]??={};const last=keys.at(-1);if(last.startsWith("-="))delete o[last.slice(2)];else o[last]=structuredClone(value);}Hooks.fire("updateToken",this,changes,{},"gm");return this;}};scene.tokens.set(id,token);return token;}
-  window.vehicle=make("Car","container");vehicle.width=2;vehicle.height=3;vehicle.flags[ID].CreatedByVehicleTools=true;vehicle.flags[ID].vehicleFootprint={width:2,height:3};window.rider=make("Passenger","character");
+  window.vehicle=make("Car","container");vehicle.width=2;vehicle.height=3;vehicle.flags[ID].CreatedByVehicleTools=true;vehicle.flags[ID].vehicleFootprint={width:2,height:3};window.rider=make("Passenger","character");window.otherRider=make("Other","character");
   const runtime=await import("/modules/pneuma-scenetools/scripts/vehicle-seats.js");runtime.registerVehicleSeats();
   window.seatUI=await import("/modules/pneuma-scenetools/scripts/vehicle-seats-ui.js");await seatUI.openSeatEditor(vehicle);
  });
@@ -76,6 +76,28 @@ try {
  assert.equal(await page.evaluate(()=>rider.texture.scaleX),.6,'Switching does not shrink the rider again');
  await page.locator('[data-action="exit"]').click();await page.waitForFunction(()=>!rider.flags["pneuma-scenetools"].vehicleSeat);
  assert.equal(await page.evaluate(()=>rider.texture.scaleX),1);assert.deepEqual(errors,[]);
+
+ await page.evaluate(async()=>{
+  window.$ = node => [node];
+  const {requestSeatAction}=await import('/modules/pneuma-scenetools/scripts/vehicle-seats.js');
+  for (const [index, token] of [rider, otherRider].entries()) {
+   const seatId=vehicle.flags['pneuma-scenetools'].vehicleSeats.seats[index].id;
+   await requestSeatAction(token,{action:'board',vehicleId:vehicle.id,seatId});
+  }
+  const anchor=document.createElement('div');anchor.id='gm-seat-test';document.body.append(anchor);
+  await seatUI.openVehicleSeats(vehicle,undefined,anchor);
+ });
+ const gmSeats=page.locator('#gm-seat-test .pneuma-vehicle-seat-menu');
+ const gmPicker=gmSeats.locator('[name="passenger"]');
+ assert.equal(await gmPicker.inputValue(),'');
+ await gmSeats.locator('[data-action="exit"][data-rider="Passenger"]').click();
+ await gmSeats.locator('[data-action="exit"][data-rider="Passenger"]').waitFor({state:'detached'});
+ assert.ok(await page.evaluate(()=>otherRider.flags['pneuma-scenetools'].vehicleSeat));
+ await gmPicker.selectOption('Passenger');
+ await gmSeats.locator('[data-action="exit"][data-rider="Other"]').click();
+ await gmSeats.locator('[data-action="exit"][data-rider="Other"]').waitFor({state:'detached'});
+ assert.equal(await page.evaluate(()=>Boolean(otherRider.flags['pneuma-scenetools'].vehicleSeat)),false);
+ await page.evaluate(()=>{vehicle.parent.tokens.delete(otherRider.id);document.querySelector('#gm-seat-test').remove();});
 
  await page.evaluate(()=>{
   document.querySelectorAll('.dialog').forEach(node=>node.remove());

@@ -173,10 +173,10 @@ try{
  assert.equal(await page.locator('.hazard-second [name=targetMode]').count(),1);
  assert.equal(await page.locator('.hazard-second [aria-label=Effects]').count(),1);
  assert.equal(await page.locator('.hazard-preset-bar [name=preset]').count(),1);
- const presetRow=await page.locator('.hazard-preset-bar').evaluate(el=>{const children=[el.querySelector('h3'),el.querySelector('select'),...el.querySelectorAll('button')];return children.map(child=>{const r=child.getBoundingClientRect();return {top:r.top,bottom:r.bottom};});});assert.equal(presetRow.length,4);assert.ok(Math.max(...presetRow.map(r=>r.top))<Math.min(...presetRow.map(r=>r.bottom)));
+ const presetRow=await page.locator('.hazard-preset-bar').evaluate(el=>{const children=[el.querySelector('h3'),el.querySelector('select'),...el.querySelectorAll('button')];return children.map(child=>{const r=child.getBoundingClientRect();return {top:r.top,bottom:r.bottom};});});assert.equal(presetRow.length,3);assert.ok(Math.max(...presetRow.map(r=>r.top))<Math.min(...presetRow.map(r=>r.bottom)));
  assert.equal(await page.locator('.hazard-preset-bar .notes, .hazard-preset-bar p, .hazard-preset-bar label').count(),0);
 
- assert.equal(await page.locator('.hazard-third .hazard-save-panel [data-action=save]').count(),1);
+ assert.deepEqual(await page.locator('.hazard-third .hazard-save-panel button').evaluateAll(buttons=>buttons.map(button=>button.dataset.action)),['deleteHazard','presetSave','save']);
  const bottomLayout=await page.evaluate(()=>{const blue=document.querySelector('.hazard-top [aria-label="Hazard"]').getBoundingClientRect(),footer=document.querySelector('.hazard-third').getBoundingClientRect(),requirements=document.querySelector('.hazard-draft-requirements').getBoundingClientRect(),save=document.querySelector('.hazard-save-panel').getBoundingClientRect();return {blue:blue.bottom,footer:footer.bottom,left:requirements.right,right:save.left};});assert.ok(Math.abs(bottomLayout.blue-bottomLayout.footer)<2);assert.ok(bottomLayout.left<bottomLayout.right);
 
  assert.equal(await page.locator('[data-action=save] i.fa-save').count(),1);assert.equal(await page.locator('[data-action=deleteHazard] i.fa-trash').count(),1);

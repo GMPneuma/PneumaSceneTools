@@ -34,7 +34,7 @@ export function sendSeatRequest(token:TokenDocument,action:SeatAction):Promise<v
   if(!gm || !game.user || !game.socket || game.socket.connected===false)throw Error("Vehicle requests require a connected active GM.");
   if(action.action==="layout")throw Error("Only a GM can configure vehicle seats locally.");
   const request:Request={seatType:"request",id:foundry.utils.randomID(),user:game.user.id!,gm:gm.id!,scene:token.parent!.id!,token:token.id!,action:action.action,
-    ...(action.action==="board"?{vehicleId:action.vehicleId,seatId:action.seatId}:{})};
+    ...(action.vehicleId!==undefined?{vehicleId:action.vehicleId,seatId:action.seatId}:{})};
   return new Promise<void>((resolve,reject)=>{
     const timer=setTimeout(()=>finish(request.id,"Seat request timed out. Check the seat list before retrying."),timeout);
     pending.set(request.id,{...request,action:structuredClone(action),stage:"waiting",resolve,reject,timer});
@@ -82,9 +82,10 @@ export function registerSeatRequests(execute:Execute,enqueue:Enqueue):void {
       if(wire.seatType!=="request" || !game.user?.isGM || wire.gm!==game.user.id || game.users?.activeGM?.id!==game.user.id)return;
       // Remote commands never configure layouts or edit templates.
       if(!["board","exit"].includes(wire.action))return;
-      if(wire.action==="board" && ![wire.vehicleId,wire.seatId].every(v=>typeof v==="string" && v.length>0 && v.length<=64))return;
+      if((wire.action==="board" || wire.vehicleId!==undefined || wire.seatId!==undefined)
+        && ![wire.vehicleId,wire.seatId].every(v=>typeof v==="string" && v.length>0 && v.length<=64))return;
       const request:Request={seatType:"request",id:wire.id,user:wire.user,gm:wire.gm,scene:wire.scene,token:wire.token,action:wire.action,
-        ...(wire.action==="board"?{vehicleId:wire.vehicleId,seatId:wire.seatId}:{})};
+        ...(wire.vehicleId!==undefined?{vehicleId:wire.vehicleId,seatId:wire.seatId}:{})};
       const key=`${request.user}:${request.id}`,fingerprint=JSON.stringify(request),now=Date.now();
       for(const [id,entry]of handled)if(entry.complete && entry.expires<=now)handled.delete(id);
       let entry=handled.get(key);

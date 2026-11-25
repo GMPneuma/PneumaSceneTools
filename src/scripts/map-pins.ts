@@ -58,7 +58,7 @@ function fillVisualDefaults(form:HTMLElement):void {
     form.querySelectorAll<HTMLInputElement>(`input[type="color"][data-edit="${name}"]`).forEach(picker=>{picker.value=String(value);});
   }
 }
-function visualPanel(basic:HTMLElement,special:HTMLElement,note:NoteDocument,resize:()=>void):void {
+function visualPanel(basic:HTMLElement,special:HTMLElement,note:NoteDocument,resize:()=>void):HTMLButtonElement {
   const columns=document.createElement("div");columns.className="pin-config-columns";
   const hover=special.querySelector<HTMLElement>(".pneuma-pin-hover-config")!;hover.before(columns);columns.append(hover);
   const panel=document.createElement("fieldset");panel.className="pin-visual-config";
@@ -148,6 +148,7 @@ function visualPanel(basic:HTMLElement,special:HTMLElement,note:NoteDocument,res
       status.textContent="Appearance applied.";
     })().catch(cause=>{status.textContent=error(cause);}).finally(()=>{apply.disabled=false;});
   });
+  return apply;
 }
 function renderPinConfig(app:NoteConfig,html:JQuery):void {
   const note=app.object,root=html[0];
@@ -174,7 +175,11 @@ function renderPinConfig(app:NoteConfig,html:JQuery):void {
   special.innerHTML=`<fieldset class="pin-icon-config"><legend>Icon</legend>${compactIconPicker(note.texture.src??"",true)}</fieldset>
   <fieldset class="pneuma-pin-hover-config"><legend>Journal hover preview</legend><div class="form-group"><label>Show preview</label><input type="checkbox" name="${prefix}.hover" ${info.hover?"checked":""}></div><div class="form-group"><label>Image page</label><div class="form-fields"><select name="${prefix}.imagePageId"></select></div></div><div class="form-group"><label>Description page</label><div class="form-fields"><select name="${prefix}.descriptionPageId"></select></div></div><h4>Hover fields</h4><input type="hidden" name="${prefix}.sections"><div class="pin-section-list"></div><p class="notes">Player visibility follows journal/page permissions.</p><input type="hidden" name="${prefix}.category" value="${escape(info.category)}"></fieldset>`;
   content.append(basic,special);form.prepend(content);
-  visualPanel(form,special,note,()=>requestAnimationFrame(()=>{if(form.isConnected)app.setPosition({height:"auto"});}));
+  const apply=visualPanel(form,special,note,()=>requestAnimationFrame(()=>{if(form.isConnected)app.setPosition({height:"auto"});}));
+  const actions=footer instanceof HTMLElement&&footer.matches("footer")?footer:document.createElement("footer");
+  if(actions!==footer){form.append(actions);if(submit)actions.append(submit);}
+  actions.classList.add("pneuma-scene-save-footer");
+  actions.prepend(apply);
   // Keep native fields and listeners for submission; appearance mirrors are the
   // sole visible controls. No cloned native widgets or second tab are needed.
   for(const name of ["iconSize","texture.tint","fontFamily","fontSize","textColor","textAnchor"]){

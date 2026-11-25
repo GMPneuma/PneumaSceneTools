@@ -284,6 +284,7 @@
 .hazard-sections .hazard-effect-row button { min-width: 26px; }
 .hazard-sections .hazard-save-panel button { flex: 0 0 auto; min-height: 26px; width: 100%; }
 .hazard-sections .hazard-save-panel button + button { margin-top: 6px; }
+.hazard-sections .hazard-save-panel [data-action="deleteHazard"] { margin-bottom: auto; }
 
 .hazard-sections .hazard-check-column .form-group:has(input[type=number]) .form-fields { flex: 0 0 auto; width: 76px; }
 

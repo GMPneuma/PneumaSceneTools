@@ -426,3 +426,17 @@
 
 /* Native search hides rows; omit their empty group headings as well. */
 :is(.pneuma-feature-settings, .pneuma-ap-reveal-settings):not(:has(.form-group:not(.hidden):not([hidden]))) { display: none; }
+
+.pneuma-scene-save-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.pneuma-scene-save-footer > button {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+  padding-inline: 12px;
+}
